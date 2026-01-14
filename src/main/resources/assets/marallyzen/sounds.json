@@ -1,0 +1,66 @@
+{
+  "tv": {
+    "category": "block",
+    "sounds": [
+      {
+        "name": "marallyzen:tv",
+        "stream": true,
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "tv_on": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:tv_on"
+    ]
+  },
+  "tv_off": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:tv_off"
+    ]
+  },
+  "flashlight_turn_on": {
+    "category": "player",
+    "sounds": [
+      "marallyzen:flashlight_turn_on"
+    ]
+  },
+  "flashlight_turn_off": {
+    "category": "player",
+    "sounds": [
+      "marallyzen:flashlight_turn_off"
+    ]
+  },
+  "poster_welcome": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:poster_welcome"
+    ]
+  },
+  "poster_bye": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:poster_bye"
+    ]
+  },
+  "poster_shake": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:poster_shake"
+    ]
+  },
+  "dictophone_start": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:dictophone_start"
+    ]
+  },
+  "dictophone_stop": {
+    "category": "block",
+    "sounds": [
+      "marallyzen:dictophone_stop"
+    ]
+  }
+}

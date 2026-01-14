@@ -1,0 +1,43 @@
+# This workflow will build a Java project with Gradle
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Build
+
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: checkout repository
+      uses: actions/checkout@v6
+    - name: Setup JDK 21
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'microsoft'
+        java-version: 21
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
+      with:
+        gradle-version: wrapper
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build All
+      run: ./gradlew build
+
+    - name: Copy artifacts
+      run: |
+        mkdir -p artifacts
+        if [ -d "paper/build/libs" ]; then
+          cp paper/build/libs/*.jar artifacts/
+        fi
+        if [ -d "minecraft/fabric/build/libs" ]; then
+          cp minecraft/fabric/build/libs/*.jar artifacts/
+        fi
+        if [ -d "minecraft/neoforge/build/libs" ]; then
+          cp minecraft/neoforge/build/libs/*.jar artifacts/
+        fi
+    - uses: actions/upload-artifact@v5
+      with:
+        name: Build Results
+        path: artifacts/*.jar

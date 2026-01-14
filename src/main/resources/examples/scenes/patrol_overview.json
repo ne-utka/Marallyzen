@@ -1,0 +1,38 @@
+{
+  "id": "patrol_overview",
+  "loop": true,
+  "interpolationSpeed": 0.03,
+  "keyframes": [
+    {
+      "position": { "x": 95.0, "y": 68.0, "z": 95.0 },
+      "yaw": 45.0,
+      "pitch": -20.0,
+      "fov": 75.0,
+      "duration": 5000
+    },
+    {
+      "position": { "x": 105.0, "y": 68.0, "z": 95.0 },
+      "yaw": 135.0,
+      "pitch": -15.0,
+      "fov": 75.0,
+      "duration": 4000
+    },
+    {
+      "position": { "x": 105.0, "y": 68.0, "z": 105.0 },
+      "yaw": 225.0,
+      "pitch": -20.0,
+      "fov": 75.0,
+      "duration": 5000
+    },
+    {
+      "position": { "x": 95.0, "y": 68.0, "z": 105.0 },
+      "yaw": 315.0,
+      "pitch": -15.0,
+      "fov": 75.0,
+      "duration": 4000
+    }
+  ]
+}
+
+
+

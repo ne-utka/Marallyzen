@@ -1,0 +1,198 @@
+package su.plo.voice.server.connection;
+
+import com.google.common.collect.Maps;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import su.plo.slib.api.position.Pos3d;
+import su.plo.voice.BaseVoice;
+import su.plo.voice.api.server.config.ServerConfig;
+import su.plo.voice.api.server.connection.TcpServerPacketManager;
+import su.plo.voice.api.server.player.VoiceServerPlayer;
+import su.plo.voice.proto.data.audio.capture.CaptureInfo;
+import su.plo.voice.proto.data.audio.capture.VoiceActivation;
+import su.plo.voice.proto.data.audio.codec.CodecInfo;
+import su.plo.voice.proto.data.config.PlayerIconConfig;
+import su.plo.voice.proto.data.encryption.EncryptionInfo;
+import su.plo.voice.proto.packets.Packet;
+import su.plo.voice.proto.packets.tcp.clientbound.ClientPacketTcpHandler;
+import su.plo.voice.proto.packets.tcp.clientbound.ConfigPacket;
+import su.plo.voice.proto.packets.tcp.clientbound.ConnectionPacket;
+import su.plo.voice.proto.packets.tcp.clientbound.PlayerDisconnectPacket;
+import su.plo.voice.proto.packets.tcp.clientbound.PlayerInfoRequestPacket;
+import su.plo.voice.proto.packets.tcp.clientbound.PlayerInfoUpdatePacket;
+import su.plo.voice.proto.packets.tcp.clientbound.PlayerListPacket;
+import su.plo.voice.server.BaseVoiceServer;
+
+import javax.crypto.Cipher;
+import java.security.PublicKey;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+public final class VoiceTcpServerConnectionManager implements TcpServerPacketManager {
+
+    private final BaseVoiceServer voiceServer;
+
+    private final Object playerStateLock = new Object();
+
+    public VoiceTcpServerConnectionManager(@NotNull BaseVoiceServer voiceServer) {
+        this.voiceServer = voiceServer;
+    }
+
+    @Override
+    public void broadcast(@NotNull Packet<ClientPacketTcpHandler> packet, @Nullable Predicate<VoiceServerPlayer> filter) {
+        for (VoiceServerPlayer player : voiceServer.getPlayerManager().getPlayers()) {
+            if ((filter == null || filter.test(player)) && player.hasVoiceChat())
+                player.sendPacket(packet);
+        }
+    }
+
+    @Override
+    public void connect(@NotNull VoiceServerPlayer receiver) {
+        if (!voiceServer.getUdpServer().isPresent() || voiceServer.getConfig() == null) return;
+
+        UUID secret = voiceServer.getUdpConnectionManager()
+                .getSecretByPlayerId(receiver.getInstance().getUuid());
+
+        ServerConfig.Host host = voiceServer.getConfig().host();
+        ServerConfig.Host.Public hostPublic = host.hostPublic();
+
+        String ip = host.ip();
+        if (hostPublic != null) ip = hostPublic.ip();
+
+        int port = hostPublic != null ? hostPublic.port() : host.port();
+        if (port == 0) {
+            port = host.port();
+            if (port == 0) {
+                port = voiceServer.getUdpServer().get()
+                        .getRemoteAddress().get()
+                        .getPort();
+            }
+        }
+
+        receiver.sendPacket(new ConnectionPacket(
+                secret,
+                ip,
+                port
+        ));
+
+        BaseVoice.DEBUG_LOGGER.log("Sent connection packet to {}", receiver.getInstance().getName());
+    }
+
+    @Override
+    public void requestPlayerInfo(@NotNull VoiceServerPlayer receiver) {
+        receiver.sendPacket(new PlayerInfoRequestPacket());
+
+        BaseVoice.DEBUG_LOGGER.log(
+                "Sent player info request packet to {} (channels: {})",
+                receiver.getInstance().getName(),
+                receiver.getInstance().getRegisteredChannels()
+        );
+    }
+
+    @Override
+    public void sendConfigInfo(@NotNull VoiceServerPlayer receiver) {
+        if (!voiceServer.getUdpServer().isPresent() || voiceServer.getConfig() == null) return;
+
+        ServerConfig config = voiceServer.getConfig();
+        ServerConfig.Voice voiceConfig = config.voice();
+        ServerConfig.Voice.Opus opusConfig = voiceConfig.opus();
+
+        Map<String, String> codecParams = Maps.newHashMap();
+        codecParams.put("mode", opusConfig.mode());
+        codecParams.put("bitrate", String.valueOf(opusConfig.bitrate()));
+
+
+        EncryptionInfo aesEncryption;
+        try {
+            PublicKey publicKey = receiver.getPublicKey()
+                    .orElseThrow(() -> new IllegalStateException(receiver + " has empty public key"));
+
+            Cipher encryptCipher = Cipher.getInstance("RSA");
+            encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+            aesEncryption = new EncryptionInfo(
+                    "AES/CBC/PKCS5Padding",
+                    encryptCipher.doFinal(voiceConfig.aesEncryptionKey())
+            );
+        } catch (Exception e) {
+            BaseVoice.LOGGER.error("Failed to encode encryption data: {}", e.toString());
+            e.printStackTrace();
+            return;
+        }
+
+        ConfigPacket packet = new ConfigPacket(
+                UUID.fromString(config.serverId()),
+                new CaptureInfo(
+                        voiceConfig.sampleRate(),
+                        voiceConfig.mtuSize(),
+                        new CodecInfo("opus", codecParams)
+                ),
+                aesEncryption,
+                voiceServer.getSourceLineManager()
+                        .getLines()
+                        .stream()
+                        .map(line -> line.getSourceLineForPlayer(receiver))
+                        .collect(Collectors.toSet()),
+                voiceServer.getActivationManager()
+                        .getActivations()
+                        .stream()
+                        .filter(activation -> activation.checkPermissions(receiver))
+                        .map(activation -> (VoiceActivation) activation) // waytoodank
+                        .collect(Collectors.toSet()),
+                getPlayerPermissions(receiver),
+                new PlayerIconConfig(
+                        new HashSet<>(config.voice().playerIcon().visibility()),
+                        new Pos3d(0.0, config.voice().playerIcon().yOffset(), 0.0)
+                )
+        );
+        receiver.sendPacket(packet);
+
+        BaseVoice.DEBUG_LOGGER.log("Sent {} to {}", packet, receiver.getInstance().getName());
+    }
+
+    @Override
+    public void sendPlayerList(@NotNull VoiceServerPlayer receiver) {
+        synchronized (playerStateLock) {
+            receiver.sendPacket(new PlayerListPacket(
+                    voiceServer.getUdpConnectionManager().getConnections()
+                            .stream()
+                            .filter(connection -> receiver.getInstance().canSee(connection.getPlayer().getInstance()))
+                            .map(connection -> connection.getPlayer().createPlayerInfo())
+                            .collect(Collectors.toList())
+            ));
+        }
+    }
+
+    @Override
+    public void broadcastPlayerInfoUpdate(@NotNull VoiceServerPlayer player) {
+        synchronized (playerStateLock) {
+            broadcast(new PlayerInfoUpdatePacket(player.createPlayerInfo()), this.createVanishFilter(player));
+        }
+    }
+
+    @Override
+    public void broadcastPlayerDisconnect(@NotNull VoiceServerPlayer player) {
+        synchronized (playerStateLock) {
+            broadcast(new PlayerDisconnectPacket(player.getInstance().getUuid()), this.createVanishFilter(player));
+        }
+    }
+
+    private Predicate<VoiceServerPlayer> createVanishFilter(@NotNull VoiceServerPlayer player) {
+        return (player1) -> player1.getInstance().canSee(player.getInstance());
+    }
+
+    private Map<String, Boolean> getPlayerPermissions(@NotNull VoiceServerPlayer player) {
+        Map<String, Boolean> permissions = Maps.newHashMap();
+
+        voiceServer.getPlayerManager()
+                .getSynchronizedPermissions()
+                .forEach(permission ->
+                        permissions.put(permission, player.getInstance().hasPermission(permission))
+                );
+
+        return permissions;
+    }
+}

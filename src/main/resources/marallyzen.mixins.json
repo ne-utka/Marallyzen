@@ -1,0 +1,18 @@
+﻿{
+    "required":  false,
+    "minVersion": "0.8",
+    "refmap": "marallyzen.refmap.json",
+    "package":  "neutka.marallys.marallyzen.mixin",
+    "compatibilityLevel":  "JAVA_17",
+    "mixins":  [
+                   "common.LevelMixin",
+                   "common.BlockEntityMixin",
+                   "common.ServerLevelParticlesMixin"
+               ],
+    "client":  [
+                   "client.DictaphoneRenderMixin"
+               ],
+    "injectors":  {
+                      "defaultRequire":  0
+                  }
+}

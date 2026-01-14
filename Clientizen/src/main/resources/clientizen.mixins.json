@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.denizenscript.clientizen.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [],
+  "client": [
+    "BillboardParticleAccessor",
+    "ClientPlayerEntityMixin",
+    "ClientPlayNetworkHandlerMixin",
+    "ClientWorldAccessor",
+    "ClientWorldMixin",
+    "EntityRenderedMixin",
+    "EntityRendererMixin",
+    "EventKeyBindingMixin",
+    "IntPropertyAccessor",
+    "LivingEntityMixin",
+    "MinecraftClientMixin",
+    "PressedControlKeyBindingMixin",
+    "StickyKeyBindingAccessor",
+    "gui.WScrollPanelAccessor",
+    "gui.WTextAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

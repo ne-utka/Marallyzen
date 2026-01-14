@@ -1,0 +1,18 @@
+{
+  "id": "merchant",
+  "name": "Merchant",
+  "entityType": "minecraft:villager",
+  "spawnPos": {
+    "x": 0,
+    "y": 64,
+    "z": 0
+  },
+  "dialogScript": "merchant_dialog",
+  "metadata": {
+    "profession": "merchant",
+    "shop_type": "general"
+  }
+}
+
+
+

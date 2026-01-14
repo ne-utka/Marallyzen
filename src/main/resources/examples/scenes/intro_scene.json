@@ -1,0 +1,38 @@
+{
+  "id": "intro_scene",
+  "loop": false,
+  "interpolationSpeed": 0.02,
+  "keyframes": [
+    {
+      "position": { "x": 0.0, "y": 65.0, "z": 0.0 },
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "fov": 70.0,
+      "duration": 3000
+    },
+    {
+      "position": { "x": 0.0, "y": 75.0, "z": 10.0 },
+      "yaw": 90.0,
+      "pitch": -15.0,
+      "fov": 60.0,
+      "duration": 4000
+    },
+    {
+      "position": { "x": 10.0, "y": 70.0, "z": 10.0 },
+      "yaw": 180.0,
+      "pitch": 0.0,
+      "fov": 80.0,
+      "duration": 5000
+    },
+    {
+      "position": { "x": 0.0, "y": 65.0, "z": 0.0 },
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "fov": 70.0,
+      "duration": 2000
+    }
+  ]
+}
+
+
+
