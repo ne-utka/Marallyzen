@@ -1,0 +1,13 @@
+{
+  "id": "pet",
+  "name": "Pet",
+  "lookAtPlayers": true,
+  "showNameTag": false,
+  "invulnerable": true,
+  "geckolib": {
+    "model": "marallyzen:geo/npc_merchant_pet_model.geo.json",
+    "animation": "marallyzen:animations/npc_merchant_pet.animation.json",
+    "texture": "marallyzen:textures/entity/npc_merchant_pet.png",
+    "expression": "idle_interact"
+  }
+}

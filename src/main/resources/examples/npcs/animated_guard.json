@@ -1,0 +1,52 @@
+{
+  "id": "animated_guard",
+  "name": "Animated Guard",
+  "spawnPos": {
+    "x": 50,
+    "y": 64,
+    "z": 50
+  },
+  "geckolib": {
+    "model": "marallyzen:geo/guard.geo.json",
+    "animation": "marallyzen:animations/guard.animation.json"
+  },
+  "waypoints": [
+    {
+      "x": 50,
+      "y": 64,
+      "z": 50,
+      "waitTicks": 200,
+      "speed": 0.25
+    },
+    {
+      "x": 60,
+      "y": 64,
+      "z": 50,
+      "waitTicks": 100,
+      "speed": 0.25
+    },
+    {
+      "x": 60,
+      "y": 64,
+      "z": 60,
+      "waitTicks": 200,
+      "speed": 0.25
+    },
+    {
+      "x": 50,
+      "y": 64,
+      "z": 60,
+      "waitTicks": 100,
+      "speed": 0.25
+    }
+  ],
+  "waypointsLoop": true,
+  "dialogScript": "guard_dialog",
+  "metadata": {
+    "profession": "animated_guard",
+    "model_type": "geckolib"
+  }
+}
+
+
+

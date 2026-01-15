@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,on=false": { "model": "marallyzen:block/old_tv" },
+    "facing=east,on=false": { "model": "marallyzen:block/old_tv", "y": 90 },
+    "facing=south,on=false": { "model": "marallyzen:block/old_tv", "y": 180 },
+    "facing=west,on=false": { "model": "marallyzen:block/old_tv", "y": 270 },
+    "facing=north,on=true": { "model": "marallyzen:block/old_tv_on" },
+    "facing=east,on=true": { "model": "marallyzen:block/old_tv_on", "y": 90 },
+    "facing=south,on=true": { "model": "marallyzen:block/old_tv_on", "y": 180 },
+    "facing=west,on=true": { "model": "marallyzen:block/old_tv_on", "y": 270 }
+  }
+}

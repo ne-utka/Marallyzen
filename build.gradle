@@ -1,0 +1,309 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version "${moddevgradle_version}"
+}
+
+group = project.mod_group_id
+version = project.mod_version
+
+base {
+    archivesName = project.mod_id
+}
+
+def devUserPrefix = project.findProperty("devUserPrefix") ?: "Dev"
+def devUser = project.findProperty("devUser") ?: "${devUserPrefix}${System.currentTimeMillis()}"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(Integer.parseInt(project.java_version))
+    }
+    withSourcesJar()
+}
+
+
+// Include Denizen-Core source files directly in the project
+sourceSets {
+    main {
+        java {
+            srcDir 'Denizen-Core/src/main/java'
+        }
+        resources {
+            srcDir 'Denizen-Core/src/main/resources'
+        }
+    }
+}
+
+repositories {
+    // Local Maven repository (for locally built Denizen-Core)
+    mavenLocal()
+    mavenCentral()
+    // Explicit Maven Central URL as fallback
+    maven {
+        name = "MavenCentral"
+        url = uri("https://repo1.maven.org/maven2/")
+    }
+    maven {
+        name = "NeoForge"
+        url = uri("https://maven.neoforged.net/releases")
+    }
+    // NeoForm repository (may contain minecraft-dependencies)
+    maven {
+        name = "NeoForm"
+        url = uri("https://maven.neoforged.net/neoform")
+    }
+    // Mojang repository for com.mojang:logging and other Mojang artifacts
+    maven {
+        name = "Mojang"
+        url = uri("https://libraries.minecraft.net/")
+    }
+    // GeckoLib repository
+    maven {
+        name = "GeckoLib"
+        url = uri("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
+    }
+    // CurseMaven for additional mods
+    maven {
+        name = "CurseMaven"
+        url = uri("https://www.cursemaven.com")
+    }
+    // Additional GeckoLib repository
+    maven {
+        name = "GeckoLib-CF"
+        url = uri("https://cursemaven.com")
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    // DenizenCore snapshots are hosted on Citizens maven.
+    maven {
+        name = "Citizens"
+        url = uri("https://maven.citizensnpcs.co/repo")
+    }
+    // FreneticLLC repository for freneticdatasyntax
+    maven {
+        name = "FreneticLLC"
+        url = uri("https://maven.freneticllc.com/")
+    }
+    // KosmX repository for Emotecraft
+    maven {
+        name = "KosmX"
+        url = uri("https://maven.kosmx.dev/")
+    }
+    // PlasmoVoice repository
+    maven {
+        name = "PlasmoVoice"
+        url = uri("https://repo.plasmoverse.com/releases")
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Force Gson version to match NeoForge's requirements (2.10.1 is the strict requirement)
+        force "com.google.code.gson:gson:2.10.1"
+        
+        // Force Guava version to match NeoForge's requirements (32.1.2-jre is strictly required)
+        // PlasmoVoice API wants 33.3.1-jre, but we use NeoForge's version
+        force "com.google.guava:guava:32.1.2-jre"
+        
+        // Exclude old player-animation-lib to prevent conflicts with Emotecraft
+        // Emotecraft uses com.zigythebird.playeranimcore, not dev.kosmx.playerAnim
+        exclude group: "dev.kosmx", module: "player-animation-lib"
+        exclude group: "dev.kosmx", module: "player-animation-lib-forge"
+        exclude group: "dev.kosmx", module: "player-animation-lib-core"
+    }
+}
+
+dependencies {
+    // Denizen-Core is now included as source files, but we still need its dependencies
+    // Dependencies from Denizen-Core pom.xml:
+    implementation "org.json:json:20250517" // Latest version
+    implementation "com.freneticllc.freneticutilities:freneticdatasyntax:1.1"
+    implementation "org.ow2.asm:asm:9.4"
+    implementation "org.ow2.asm:asm-commons:9.4"
+    
+    // Dependencies marked as "provided" in Denizen-Core pom.xml, but needed for compilation:
+    implementation "org.yaml:snakeyaml:2.2" // Used by Denizen-Core (SecretTag, YamlConfiguration)
+    // Optional dependencies (for MongoDB and Redis support):
+    implementation("org.mongodb:mongodb-driver-sync:4.8.1") {
+        exclude group: "org.mongodb", module: "bson-record-codec"
+    }
+    implementation("redis.clients:jedis:4.3.1") {
+        exclude group: "org.slf4j", module: "slf4j-api"
+    }
+    
+    // Gson is provided transitively by NeoForge, but we can explicitly declare it if needed
+    // Using the version that NeoForge requires (2.10.1) to avoid conflicts
+    implementation "com.google.code.gson:gson:2.10.1"
+    // GeckoLib for custom NPC animations and models
+    implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:${geckolib_version}"
+    
+    // player-animation-lib is NOT needed as a dependency
+    // Emotecraft already includes the correct version (com.zigythebird.playeranimcore)
+    // We use only reflection to access Emotecraft classes, so no compile-time dependency is needed
+    // OLD DEPENDENCY REMOVED: compileOnly("dev.kosmx.player-anim:player-animation-lib:2.0.1+1.21.1")
+    // This was causing conflicts with the new version used by Emotecraft
+    
+    // PlasmoVoice API (compileOnly - mod must be installed separately)
+    // Using server module for NeoForge server-side addon
+    // Note: Version may need to be updated based on available PlasmoVoice versions
+    // Exclude Guava to avoid version conflict with NeoForge (NeoForge requires 32.1.2-jre, PlasmoVoice wants 33.3.1-jre)
+    compileOnly("su.plo.voice.api:server:2.1.6") {
+        exclude group: "com.google.guava", module: "guava"
+    }
+}
+
+// Ensure SnakeYAML classes are available on the dev classpath (moddev uses exploded classes).
+configurations {
+    denizenDevLibs
+}
+dependencies {
+    add("denizenDevLibs", "org.yaml:snakeyaml:2.2")
+}
+
+tasks.register("unpackDenizenDevLibs", Copy) {
+    from {
+        configurations.denizenDevLibs.files.collect { file ->
+            file.isDirectory() ? file : zipTree(file)
+        }
+    }
+    into layout.buildDirectory.dir("classes/java/main")
+    exclude("META-INF/**")
+}
+
+tasks.named("classes") {
+    dependsOn("unpackDenizenDevLibs")
+}
+
+// Include DenizenCore dependencies in the JAR
+// This is necessary because NeoForge uses a modular classloader
+jar {
+    from {
+        // Get all runtime dependencies
+        def allDeps = configurations.runtimeClasspath.files
+        
+        // Filter to include DenizenCore dependencies
+        def deps = allDeps.findAll { file ->
+            if (!file.exists()) return false
+            
+            def name = file.name.toLowerCase()
+            def path = file.absolutePath.toLowerCase()
+            
+            // Include DenizenCore dependencies (DenizenCore itself is compiled from source)
+            def include = name.contains("freneticdatasyntax") || 
+                         path.contains("freneticdatasyntax") ||
+                         name.contains("snakeyaml") ||
+                         path.contains("snakeyaml") ||
+                         name.contains("mongodb") ||
+                         path.contains("mongodb") ||
+                         name.contains("jedis") ||
+                         path.contains("jedis") ||
+                         (name.contains("json") && !name.contains("gson") && !path.contains("neoforge") && !path.contains("minecraft") && !path.contains("modlauncher")) || 
+                         (name.contains("asm") && !name.contains("neoforge") && !name.contains("minecraft") && !name.contains("modlauncher") && !path.contains("neoforge") && !path.contains("minecraft") && !path.contains("modlauncher"))
+            
+            if (include) {
+                println "  Including dependency in JAR: ${file.name}"
+            }
+            
+            return include
+        }
+        
+        println "=== Including ${deps.size()} DenizenCore dependencies in JAR ==="
+        
+        deps.collect { file ->
+            file.isDirectory() ? file : zipTree(file)
+        }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude("META-INF/maven/**")
+    exclude("META-INF/versions/**")
+    exclude("META-INF/MANIFEST.MF")
+    exclude("module-info.class")
+}
+
+// Task to verify DenizenCore is included
+tasks.register('verifyDenizenCore') {
+    dependsOn jar
+    doLast {
+        def jarFile = file("${buildDir}/libs/${archivesName.get()}-${version}.jar")
+        if (jarFile.exists()) {
+            def jar = new java.util.jar.JarFile(jarFile)
+            def hasTagContext = jar.entries().any { it.name == "com/denizenscript/denizencore/tags/TagContext.class" }
+            if (hasTagContext) {
+                println "✓ DenizenCore TagContext found in JAR"
+            } else {
+                println "✗ DenizenCore TagContext NOT found in JAR"
+                println "Available DenizenCore classes:"
+                jar.entries().findAll { it.name.startsWith("com/denizenscript/denizencore/") && it.name.endsWith(".class") }
+                    .take(10).each { println "  - ${it.name}" }
+            }
+            jar.close()
+        } else {
+            println "JAR file not found: ${jarFile}"
+        }
+    }
+}
+
+neoForge {
+    // This DSL is provided by ModDevGradle. If it changes, the first Gradle run will tell us what to adjust.
+    version = project.neo_version
+    // Explicitly set Minecraft version (ModDevGradle should handle this, but let's be explicit)
+    // Note: ModDevGradle may automatically add required repositories for NeoForm
+
+    runs {
+        client {
+            client()
+            programArguments.addAll '--username', devUser
+        }
+        server {
+            server()
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').absolutePath, '--existing', file('src/main/resources/').absolutePath
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = Integer.parseInt(project.java_version)
+}
+
+processResources {
+    // Copy template files from src/main/templates to src/main/resources and expand variables
+    from('src/main/templates') {
+        include '**/*'
+    }
+    
+    def props = [
+            'mod_id'                : project.mod_id,
+            'mod_name'              : project.mod_name,
+            'mod_version'           : project.mod_version,
+            'mod_authors'           : project.mod_authors,
+            'mod_description'       : project.mod_description,
+            'mod_license'           : project.mod_license,
+            'minecraft_version_range': project.minecraft_version_range,
+            'neo_version'           : project.neo_version,
+            'loader_version_range'  : project.loader_version_range
+    ]
+    inputs.properties(props)
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand(props)
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = project.mod_id
+        }
+    }
+}

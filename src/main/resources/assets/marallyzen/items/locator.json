@@ -1,0 +1,1 @@
+{"model":{"type":"select","property":"display_context","cases":[{"when":["gui","ground","fixed"],"model":{"type":"model","model":"marallyzen:locator_2d","tints":[]}}],"fallback":{"type":"condition","property":"using_item","on_true":{"type":"model","model":"marallyzen:locator","tints":[]},"on_false":{"type":"model","model":"marallyzen:locator","tints":[]}}}}

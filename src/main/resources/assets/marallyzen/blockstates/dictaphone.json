@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "animated=false,facing=north": { "model": "marallyzen:block/dictaphone" },
+    "animated=false,facing=east": { "model": "marallyzen:block/dictaphone", "y": 90 },
+    "animated=false,facing=south": { "model": "marallyzen:block/dictaphone", "y": 180 },
+    "animated=false,facing=west": { "model": "marallyzen:block/dictaphone", "y": 270 },
+    "animated=true,facing=north": { "model": "marallyzen:block/dictaphone_animation" },
+    "animated=true,facing=east": { "model": "marallyzen:block/dictaphone_animation", "y": 90 },
+    "animated=true,facing=south": { "model": "marallyzen:block/dictaphone_animation", "y": 180 },
+    "animated=true,facing=west": { "model": "marallyzen:block/dictaphone_animation", "y": 270 }
+  }
+}

@@ -1,0 +1,43 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+runs
+run-data
+
+repo
+
+# local/dev artifacts
+.tmp
+.vscode
+build.log
+build.err.log
+
+# local plugin repos (not part of mod source)
+Citizens2
+Clientizen
+Denizen
+Denizen-Core
+Denizen-Cutscenes
+Emotecraft
+ReplayMod
+WildfireFemaleGenderMod
+plasmo-voice

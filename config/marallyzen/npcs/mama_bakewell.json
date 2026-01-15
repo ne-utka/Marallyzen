@@ -1,0 +1,19 @@
+﻿{
+  "id": "mama_bakewell",
+  "name": "РњР°РјР° Р‘РµР№РєРІРµР»Р»",
+  "entityType": "minecraft:zombie",
+  "dialogScript": "mama_bakewell_dialog",
+  "showNameTag": false,
+  "lookAtPlayers": true,
+
+  "showProximityTextInActionBar": false,
+  "showProximityTextInChat": false,
+  "geckolib": {
+    "model": "marallyzen:geo/mama_bakewell_model.geo.json",
+    "animation": "marallyzen:animations/mama_bakewell.animation.json",
+    "texture": "marallyzen:textures/entity/mama_bakewell.png",
+    "expression": "idle",
+    "talkExpression": "idle"
+  }
+}
+
