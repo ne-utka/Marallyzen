@@ -1,0 +1,163 @@
+merchant_dialog:
+    type: assignment
+    actions:
+        on assignment:
+            - trigger name:click state:true
+    interact scripts:
+    - merchant_interact
+
+merchant_interact:
+    type: interact
+    steps:
+        1:
+            click trigger:
+                script:
+                    - narrate "Какова, в конце концов, наша цель? Мы бродим здесь уже..."
+                    - play_audio file:"dialogues/What-is-our-goal_-anyway-We_ve-been-wandering.wav" source:npc mode:positional radius:10 blocking:false narration:"Какова, в конце концов, наша цель? Мы бродим здесь уже..."
+                    - define duration:<[3s]>
+                    - define options:<list[О цели|О Денофайне|О яйце|О сроках|Уйти]>
+                    - define emotes:<list[SPE_Think|SPE_UnknownPose|SPE_Fear|SPE_Worried about sitting|SPE_Spooky]>
+                    - choose <[options]>:
+                        - case О цели:
+                            - narrate "Цель? Она изменилась с тех пор, как замолчал Денофайн."
+                            - play_audio file:"dialogues/The-goal-It_s-changed-since-Denofine-went-silent.wav" source:npc mode:positional radius:10 blocking:false narration:"Цель? Она изменилась с тех пор, как замолчал Денофайн."
+                            - wait 1s
+                            - narrate "Теперь всё зависит от того, что в себе таит оно..."
+                            - play_audio file:"dialogues/Now-everything-depends-on-what-it-contains.wav" source:npc mode:positional radius:10 blocking:false narration:"Теперь всё зависит от того, что в себе таит оно..."
+                            - giveitem marallyzen:magnifying_glass mainhand
+                            - define duration:<[4s]>
+                            - define options:<list[Что такое Денофайн?|О чём ты говоришь?|Когда велёт?|Вернуться]>
+                            - define emotes:<list[SPE_Think|SPE_Talking|SPE_UnknownPose|SPE_Think|SPE_Talking]>
+                            - choose <[options]>:
+                                - case Что такое Денофайн?:
+                                    - narrate "Денофайн... (пауза) Он не отвечает. Не отвечает уже слишком долго."
+                                    - wait 1s
+                                    - narrate "А без него мы слепы. Слепы перед Теми, Кто Наблюдают."
+                                    - define duration:<[4s]>
+                                    - define options:<list[Кто такие ОП?|Что с яйцом?|Вернуться]>
+                                    - define emotes:<list[SPE_Spooky|SPE_Fear|SPE_Talking]>
+                                    - choose <[options]>:
+                                        - case Кто такие ОП?:
+                                            - narrate "Хранители Порядка. Те, кто следит за балансом."
+                                            - wait 1s
+                                            - narrate "Но они спорят. Спорят о том, что делать с тем, что мы нашли."
+                                            - define duration:<[3s]>
+                                            - define options:<list[Что мы нашли?|Вернуться]>
+                                            - define emotes:<list[SPE_Talking|SPE_Think]>
+                                            - choose <[options]>:
+                                                - case Что мы нашли?:
+                                                    - narrate "Яйцо. Но не простое. В нём... память. Память миров."
+                                                    - wait 1s
+                                                    - narrate "И если оно проснётся не в тот момент..."
+                                                    - eyescutscene close_duration:1s black_duration:3s open_duration:1s lock_player:true
+                                                    - define duration:<[3s]>
+                                                    - define emotes:<list[SPE_Fear|SPE_Spooky]>
+                                                    - step 1
+                                                - case Вернуться:
+                                                    - step 1
+                                        - case Что с яйцом?:
+                                            - narrate "Оно спит. Непробудным сном."
+                                            - wait 1s
+                                            - narrate "Но сон этот — последний договор. Договор, который мы не можем нарушить."
+                                            - define duration:<[3s]>
+                                            - define emotes:<list[SPE_Think|SPE_Witch Pose]>
+                                            - step 1
+                                        - case Вернуться:
+                                            - step 1
+                                - case О чём ты говоришь?:
+                                    - narrate "О том, что мы ищем. О том, что скрывается."
+                                    - wait 1s
+                                    - narrate "Денофайн знал. Но теперь он молчит. И мы должны действовать вслепую."
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_UnknownPose|SPE_Spooky]>
+                                    - step 1
+                                - case Когда велёт?:
+                                    - narrate "Велёт тогда, когда мы поймём, что скрывает яйцо."
+                                    - wait 1s
+                                    - narrate "Или когда ОП решат, что пора. А они решают медленно."
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Wait at the wall|SPE_Worried about sitting]>
+                                    - step 1
+                                - case Вернуться:
+                                    - step 1
+                        - case О Денофайне:
+                            - narrate "Денофайн исчез. Или замолчал. Разница невелика."
+                            - play_audio file:"dialogues/Denofine-disappeared.-Or-went-silent.-It-makes-little-difference..wav" source:npc mode:positional radius:10 blocking:false narration:"Денофайн исчез. Или замолчал. Разница невелика."
+                            - wait 1s
+                            - narrate "Он был нашим проводником. Нашим знанием. Теперь мы одни."
+                            - play_audio file:"dialogues/He-was-our-guide.-Our-knowledge.-Now-we-are-alone..wav" source:npc mode:positional radius:10 blocking:false narration:"Он был нашим проводником. Нашим знанием. Теперь мы одни."
+                            - define duration:<[4s]>
+                            - define options:<list[Почему он замолчал?|Что это значит?|Вернуться]>
+                            - define emotes:<list[SPE_UnknownPose|SPE_Spooky|SPE_Talking]>
+                            - choose <[options]>:
+                                - case Почему он замолчал?:
+                                    - narrate "Может, увидел то, что не должен был. Может, его заставили."
+                                    - wait 1s
+                                    - narrate "Или... может, он сам выбрал молчание. Чтобы не выдать тайну."
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Fear|SPE_Spooky]>
+                                    - step 1
+                                - case Что это значит?:
+                                    - narrate "Это значит, что цель изменилась. Мы больше не ищем — мы спасаем."
+                                    - wait 1s
+                                    - narrate "Спасаем то, что ещё можно спасти. Пока не поздно."
+                                    - eyescutscene close_duration:1s black_duration:4s open_duration:1s lock_player:true
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Think|SPE_Worried about sitting]>
+                                    - step 1
+                                - case Вернуться:
+                                    - step 1
+                        - case О яйце:
+                            - narrate "Яйцо дракона. Но не то, о котором ты думаешь."
+                            - play_audio file:"dialogues/A-dragon-egg.-But-not-the-one-you_re-thinking-of..wav" source:npc mode:positional radius:10 blocking:false narration:"Яйцо дракона. Но не то, о котором ты думаешь."
+                            - wait 1s
+                            - narrate "В нём не просто сила. В нём — память. Память всех миров, что были до нас."
+                            - play_audio file:"dialogues/It-contains-more-than-just-power.-It-contains-memory.wav" source:npc mode:positional radius:10 blocking:false narration:"В нём не просто сила. В нём — память. Память всех миров, что были до нас."
+                            - define duration:<[4s]>
+                            - define options:<list[Что с ним делать?|Почему оно важно?|Вернуться]>
+                            - define emotes:<list[SPE_Witch Pose|SPE_Spooky|SPE_Talking]>
+                            - choose <[options]>:
+                                - case Что с ним делать?:
+                                    - narrate "Ждать. Ждать, пока ОП решат. Или пока Денофайн вернётся."
+                                    - wait 1s
+                                    - narrate "Но время идёт. И сон яйца становится всё глубже."
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Wait at the wall|SPE_Worried about sitting]>
+                                    - step 1
+                                - case Почему оно важно?:
+                                    - narrate "Оно — последний договор. Договор между мирами."
+                                    - wait 1s
+                                    - narrate "Если оно проснётся не в тот момент... всё рухнет. Всё, что мы знаем."
+                                    - eyescutscene close_duration:1s black_duration:4s open_duration:1s lock_player:true
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Fear|SPE_Spooky]>
+                                    - step 1
+                                - case Вернуться:
+                                    - step 1
+                        - case О сроках:
+                            - narrate "Когда велёт? (тихий смешок) Вопрос не в том, когда. Вопрос в том, успеем ли мы."
+                            - wait 1s
+                            - narrate "Денофайн молчит. Яйцо спит. ОП спорят. А время... время уходит."
+                            - giveitem marallyzen:magnifying_glass mainhand
+                            - define duration:<[4s]>
+                            - define options:<list[Что будет, если опоздаем?|Вернуться]>
+                            - define emotes:<list[SPE_Worried about sitting|SPE_Think]>
+                            - choose <[options]>:
+                                - case Что будет, если опоздаем?:
+                                    - narrate "Тогда яйцо проснётся само. И проснётся не в тот момент."
+                                    - wait 1s
+                                    - narrate "И последний договор будет нарушен. А за нарушением... (пауза) ничего не останется."
+                                    - eyescutscene close_duration:1s black_duration:5s open_duration:1s lock_player:true
+                                    - define duration:<[3s]>
+                                    - define emotes:<list[SPE_Fear|SPE_Spooky]>
+                                    - step 1
+                                - case Вернуться:
+                                    - step 1
+                        - case Уйти:
+                            - narrate "(Скрип двери вдалеке)"
+                            - wait 1s
+                            - narrate "Всё только начинается. Помни это."
+                            - define duration:<[2s]>
+                            - define emotes:<list[SPE_UnknownPose]>
+    requirements:
+        mode: all

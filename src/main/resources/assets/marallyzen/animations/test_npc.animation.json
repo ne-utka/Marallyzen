@@ -1,0 +1,73 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "idle": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [2, 0, 0]
+        },
+        "left_arm": {
+          "rotation": [0, 0, 5]
+        },
+        "right_arm": {
+          "rotation": [0, 0, -5]
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [4, 0, 0]
+        },
+        "left_arm": {
+          "rotation": [0, 0, 12]
+        },
+        "right_arm": {
+          "rotation": [0, 0, -12]
+        }
+      }
+    },
+    "smile": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [-3, 0, 2]
+        }
+      }
+    },
+    "angry": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [8, 0, 0]
+        },
+        "left_arm": {
+          "rotation": [12, 0, 0]
+        },
+        "right_arm": {
+          "rotation": [12, 0, 0]
+        }
+      }
+    },
+    "surprise": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [-8, 0, 0]
+        }
+      }
+    },
+    "blink": {
+      "loop": false,
+      "animation_length": 0.2,
+      "bones": {
+        "head": {
+          "rotation": [2, 0, 0]
+        }
+      }
+    }
+  }
+}
+
