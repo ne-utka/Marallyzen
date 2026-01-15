@@ -1,0 +1,42 @@
+name: Crowdin Action
+
+on:
+  schedule:
+    - cron: '42 0 * * *'
+  workflow_dispatch:
+
+
+jobs:
+  synchronize-with-crowdin:
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 1
+      matrix:
+        branch: [dev, 1.21.9]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ matrix.branch }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: crowdin action
+      uses: crowdin/github-action@v2
+      with:
+        config: "crowdin.yml"
+        upload_sources: ${{ matrix.branch == 'dev' }}
+        upload_translations: ${{ matrix.branch == 'dev' }}
+        download_translations: true
+
+        crowdin_branch_name: "dev"
+        localization_branch_name: l10n_${{ matrix.branch }}
+        pull_request_base_branch_name: ${{ matrix.branch }}
+        skip_ref_checkout: true
+
+        pull_request_title: 'New Crowdin translations for ${{ matrix.branch }}'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CROWDIN_PROJECT_ID: 414868
+        CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

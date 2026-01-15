@@ -1,0 +1,34 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+tab_width = 4
+trim_trailing_whitespace = true
+
+[*.gradle]
+indent_style = space
+
+[*.java]
+indent_style = space
+ij_java_names_count_to_use_import_on_demand = 1000 # never
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.toml]
+indent_style = space
+tab_width = 2
+
+[*.properties]
+indent_style = space
+indent_size = 2
+
+[.editorconfig]
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace=false

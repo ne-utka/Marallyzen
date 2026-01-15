@@ -1,0 +1,55 @@
+# This workflow will build a Java project with Gradle
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'alpha/beta/stable'
+        required: false
+        default: 'alpha'
+      changelog:
+        description: 'changelog'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check for valid input
+        run: |
+          if ! ( [ "${{github.event.inputs.type}}" = "alpha" ] || [ "${{github.event.inputs.type}}" = "beta" ] || [ "${{github.event.inputs.type}}" = "stable" ] )
+          then
+          return -1
+          fi
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'microsoft'
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Publish
+        run: ./gradlew publish publishMods
+        env:
+          BUILD_NUMBER: ${{github.run_number}}
+          RELEASE_TYPE: ${{github.event.inputs.type}}
+          CHANGELOG: ${{github.event.inputs.changelog}}
+          CURSEFORGE_TOKEN: ${{secrets.CURSEFORGE}}
+          MODRINTH_TOKEN: ${{secrets.MODRINTH}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          KOSMX_TOKEN: ${{secrets.KOSMX_TOKEN}}
+          DISCORD_WEBHOOK: ${{secrets.DISCORD_WEBHOOK}}
+          HANGAR_TOKEN: ${{secrets.HANGAR_TOKEN}}

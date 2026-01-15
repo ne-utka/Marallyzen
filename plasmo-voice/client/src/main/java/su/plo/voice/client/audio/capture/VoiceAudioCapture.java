@@ -1,0 +1,475 @@
+package su.plo.voice.client.audio.capture;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.sun.jna.Platform;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.Synchronized;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import su.plo.lib.mod.client.chat.ClientChatUtil;
+import su.plo.slib.api.chat.component.McTextComponent;
+import su.plo.slib.api.chat.style.McTextClickEvent;
+import su.plo.slib.api.chat.style.McTextHoverEvent;
+import su.plo.slib.api.chat.style.McTextStyle;
+import su.plo.voice.api.audio.codec.AudioEncoder;
+import su.plo.voice.api.audio.codec.CodecException;
+import su.plo.voice.api.client.PlasmoVoiceClient;
+import su.plo.voice.api.client.audio.capture.AudioCapture;
+import su.plo.voice.api.client.audio.capture.ClientActivation;
+import su.plo.voice.api.client.audio.capture.ClientActivationManager;
+import su.plo.voice.api.client.audio.device.DeviceManager;
+import su.plo.voice.api.client.audio.device.InputDevice;
+import su.plo.voice.api.client.connection.ServerInfo;
+import su.plo.voice.api.client.event.audio.capture.AudioCaptureEvent;
+import su.plo.voice.api.client.event.audio.capture.AudioCaptureInitializeEvent;
+import su.plo.voice.api.client.event.audio.capture.AudioCaptureProcessedEvent;
+import su.plo.voice.api.client.event.audio.capture.AudioCaptureStartEvent;
+import su.plo.voice.api.client.event.audio.capture.AudioCaptureStopEvent;
+import su.plo.voice.api.encryption.Encryption;
+import su.plo.voice.api.encryption.EncryptionException;
+import su.plo.voice.api.util.AudioUtil;
+import su.plo.voice.client.audio.device.JavaxInputDeviceFactory;
+import su.plo.voice.client.audio.filter.StereoToMonoFilter;
+import su.plo.voice.client.config.VoiceClientConfig;
+import su.plo.voice.client.mac.AVAuthorizationStatus;
+import su.plo.voice.client.mac.AVCaptureDevice;
+import su.plo.voice.proto.data.audio.capture.CaptureInfo;
+import su.plo.voice.proto.data.audio.capture.VoiceActivation;
+import su.plo.voice.proto.data.player.VoicePlayerInfo;
+import su.plo.voice.proto.packets.tcp.serverbound.PlayerAudioEndPacket;
+import su.plo.voice.proto.packets.udp.serverbound.PlayerAudioPacket;
+
+import javax.sound.sampled.AudioFormat;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+public final class VoiceAudioCapture implements AudioCapture {
+
+    private static final Logger LOGGER = LogManager.getLogger(VoiceAudioCapture.class);
+
+    private final PlasmoVoiceClient voiceClient;
+    private final DeviceManager devices;
+    private final ClientActivationManager activations;
+    private final VoiceClientConfig config;
+
+    private final Set<UUID> activationStreams = Sets.newHashSet();
+    private final Map<UUID, Long> activationSequenceNumbers = Maps.newHashMap();
+
+    private AudioEncoder monoEncoder;
+    private AudioEncoder stereoEncoder;
+    @Setter
+    private volatile Encryption encryption;
+
+    private Thread thread;
+
+    public VoiceAudioCapture(@NotNull PlasmoVoiceClient voiceClient,
+                             @NotNull VoiceClientConfig config) {
+        this.voiceClient = voiceClient;
+        this.devices = voiceClient.getDeviceManager();
+        this.activations = voiceClient.getActivationManager();
+        this.config = config;
+    }
+
+    @Override
+    public Optional<AudioEncoder> getDefaultMonoEncoder() {
+        return Optional.ofNullable(monoEncoder);
+    }
+
+    @Override
+    public Optional<AudioEncoder> getDefaultStereoEncoder() {
+        return Optional.ofNullable(stereoEncoder);
+    }
+
+    @Override
+    public Optional<Encryption> getEncryption() {
+        return Optional.ofNullable(encryption);
+    }
+
+    @Override
+    public Optional<InputDevice> getDevice() {
+        return this.devices.getInputDevice();
+    }
+
+    @Override
+    public void initialize(@NotNull ServerInfo serverInfo) {
+        AudioCaptureInitializeEvent event = new AudioCaptureInitializeEvent(this);
+        voiceClient.getEventBus().fire(event);
+        if (event.isCancelled()) return;
+
+        // check macos permissions
+        if (Platform.isMac()) {
+            AVAuthorizationStatus authorizationStatus = AVCaptureDevice.INSTANCE.getAuthorizationStatus();
+            if (authorizationStatus == AVAuthorizationStatus.RESTRICTED) {
+                ClientChatUtil.sendChatMessage(
+                        McTextComponent.translatable(
+                                "message.plasmovoice.macos_incompatible_launcher",
+                                McTextComponent.literal("Prism Launcher")
+                                        .withStyle(McTextStyle.YELLOW)
+                                        .clickEvent(McTextClickEvent.clickEvent(McTextClickEvent.Action.OPEN_URL, "https://prismlauncher.org"))
+                                        .hoverEvent(McTextHoverEvent.showText(McTextComponent.literal("https://prismlauncher.org")))
+                        )
+                );
+            }
+        }
+
+        // initialize input device
+        AudioFormat format = serverInfo.getVoiceInfo().createFormat(
+                config.getVoice().getStereoCapture().value()
+        );
+
+        if (!getDevice().isPresent() && !config.getVoice().getDisableInputDevice().value()) {
+            try {
+                InputDevice inputDevice = devices.openInputDevice(format);
+                devices.setInputDevice(inputDevice);
+            } catch (Exception e) {
+                devices.setInputDevice(null, e);
+                LOGGER.error("Failed to open input device", e);
+                JavaxInputDeviceFactory.printSupportedLines();
+            }
+        }
+
+        // initialize encoder
+        CaptureInfo capture = serverInfo.getVoiceInfo().getCaptureInfo();
+        if (capture.getEncoderInfo() != null) {
+            this.monoEncoder = serverInfo.createOpusEncoder(false);
+            this.stereoEncoder = serverInfo.createOpusEncoder(true);
+        }
+
+        // initialize encryption
+        if (serverInfo.getEncryption().isPresent()) {
+            this.encryption = serverInfo.getEncryption().get();
+        }
+
+        LOGGER.info("Audio capture initialized");
+    }
+
+    @Override
+    public void start() {
+        AudioCaptureStartEvent event = new AudioCaptureStartEvent(this);
+        voiceClient.getEventBus().fire(event);
+        if (event.isCancelled()) return;
+
+        if (thread != null) {
+            thread.interrupt();
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+
+        this.thread = new Thread(this::run);
+        thread.setName("Voice Audio Capture");
+        thread.start();
+    }
+
+    @Override
+    public void stop() {
+        AudioCaptureStopEvent event = new AudioCaptureStopEvent(this);
+        voiceClient.getEventBus().fire(event);
+        if (event.isCancelled()) return;
+
+        if (thread != null) thread.interrupt();
+    }
+
+    @Override
+    public boolean isActive() {
+        return thread != null;
+    }
+
+    @Override
+    public boolean isServerMuted() {
+        return voiceClient.getServerConnection()
+                .map(connection -> connection.getLocalPlayer()
+                        .map(VoicePlayerInfo::isMuted)
+                        .orElse(false))
+                .orElse(false);
+    }
+
+    private void run() {
+        while (!thread.isInterrupted()) {
+            try {
+                Optional<InputDevice> device = getDevice();
+                Optional<ServerInfo> serverInfo = voiceClient.getServerInfo();
+
+                if (!device.isPresent()
+                        || !device.get().isOpen()
+                        || !voiceClient.getUdpClientManager().isConnected()
+                        || !serverInfo.isPresent()
+                        || !activations.getParentActivation().isPresent()
+                ) {
+                    Thread.sleep(1_000L);
+                    continue;
+                }
+
+                device.get().start();
+                if (!device.get().isStarted()) {
+                    Thread.sleep(1_000L);
+                    continue;
+                }
+
+                short[] samples = device.get().read();
+                if (samples == null) {
+                    Thread.sleep(5L);
+                    continue;
+                }
+
+                AudioCaptureEvent captureEvent = new AudioCaptureEvent(this, device.get(), samples);
+                if (!voiceClient.getEventBus().fire(captureEvent)) continue;
+
+                ClientActivation parentActivation = activations.getParentActivation().get();
+
+                if (captureEvent.isFlushActivations()
+                        || config.getVoice().getMicrophoneDisabled().value()
+                        || config.getVoice().getDisabled().value()
+                        || isServerMuted()
+                ) {
+                    if (parentActivation.isActive()) {
+                        parentActivation.reset();
+                        sendVoiceEndPacket(parentActivation);
+                    }
+
+                    activations.getActivations().forEach((activation) -> {
+                        if (activation.isActive()) {
+                            activation.reset();
+                            sendVoiceEndPacket(activation);
+                        }
+                    });
+
+                    voiceClient.getEventBus().fire(new AudioCaptureProcessedEvent(
+                            this,
+                            device.get(),
+                            samples,
+                            new EncodedCapture(device.get(), samples)
+                    ));
+                    continue;
+                }
+
+                ClientActivation.Result parentResult = parentActivation.process(samples, null);
+
+                EncodedCapture encoded = new EncodedCapture(device.get(), samples);
+                boolean proximityTransitiveReached = false;
+                boolean nonProximityTransitiveReached = false;
+
+                for (ClientActivation activation : activations.getActivations()) {
+                    if ((activation.isDisabled() && !activation.isActive()) ||
+                            activation.equals(parentActivation)
+                    ) continue;
+
+                    final boolean transitiveReached = activation.isProximity()
+                            ? proximityTransitiveReached
+                            : nonProximityTransitiveReached;
+
+                    if (transitiveReached) {
+                        activation.reset();
+                        continue;
+                    }
+
+                    ClientActivation.Result activationResult = activation.process(samples, parentResult);
+
+                    if (activation.getType() == ClientActivation.Type.INHERIT) {
+                        processActivation(device.get(), activation, activationResult, samples, encoded);
+                    } else if (activation.getType() == ClientActivation.Type.VOICE) {
+                        processActivation(device.get(), activation, activationResult, samples, encoded);
+                    } else {
+                        processActivation(device.get(), activation, activationResult, samples, encoded);
+                    }
+
+                    if (activationResult.isActivated() && !activation.isTransitive()) {
+                        if (activation.isProximity()) {
+                            proximityTransitiveReached = true;
+                        } else {
+                            nonProximityTransitiveReached = true;
+                        }
+                    }
+                }
+
+                if (parentActivation.getId().equals(VoiceActivation.PROXIMITY_ID)) {
+                    final boolean transitiveReached = parentActivation.isProximity()
+                            ? proximityTransitiveReached
+                            : nonProximityTransitiveReached;
+
+                    if (!transitiveReached) {
+                        processActivation(device.get(), parentActivation, parentResult, samples, encoded);
+                    } else if (activationStreams.remove(parentActivation.getId())) {
+                        processActivation(device.get(), parentActivation, ClientActivation.Result.END, null, encoded);
+                    }
+                }
+
+                voiceClient.getEventBus().fire(new AudioCaptureProcessedEvent(
+                        this,
+                        device.get(),
+                        samples,
+                        encoded
+                ));
+            } catch (InterruptedException ignored) {
+                break;
+            } catch (Exception e) {
+                e.printStackTrace();
+                break;
+            }
+        }
+
+        cleanup();
+    }
+
+    private void cleanup() {
+        activationSequenceNumbers.clear();
+        if (monoEncoder != null) monoEncoder.close();
+        if (stereoEncoder != null) stereoEncoder.close();
+
+        Optional<InputDevice> device = getDevice();
+        if (device.isPresent() && device.get().isOpen()) {
+            device.get().close();
+            devices.setInputDevice(null);
+        }
+
+        this.thread = null;
+    }
+
+    private void processActivation(
+            @NotNull InputDevice device,
+            @NotNull ClientActivation activation,
+            @NotNull ClientActivation.Result result,
+            short[] samples,
+            @NotNull EncodedCapture encoded
+    ) {
+        boolean isStereo = config.getVoice().getStereoCapture().value() && activation.isStereoSupported();
+
+        if (result.isActivated() && samples != null) {
+            if (isStereo && encoded.stereo == null) {
+                AudioEncoder stereoEncoder = activation.getStereoEncoder().orElse(this.stereoEncoder);
+
+                short[] processedSamples = encoded.getStereo();
+                encoded.stereo = encode(stereoEncoder, processedSamples);
+            } else if (!isStereo && encoded.mono == null) {
+                AudioEncoder monoEncoder = activation.getMonoEncoder().orElse(this.monoEncoder);
+
+                short[] processedSamples = encoded.getMono();
+                encoded.mono = encode(monoEncoder, processedSamples);
+            }
+        }
+
+        byte[] encodedData = isStereo ? encoded.stereo : encoded.mono;
+
+        if (result == ClientActivation.Result.ACTIVATED) {
+            sendVoicePacket(activation, isStereo, encodedData);
+            activationStreams.add(activation.getId());
+        } else if (result == ClientActivation.Result.END) {
+            if (encodedData != null) sendVoicePacket(activation, isStereo, encodedData);
+            sendVoiceEndPacket(activation);
+            activationStreams.remove(activation.getId());
+        }
+    }
+
+    private byte[] encode(@Nullable AudioEncoder encoder, short[] samples) {
+        byte[] encoded;
+        if (encoder != null) {
+            try {
+                encoded = encoder.encode(samples);
+            } catch (CodecException e) {
+                LOGGER.error("Failed to encode audio data", e);
+                return null;
+            }
+        } else {
+            encoded = AudioUtil.shortsToBytes(samples);
+        }
+
+        if (encryption != null) {
+            try {
+                encoded = encryption.encrypt(encoded);
+            } catch (EncryptionException e) {
+                LOGGER.error("Failed to encrypt audio data", e);
+                return null;
+            }
+        }
+
+        return encoded;
+    }
+
+    private void sendVoicePacket(@NotNull ClientActivation activation,
+                                 boolean isStereo,
+                                 byte[] encoded) {
+        if (activation.getTranslation().equals("pv.activation.parent")) return;
+
+        voiceClient.getUdpClientManager()
+                .getClient()
+                .ifPresent(udpClient ->
+                        udpClient.sendPacket(new PlayerAudioPacket(
+                                getSequenceNumber(activation),
+                                encoded,
+                                activation.getId(),
+                                (short) activation.getDistance(),
+                                isStereo
+                        ))
+                );
+    }
+
+    private void sendVoiceEndPacket(ClientActivation activation) {
+        if (activation.getTranslation().equals("pv.activation.parent")) return;
+
+        if (monoEncoder != null) monoEncoder.reset();
+        if (stereoEncoder != null) stereoEncoder.reset();
+
+        voiceClient.getServerConnection().ifPresent(connection ->
+                connection.sendPacket(new PlayerAudioEndPacket(
+                        getSequenceNumber(activation),
+                        activation.getId(),
+                        (short) activation.getDistance()
+                ))
+        );
+    }
+
+    private long getSequenceNumber(@NotNull ClientActivation activation) {
+        long sequenceNumber = activationSequenceNumbers.getOrDefault(activation.getId(), 0L) + 1;
+        activationSequenceNumbers.put(activation.getId(), sequenceNumber);
+        return sequenceNumber;
+    }
+
+    @RequiredArgsConstructor
+    static class EncodedCapture implements AudioCaptureProcessedEvent.ProcessedSamples {
+
+        private final InputDevice device;
+        private final short[] samples;
+
+        private byte[] mono;
+        private short[] monoProcessed;
+        private byte[] stereo;
+        private short[] stereoProcessed;
+
+        @Override
+        @Synchronized
+        public short[] getMono() {
+            if (monoProcessed != null) return monoProcessed;
+
+            this.monoProcessed = new short[samples.length];
+            System.arraycopy(samples, 0, monoProcessed, 0, samples.length);
+
+            this.monoProcessed = device.processFilters(monoProcessed);
+
+            return monoProcessed;
+        }
+
+        @Override
+        @Synchronized
+        public short[] getStereo() {
+            if (stereoProcessed != null) return stereoProcessed;
+
+            this.stereoProcessed = new short[samples.length];
+            System.arraycopy(samples, 0, stereoProcessed, 0, samples.length);
+
+            this.stereoProcessed = device.processFilters(
+                    stereoProcessed,
+                    (filter) -> (filter instanceof StereoToMonoFilter)
+            );
+
+            return stereoProcessed;
+        }
+    }
+}

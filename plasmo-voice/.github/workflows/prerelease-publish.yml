@@ -1,0 +1,98 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - v2.1.x
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: |
+          8
+          16
+          17
+          21
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
+      with:
+        cache-read-only: false
+
+    - name: Build with Gradle
+      run: ./gradlew build --stacktrace -Psnapshot=true
+
+    - name: Publish to snapshots maven repository
+      env:
+        MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+      run: ./gradlew publish --stacktrace -Psnapshot=true
+
+    - name: Publish to GitHub
+      uses: Apehum/mc-publish@v1.1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-generate-changelog: false
+        github-prerelease: true
+
+    - name: Upload to Registry
+      run: |
+        for file in build/libs/*; do
+          echo "Uploading $(basename $file)..."
+        
+          if curl -X POST "${{ secrets.REGISTRY_URL }}/upload" \
+            -H "Authorization: Bearer ${{ secrets.REGISTRY_UPLOAD_TOKEN }}" \
+            -F "repoUrl=${{ github.server_url }}/${{ github.repository }}" \
+            -F "project=${{ github.event.repository.name  }}" \
+            -F "branch=${{ github.ref_name }}" \
+            -F "commit=${{ github.sha }}" \
+            -F "message=${{ github.event.head_commit.message }}" \
+            -F "file=@$file" \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --fail-with-body \
+            --show-error; then
+            echo "✓ Uploaded $(basename $file)"
+          else
+            echo "✗ Failed to upload $(basename $file) after retries"
+            exit 1
+          fi
+        done
+
+
+    - name: Build dokka
+      run: ./gradlew dokkaHtmlCollector
+
+    - name: Upload dokka artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./build/dokka/htmlCollector
+
+  deploy-dokka:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

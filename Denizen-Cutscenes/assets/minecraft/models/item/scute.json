@@ -1,0 +1,116 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "minecraft:item/scute"
+  },
+  "overrides": [
+	{
+      "predicate": {
+        "custom_model_data": 10000
+      },
+      "model": "dcutscenes:icons/arrow_left"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10001
+      },
+      "model": "dcutscenes:icons/boxed_arrow_down"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10002
+      },
+      "model": "dcutscenes:icons/boxed_arrow_left"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10003
+      },
+      "model": "dcutscenes:icons/boxed_arrow_right"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10004
+      },
+      "model": "dcutscenes:icons/boxed_arrow_up"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10005
+      },
+      "model": "dcutscenes:icons/remove_all"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10006
+      },
+      "model": "dcutscenes:icons/remove"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10007
+      },
+      "model": "dcutscenes:icons/exit"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10008
+      },
+      "model": "dcutscenes:icons/play"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10009
+      },
+      "model": "dcutscenes:icons/plus"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10010
+      },
+      "model": "dcutscenes:icons/camera"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10011
+      },
+      "model": "dcutscenes:icons/tick"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10012
+      },
+      "model": "dcutscenes:icons/keyframe"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10013
+      },
+      "model": "dcutscenes:icons/keyframe_contains"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10014
+      },
+      "model": "dcutscenes:icons/keyframe_stop"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10015
+      },
+      "model": "dcutscenes:icons/movie_board_icon"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10016
+      },
+      "model": "dcutscenes:icons/keyframe_play_scene"
+    	},
+	{
+      "predicate": {
+        "custom_model_data": 10017
+      },
+      "model": "dcutscenes:icons/confirm"
+    	}
+  ]
+}
