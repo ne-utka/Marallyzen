@@ -7,6 +7,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
 import neutka.marallys.marallyzen.entity.PosterEntity;
@@ -14,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Manages client-side PosterEntity instances.
@@ -23,6 +26,7 @@ import java.util.Map;
 public class ClientPosterManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientPosterManager.class);
     private static final Map<BlockPos, PosterEntity> clientPosters = new HashMap<>();
+    private static final Set<BlockPos> activePosterOrigins = new HashSet<>();
     // Store original block states to restore them later
     private static final Map<BlockPos, BlockState> originalBlockStates = new HashMap<>();
     private static int nextClientEntityId = -1; // Negative IDs for client-only entities
@@ -448,6 +452,10 @@ public class ClientPosterManager {
     public static boolean hasClientPoster(BlockPos pos) {
         return clientPosters.containsKey(pos);
     }
+
+    public static boolean isPosterHidden(BlockPos pos) {
+        return clientPosters.containsKey(pos) || activePosterOrigins.contains(pos);
+    }
     
     /**
      * Gets the client-side PosterEntity at the specified block position.
@@ -464,6 +472,22 @@ public class ClientPosterManager {
         Minecraft minecraft = Minecraft.getInstance();
         if (!(minecraft.level instanceof ClientLevel clientLevel)) {
             return;
+        }
+        activePosterOrigins.clear();
+        if (minecraft.player != null) {
+            AABB scanBox = minecraft.player.getBoundingBox().inflate(256.0);
+            for (PosterEntity entity : clientLevel.getEntitiesOfClass(PosterEntity.class, scanBox)) {
+                BlockPos origin = entity.getOriginPos();
+                if (origin != null) {
+                    activePosterOrigins.add(origin);
+                }
+            }
+        }
+        for (PosterEntity entity : clientPosters.values()) {
+            BlockPos origin = entity.getOriginPos();
+            if (origin != null) {
+                activePosterOrigins.add(origin);
+            }
         }
         
         // Check all active client posters and ensure their blocks are hidden

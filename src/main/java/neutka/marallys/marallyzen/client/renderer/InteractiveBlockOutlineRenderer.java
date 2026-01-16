@@ -35,6 +35,7 @@ import neutka.marallys.marallyzen.blocks.InteractiveBlockTargeting;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.blocks.PosterBlock;
 import neutka.marallys.marallyzen.client.ClientDictaphoneManager;
+import neutka.marallys.marallyzen.client.ClientPosterManager;
 import neutka.marallys.marallyzen.client.renderer.PosterTextures;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
@@ -158,6 +159,10 @@ public class InteractiveBlockOutlineRenderer {
         BlockState state = mc.level.getBlockState(pos);
         if (state.getBlock() instanceof DictaphoneSimpleBlock
             && ClientDictaphoneManager.hasClientDictaphone(pos)) {
+            return null;
+        }
+        if (state.getBlock() instanceof PosterBlock
+            && ClientPosterManager.isPosterHidden(pos)) {
             return null;
         }
         InteractiveBlockTargeting.Type type = InteractiveBlockTargeting.getType(state);

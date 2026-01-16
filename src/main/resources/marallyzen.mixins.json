@@ -10,7 +10,8 @@
                    "common.ServerLevelParticlesMixin"
                ],
     "client":  [
-                   "client.DictaphoneRenderMixin",
+                   "client.BlockHideRenderMixin",
+                   "client.PosterBlockEntityRenderMixin",
                    "client.TabListNpcFilterMixin"
                ],
     "injectors":  {

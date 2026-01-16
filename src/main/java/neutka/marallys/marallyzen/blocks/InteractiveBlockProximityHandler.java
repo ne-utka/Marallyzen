@@ -93,6 +93,9 @@ public class InteractiveBlockProximityHandler {
                     BlockState state = serverLevel.getBlockState(hitPos);
                     InteractiveBlockTargeting.Type type = InteractiveBlockTargeting.getType(state);
                     if (type != InteractiveBlockTargeting.Type.NONE) {
+                        if (type == InteractiveBlockTargeting.Type.POSTER) {
+                            continue;
+                        }
                         if (type != InteractiveBlockTargeting.Type.CHAIN
                             || !player.getPersistentData().getBoolean("marallyzen_chain_hang")) {
                             newTarget = new Target(hitPos, type);
