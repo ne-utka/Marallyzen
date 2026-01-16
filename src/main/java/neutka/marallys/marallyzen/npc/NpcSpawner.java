@@ -127,7 +127,9 @@ public final class NpcSpawner {
                 }
                 Marallyzen.LOGGER.info("NpcSpawner: Resolved npcId '{}' for existing entity {}", npcId, entity.getUUID());
             } else {
-                Marallyzen.LOGGER.warn("NpcSpawner: Existing entity {} has empty npcId and no name match", entity.getUUID());
+                // No NPC id and no name match -> treat as stray and discard to avoid duplicate spawns.
+                Marallyzen.LOGGER.warn("NpcSpawner: Removing stray NPC entity {} (empty npcId, no name match)", entity.getUUID());
+                entity.remove(Entity.RemovalReason.DISCARDED);
                 return;
             }
         }
