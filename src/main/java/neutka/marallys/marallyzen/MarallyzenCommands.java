@@ -91,9 +91,12 @@ public class MarallyzenCommands {
             .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GOLD));
         source.sendSuccess(() -> title, false);
 
-        Component github = Component.literal("[GH] ")
-            .append(Component.literal("Github"))
-            .withStyle(style -> style
+        net.minecraft.network.chat.MutableComponent github = Component.literal("\uE000")
+            .withStyle(style -> style.withFont(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "icons")
+            ))
+            .append(Component.literal(" Github").withStyle(style -> style
+                .withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("default"))
                 .withColor(net.minecraft.ChatFormatting.AQUA)
                 .withClickEvent(new net.minecraft.network.chat.ClickEvent(
                     net.minecraft.network.chat.ClickEvent.Action.OPEN_URL,
@@ -101,26 +104,27 @@ public class MarallyzenCommands {
                 ))
                 .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
                     net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                    Component.literal("Нажмите для открытия страницы на Github.\n")
-                        .append(Component.literal("Иконка: assets/marallyzen/textures/icons/github.png"))
+                    Component.literal("Нажмите для открытия страницы на Github.")
                 ))
-            );
+            ));
         source.sendSuccess(() -> github, false);
 
-        Component author = Component.literal("[AU] ")
-            .append(Component.literal("Автор мода - loneliness"))
+        Component author = Component.literal("Автор мода - loneliness")
             .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY));
         source.sendSuccess(() -> author, false);
 
-        Component discord = Component.literal("[DS] ")
-            .append(Component.literal("Discord - mengion"))
-            .withStyle(style -> style
+        net.minecraft.network.chat.MutableComponent discord = Component.literal("\uE001")
+            .withStyle(style -> style.withFont(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "icons")
+            ))
+            .append(Component.literal(" Discord - mengion").withStyle(style -> style
+                .withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("default"))
                 .withColor(net.minecraft.ChatFormatting.DARK_AQUA)
                 .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
                     net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                    Component.literal("Иконка: assets/marallyzen/textures/icons/discord.png")
+                    Component.literal("Discord: mengion")
                 ))
-            );
+            ));
         source.sendSuccess(() -> discord, false);
 
         Component contributors = Component.literal("Вложили вклад:")
@@ -131,8 +135,7 @@ public class MarallyzenCommands {
         source.sendSuccess(() -> Component.literal(" - ItsReizy").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
         return 1;
     }
-
-    private static int reloadCommand(CommandContext<CommandSourceStack> context) {
+private static int reloadCommand(CommandContext<CommandSourceStack> context) {
         try {
             // Reload DenizenCore scripts
             DenizenService.reload();
@@ -438,3 +441,4 @@ public class MarallyzenCommands {
         return 1;
     }
 }
+
