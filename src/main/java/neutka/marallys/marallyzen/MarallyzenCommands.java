@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import neutka.marallys.marallyzen.network.NetworkHelper;
@@ -34,6 +35,7 @@ public class MarallyzenCommands {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
         dispatcher.register(Commands.literal("marallyzen")
+                .executes(MarallyzenCommands::infoCommand)
                 .then(Commands.literal("reload")
                         .requires(source -> source.hasPermission(2)) // OP level 2
                         .executes(MarallyzenCommands::reloadCommand))
@@ -77,6 +79,57 @@ public class MarallyzenCommands {
                         .then(Commands.argument("sceneId", StringArgumentType.string())
                                 .executes(MarallyzenCommands::editCutsceneCommand)))
         );
+    }
+
+    private static int infoCommand(CommandContext<CommandSourceStack> context) {
+        var source = context.getSource();
+        String version = ModList.get().getModContainerById(Marallyzen.MODID)
+            .map(container -> container.getModInfo().getVersion().toString())
+            .orElse("unknown");
+
+        Component title = Component.literal("Marallyzen ").append(Component.literal(version))
+            .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GOLD));
+        source.sendSuccess(() -> title, false);
+
+        Component github = Component.literal("[GH] ")
+            .append(Component.literal("Github"))
+            .withStyle(style -> style
+                .withColor(net.minecraft.ChatFormatting.AQUA)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                    net.minecraft.network.chat.ClickEvent.Action.OPEN_URL,
+                    "https://github.com/ne-utka/Marallyzen"
+                ))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                    net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                    Component.literal("Нажмите для открытия страницы на Github.\n")
+                        .append(Component.literal("Иконка: assets/marallyzen/textures/icons/github.png"))
+                ))
+            );
+        source.sendSuccess(() -> github, false);
+
+        Component author = Component.literal("[AU] ")
+            .append(Component.literal("Автор мода - loneliness"))
+            .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY));
+        source.sendSuccess(() -> author, false);
+
+        Component discord = Component.literal("[DS] ")
+            .append(Component.literal("Discord - mengion"))
+            .withStyle(style -> style
+                .withColor(net.minecraft.ChatFormatting.DARK_AQUA)
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                    net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                    Component.literal("Иконка: assets/marallyzen/textures/icons/discord.png")
+                ))
+            );
+        source.sendSuccess(() -> discord, false);
+
+        Component contributors = Component.literal("Вложили вклад:")
+            .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.YELLOW));
+        source.sendSuccess(() -> contributors, false);
+        source.sendSuccess(() -> Component.literal(" - Yl7oPoTblU_KoT").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
+        source.sendSuccess(() -> Component.literal(" - Bumchik_ (Иван Казмиренко)").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
+        source.sendSuccess(() -> Component.literal(" - ItsReizy").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
+        return 1;
     }
 
     private static int reloadCommand(CommandContext<CommandSourceStack> context) {
