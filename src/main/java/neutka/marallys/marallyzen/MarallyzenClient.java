@@ -77,6 +77,9 @@ public class MarallyzenClient {
         // Tick narration manager (updates narration overlay state and alpha interpolation)
         neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance().tick();
         
+        // Tick poster narration hints (block vs active entity)
+        neutka.marallys.marallyzen.client.PosterNarrationService.tick();
+        
         // Tick screen fade manager
         neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().tick();
         

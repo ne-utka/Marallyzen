@@ -389,6 +389,16 @@ public class PosterEntity extends Entity {
     public int getPosterNumber() {
         return entityData.get(DATA_POSTER_NUMBER);
     }
+
+    public Direction getFacing() {
+        if (originalBlockState == null) {
+            return null;
+        }
+        if (!originalBlockState.hasProperty(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING)) {
+            return null;
+        }
+        return originalBlockState.getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING);
+    }
     
     public String getOldposterVariant() {
         return oldposterVariant != null ? oldposterVariant : "default";
@@ -632,20 +642,6 @@ public class PosterEntity extends Entity {
             // Position animation is handled in renderer for maximum smoothness
             if (currentState == State.VIEWING) {
                 swayOffset += SWAY_SPEED;
-                
-                // Keep narration visible while in VIEWING state
-                // Check if narration is already showing, if not, show it
-                // Don't show narration for oldposter (ID 11)
-                if (posterNumber != 11) {
-                    neutka.marallys.marallyzen.client.narration.NarrationManager manager = 
-                        neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance();
-                    if (manager.getActive() == null) {
-                        neutka.marallys.marallyzen.client.PosterEntityInteractionHandler.showFlipNarration(posterNumber);
-                    }
-                }
-            } else if (currentState != State.VIEWING) {
-                // Clear narration when leaving VIEWING state
-                neutka.marallys.marallyzen.client.PosterEntityInteractionHandler.clearFlipNarration();
             }
             
             // Sync targetFlipped from entityData
@@ -837,23 +833,12 @@ public class PosterEntity extends Entity {
             this.setPos(targetPosition.x, targetPosition.y, targetPosition.z);
         }
         
-        // Show narration on client when transitioning to VIEWING
-        // Don't show narration for oldposter (ID 11)
-        if (level().isClientSide && posterNumber != 11) {
-            neutka.marallys.marallyzen.client.PosterEntityInteractionHandler.showFlipNarration(posterNumber);
-        }
-        
         LOGGER.info("[SERVER] Transitioned to VIEWING state: targetPos={}, tickCount={}", targetPosition, this.tickCount);
     }
     
     private void transitionToReturning() {
         this.currentState = State.RETURNING;
         this.entityData.set(DATA_STATE, State.RETURNING.getId());
-        
-        // Clear narration when leaving VIEWING state
-        if (level().isClientSide) {
-            neutka.marallys.marallyzen.client.PosterEntityInteractionHandler.clearFlipNarration();
-        }
         
         // Initialize return animation: start from targetPosition (where poster was viewing), target is origin
         // This ensures smooth transition from VIEWING to RETURNING
@@ -931,12 +916,6 @@ public class PosterEntity extends Entity {
         
         if (targetPosition != null) {
             this.setPos(targetPosition.x, targetPosition.y, targetPosition.z);
-        }
-        
-        // Show narration when transitioning to VIEWING
-        // Don't show narration for oldposter (ID 11)
-        if (posterNumber != 11) {
-            neutka.marallys.marallyzen.client.PosterEntityInteractionHandler.showFlipNarration(posterNumber);
         }
         
         LOGGER.debug("[CLIENT] Transitioned to VIEWING state (client-only)");

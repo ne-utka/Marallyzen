@@ -4,9 +4,11 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations;
 
 import java.util.UUID;
 
@@ -81,8 +83,12 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("[NarratePacket] CLIENT: Starting narration - text='{}', npcUuid={}, fadeIn={}, stay={}, fadeOut={}", 
                         textStr, packet.npcUuid(), packet.fadeInTicks(), packet.stayTicks(), packet.fadeOutTicks());
                 
+                if (shouldSkipPosterNarration(packet.text())) {
+                    return;
+                }
+
                 // Start narration overlay on client
-                neutka.marallys.marallyzen.client.narration.NarrationManager manager = 
+                neutka.marallys.marallyzen.client.narration.NarrationManager manager =
                         neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance();
                 
                 // Clear proximity when narration starts to prevent flickering
@@ -99,5 +105,19 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
             }
         });
     }
-}
 
+    private static boolean shouldSkipPosterNarration(Component text) {
+        if (text == null) {
+            return false;
+        }
+        String message = text.getString();
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        String posterMessage = InteractiveBlockNarrations.posterMessage().getString();
+        if (!message.equals(posterMessage)) {
+            return false;
+        }
+        return message.equals(posterMessage);
+    }
+}

@@ -1,12 +1,8 @@
 package neutka.marallys.marallyzen.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
@@ -199,17 +195,24 @@ public class PosterEntityInteractionHandler {
      * Narration will stay visible while poster is in VIEWING state.
      * @param posterNumber The poster number (11 = oldposter, which doesn't show narration)
      */
-    public static void showFlipNarration(int posterNumber) {
+    public static void showFlipNarration(PosterEntity posterEntity) {
+        if (posterEntity == null) {
+            return;
+        }
+        int posterNumber = posterEntity.getPosterNumber();
         // Don't show narration for oldposter (ID 11)
         if (posterNumber == 11) {
             return;
         }
-        
+
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
             return;
         }
-        Component narrationText = neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations.posterMessage();
+        boolean flipped = posterEntity.isFlipped();
+        Component narrationText = flipped
+            ? neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations.posterFlipToFrontMessage()
+            : neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations.posterFlipToBackMessage();
         NarrationManager manager = NarrationManager.getInstance();
         // Use very long stay time (999999 ticks) - will be cleared when poster leaves VIEWING state
         manager.startNarration(narrationText, null, 5, 999999, 3);
@@ -217,12 +220,12 @@ public class PosterEntityInteractionHandler {
     
     /**
      * Shows narration when poster transitions to VIEWING state (backward compatibility).
-     * @deprecated Use showFlipNarration(int posterNumber) instead
+     * @deprecated Use showFlipNarration(PosterEntity) instead
      */
     @Deprecated
     public static void showFlipNarration() {
         // Default to showing narration (for non-oldposter posters)
-        showFlipNarration(0);
+        showFlipNarration(null);
     }
     
     /**
@@ -233,10 +236,3 @@ public class PosterEntityInteractionHandler {
         manager.clearNarration();
     }
 }
-
-
-
-
-
-
-
