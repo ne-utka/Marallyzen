@@ -2,6 +2,8 @@
 
 Marallyzen is a NeoForge Minecraft mod (MC 1.21.1+) focused on roleplay, NPCs, scripted interactions, and cinematic presentation. It bundles a full NPC stack, dialog UI, cutscene system, and DenizenCore scripting so content creators can build quests, scenes, and interactive storytelling without hardcoding logic.
 
+![202601151207 (1) (2)](https://github.com/user-attachments/assets/6bbcd36c-3bff-4a9a-a7a3-f6c670e57b3d)
+
 ## Key Features and Components
 
 - **NPC system**: create NPCs from any entity type; define them via JSON; spawn/despawn and manage them at runtime; attach patrol routes and behaviors; integrate with external configs for rapid iteration.
@@ -11,6 +13,9 @@ Marallyzen is a NeoForge Minecraft mod (MC 1.21.1+) focused on roleplay, NPCs, s
 - **Developer API**: public interfaces for NPCs, dialogs, cutscenes, and scripts so other mods can spawn NPCs, open dialogs, and play scenes programmatically.
 - **Example content**: sample NPC configs, scripts, and scene definitions under `src/main/resources/examples/` to show patterns for real content.
 - **Build/setup**: Gradle-based project with modding dependencies and configuration folders for NPCs, scripts, and scenes, ready for server or client usage.
+  
+![01JW1HH4JDAZ4MSFP4PHKTQCWP (1) (2)](https://github.com/user-attachments/assets/e7985354-a91c-4ffd-9a9d-b312ae0ee261)
+![01JW1HGBMPE3E89AWBG237M3QQ (1)](https://github.com/user-attachments/assets/ca25fd64-2b38-4350-b84e-15e2e19b4866)
 
 ## Project Structure Highlights
 
