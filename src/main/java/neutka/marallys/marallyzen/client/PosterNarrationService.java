@@ -118,21 +118,29 @@ public final class PosterNarrationService {
             if (distance > reachDistance) {
                 continue;
             }
-            Vec3 normalizedLook = lookVec.normalize();
-            Vec3 normalizedToPoster = toPoster.normalize();
-            double dot = normalizedLook.dot(normalizedToPoster);
-            if (dot < 0.7) {
+            Vec3 hitVec = getPosterHitBox(posterEntity).clip(eyePos, endPos).orElse(null);
+            if (hitVec == null) {
                 continue;
             }
-            if (posterEntity.getBoundingBox().clip(eyePos, endPos).orElse(null) == null) {
-                continue;
-            }
-            if (distance < closestDistance) {
-                closestDistance = distance;
+            double hitDistance = hitVec.distanceTo(eyePos);
+            if (hitDistance < closestDistance) {
+                closestDistance = hitDistance;
                 closestPoster = posterEntity;
             }
         }
         return closestPoster;
+    }
+
+    private static AABB getPosterHitBox(PosterEntity posterEntity) {
+        Vec3 pos = posterEntity.position();
+        return new AABB(
+            pos.x - 0.5,
+            pos.y - 0.5,
+            pos.z - 0.5,
+            pos.x + 0.5,
+            pos.y + 0.5,
+            pos.z + 0.5
+        );
     }
 
     private static boolean isViewingFrontSide(LocalPlayer player, PosterEntity posterEntity) {

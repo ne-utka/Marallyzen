@@ -9,6 +9,7 @@ import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -41,6 +42,12 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
                                              Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (stack.getItem() instanceof WrittenBookItem) {
             if (level.isClientSide) {
+                if (player.hasPermissions(2)) {
+                    markProtectedByOpClient(level, pos);
+                }
+                neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
+                    new neutka.marallys.marallyzen.network.OldTvBookBindPacket(pos, hand == InteractionHand.MAIN_HAND)
+                );
                 var bookContent = stack.get(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT);
                 if (bookContent != null && bookContent.title() != null) {
                     String mediaName = bookContent.title().raw();
@@ -82,6 +89,54 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
             }
         }
         return ItemInteractionResult.SUCCESS;
+    }
+
+    @Override
+    public float getDestroyProgress(BlockState state, Player player, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        if (player != null) {
+            if (level.getBlockEntity(pos) instanceof OldTvBlockEntity tvEntity) {
+                if (tvEntity.isProtectedByOp() && !player.hasPermissions(2)) {
+                    return 0.0f;
+                }
+            }
+        }
+        return super.getDestroyProgress(state, player, level, pos);
+    }
+
+    @Override
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
+        if (!level.isClientSide) {
+            if (player != null) {
+                if (level.getBlockEntity(pos) instanceof OldTvBlockEntity tvEntity) {
+                    if (tvEntity.isProtectedByOp() && !player.hasPermissions(2)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+    }
+
+    private static void markProtectedByOpClient(Level level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof OldTvBlockEntity tvEntity) {
+            tvEntity.setProtectedByOp(true);
+        }
+        if (level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel) {
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+            if (minecraft.getSingleplayerServer() != null) {
+                net.minecraft.server.level.ServerLevel serverLevel = minecraft.getSingleplayerServer().getLevel(clientLevel.dimension());
+                if (serverLevel != null) {
+                    final BlockPos finalPos = pos;
+                    minecraft.getSingleplayerServer().execute(() -> {
+                        BlockEntity serverBe = serverLevel.getBlockEntity(finalPos);
+                        if (serverBe instanceof OldTvBlockEntity serverTvEntity) {
+                            serverTvEntity.setProtectedByOp(true);
+                        }
+                    });
+                }
+            }
+        }
     }
 
     @Override

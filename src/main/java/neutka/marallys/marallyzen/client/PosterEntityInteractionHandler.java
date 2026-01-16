@@ -161,7 +161,14 @@ public class PosterEntityInteractionHandler {
             }
             
             // Check if ray intersects with poster's bounding box
-            AABB posterBox = posterEntity.getBoundingBox();
+            AABB posterBox = new AABB(
+                posterPos.x - 0.5,
+                posterPos.y - 0.5,
+                posterPos.z - 0.5,
+                posterPos.x + 0.5,
+                posterPos.y + 0.5,
+                posterPos.z + 0.5
+            );
             Vec3 hitVec = posterBox.clip(eyePos, endPos).orElse(null);
             if (hitVec == null) {
                 continue;

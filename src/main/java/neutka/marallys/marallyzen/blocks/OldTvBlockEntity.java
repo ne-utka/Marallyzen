@@ -10,6 +10,7 @@ import java.util.Objects;
 public class OldTvBlockEntity extends BlockEntity {
     private Object loopHandle;
     private String currentSoundId;
+    private boolean protectedByOp = false;
 
     public OldTvBlockEntity(BlockPos pos, BlockState state) {
         super(MarallyzenBlockEntities.OLD_TV_BE.get(), pos, state);
@@ -68,5 +69,26 @@ public class OldTvBlockEntity extends BlockEntity {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    @Override
+    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        tag.putBoolean("ProtectedByOp", protectedByOp);
+    }
+
+    @Override
+    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        protectedByOp = tag.getBoolean("ProtectedByOp");
+    }
+
+    public boolean isProtectedByOp() {
+        return protectedByOp;
+    }
+
+    public void setProtectedByOp(boolean protectedByOp) {
+        this.protectedByOp = protectedByOp;
+        setChanged();
     }
 }

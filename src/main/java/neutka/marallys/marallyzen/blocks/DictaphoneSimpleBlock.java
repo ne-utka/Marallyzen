@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
@@ -88,7 +89,8 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
                 neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.bindScript(
                     pos,
                     level.dimension(),
-                    scriptName
+                    scriptName,
+                    serverPlayer.hasPermissions(2)
                 );
                 neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.sendBindNarration(
                     serverPlayer,
@@ -119,5 +121,27 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
             }
         }
         return ItemInteractionResult.SUCCESS;
+    }
+
+    @Override
+    public float getDestroyProgress(BlockState state, Player player, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        if (player != null && level instanceof Level lvl) {
+            if (!player.hasPermissions(2)
+                && neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isProtectedByOp(pos, lvl.dimension())) {
+                return 0.0f;
+            }
+        }
+        return super.getDestroyProgress(state, player, level, pos);
+    }
+
+    @Override
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
+        if (!level.isClientSide && player != null) {
+            if (!player.hasPermissions(2)
+                && neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isProtectedByOp(pos, level.dimension())) {
+                return false;
+            }
+        }
+        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
     }
 }

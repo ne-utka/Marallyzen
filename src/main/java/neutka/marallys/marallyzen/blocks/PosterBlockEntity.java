@@ -15,6 +15,7 @@ public class PosterBlockEntity extends BlockEntity {
     private String posterTitle = "";
     private String posterAuthor = "";
     private long posterCreatedAt = 0;
+    private boolean protectedByOp = false;
     private String oldposterVariant = "default"; // For oldposter (ID 11): "default", "alive", "band", "dead"
     private String targetPlayerName = ""; // Player name for head display on oldposter variants (single name for alive/dead)
     private java.util.List<String> targetPlayerNames = new java.util.ArrayList<>(); // List of player names for band variant (up to 3)
@@ -38,6 +39,7 @@ public class PosterBlockEntity extends BlockEntity {
         if (posterCreatedAt > 0) {
             tag.putLong("PosterCreatedAt", posterCreatedAt);
         }
+        tag.putBoolean("ProtectedByOp", protectedByOp);
         // Always save variant, even if "default", to ensure it persists
         String variantToSave = oldposterVariant != null ? oldposterVariant : "default";
         tag.putString("OldposterVariant", variantToSave);
@@ -73,6 +75,7 @@ public class PosterBlockEntity extends BlockEntity {
         if (tag.contains("PosterCreatedAt")) {
             posterCreatedAt = tag.getLong("PosterCreatedAt");
         }
+        protectedByOp = tag.getBoolean("ProtectedByOp");
         if (tag.contains("OldposterVariant")) {
             oldposterVariant = tag.getString("OldposterVariant");
         } else {
@@ -131,6 +134,21 @@ public class PosterBlockEntity extends BlockEntity {
 
     public void setPosterAuthor(String posterAuthor) {
         this.posterAuthor = posterAuthor;
+        setChanged();
+    }
+
+    public boolean hasBoundText() {
+        return (posterText != null && !posterText.isEmpty())
+            || (posterTitle != null && !posterTitle.isEmpty())
+            || (posterAuthor != null && !posterAuthor.isEmpty());
+    }
+
+    public boolean isProtectedByOp() {
+        return protectedByOp;
+    }
+
+    public void setProtectedByOp(boolean protectedByOp) {
+        this.protectedByOp = protectedByOp;
         setChanged();
     }
 
@@ -194,4 +212,3 @@ public class PosterBlockEntity extends BlockEntity {
         setChanged();
     }
 }
-

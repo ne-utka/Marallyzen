@@ -15,6 +15,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import neutka.marallys.marallyzen.entity.PosterEntity;
+import neutka.marallys.marallyzen.client.poster.text.PosterStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.minecraft.world.entity.Entity;
@@ -313,12 +314,14 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             // Back side (translate 0.01f) always shows backTexture
             net.minecraft.resources.ResourceLocation frontTexture = entity.getTextTexture();
             net.minecraft.resources.ResourceLocation backTexture = entity.getTextTextureBack();
+            PosterStyle posterStyle = PosterStyle.fromPosterNumber(posterNumber);
+            float textOffsetX = posterStyle == PosterStyle.PAPER ? -0.095f : 0.0f;
             
             if (frontTexture != null || backTexture != null) {
                 // Render text on front side (translate -0.01f) - always use frontTexture
                 if (frontTexture != null) {
                     poseStack.pushPose();
-                    poseStack.translate(0, 0, -0.01f);
+                    poseStack.translate(textOffsetX, 0, -0.01f);
                     Matrix4f textMatrixFront = poseStack.last().pose();
                     
                     RenderType textRenderType = RenderType.entityCutoutNoCull(frontTexture);
@@ -333,7 +336,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
                 // Render text on back side (translate 0.01f) - always use backTexture
                 if (backTexture != null) {
                     poseStack.pushPose();
-                    poseStack.translate(0, 0, 0.01f);
+                    poseStack.translate(textOffsetX, 0, 0.01f);
                     Matrix4f textMatrixBack = poseStack.last().pose();
                     
                     RenderType backTextRenderType = RenderType.entityCutoutNoCull(backTexture);

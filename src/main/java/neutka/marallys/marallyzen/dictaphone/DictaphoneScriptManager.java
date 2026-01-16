@@ -46,6 +46,7 @@ public final class DictaphoneScriptManager {
     private static final String SYSTEM_SOUND_STOP = "dictophone_stop";
 
     private static final Map<String, String> bindings = new HashMap<>();
+    private static final Map<String, Boolean> protectedByOp = new HashMap<>();
     private static boolean loaded;
     private static final Map<UUID, Long> narrationLockUntil = new HashMap<>();
     private static final Map<String, Long> playLockUntil = new HashMap<>();
@@ -55,11 +56,19 @@ public final class DictaphoneScriptManager {
     }
 
     public static boolean bindScript(BlockPos pos, ResourceKey<Level> dimension, String scriptName) {
+        return bindScript(pos, dimension, scriptName, false);
+    }
+
+    public static boolean bindScript(BlockPos pos, ResourceKey<Level> dimension, String scriptName, boolean protectByOp) {
         if (scriptName == null || scriptName.isBlank()) {
             return false;
         }
         ensureLoaded();
-        bindings.put(buildKey(dimension, pos), normalizeScriptName(scriptName));
+        String key = buildKey(dimension, pos);
+        bindings.put(key, normalizeScriptName(scriptName));
+        if (protectByOp) {
+            protectedByOp.put(key, true);
+        }
         saveState();
         return true;
     }
@@ -67,6 +76,11 @@ public final class DictaphoneScriptManager {
     public static String getBoundScript(BlockPos pos, ResourceKey<Level> dimension) {
         ensureLoaded();
         return bindings.get(buildKey(dimension, pos));
+    }
+
+    public static boolean isProtectedByOp(BlockPos pos, ResourceKey<Level> dimension) {
+        ensureLoaded();
+        return Boolean.TRUE.equals(protectedByOp.get(buildKey(dimension, pos)));
     }
 
     public static boolean scriptExists(String scriptName) {
@@ -373,6 +387,9 @@ public final class DictaphoneScriptManager {
                     String key = obj.get("key").getAsString();
                     String script = obj.get("script").getAsString();
                     bindings.put(key, script);
+                    if (obj.has("protected") && obj.get("protected").getAsBoolean()) {
+                        protectedByOp.put(key, true);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -387,6 +404,9 @@ public final class DictaphoneScriptManager {
             JsonObject obj = new JsonObject();
             obj.addProperty("key", entry.getKey());
             obj.addProperty("script", entry.getValue());
+            if (Boolean.TRUE.equals(protectedByOp.get(entry.getKey()))) {
+                obj.addProperty("protected", true);
+            }
             array.add(obj);
         }
         root.add("bindings", array);

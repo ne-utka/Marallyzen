@@ -204,6 +204,12 @@ public class MarallyzenNetwork {
         );
 
         registrar.playToServer(
+                PosterBookBindPacket.TYPE,
+                PosterBookBindPacket.STREAM_CODEC,
+                PosterBookBindPacket::handle
+        );
+
+        registrar.playToServer(
                 ReplayRecordPacket.TYPE,
                 ReplayRecordPacket.STREAM_CODEC,
                 ReplayRecordPacket::handle
@@ -231,6 +237,12 @@ public class MarallyzenNetwork {
                 CutsceneWorldRecordPacket.TYPE,
                 CutsceneWorldRecordPacket.STREAM_CODEC,
                 CutsceneWorldRecordPacket::handle
+        );
+
+        registrar.playToServer(
+                OldTvBookBindPacket.TYPE,
+                OldTvBookBindPacket.STREAM_CODEC,
+                OldTvBookBindPacket::handle
         );
 
         Marallyzen.LOGGER.info("Marallyzen network packets registered");

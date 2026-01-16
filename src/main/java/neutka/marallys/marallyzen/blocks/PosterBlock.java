@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -97,6 +98,32 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return Shapes.empty(); // No collision for the poster itself
     }
+
+    @Override
+    public float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+        if (player != null) {
+            if (level.getBlockEntity(pos) instanceof PosterBlockEntity posterBe) {
+                if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                    return 0.0f;
+                }
+            }
+        }
+        return super.getDestroyProgress(state, player, level, pos);
+    }
+
+    @Override
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
+        if (!level.isClientSide()) {
+            if (player != null) {
+                if (level.getBlockEntity(pos) instanceof PosterBlockEntity posterBe) {
+                    if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+    }
     
     @Override
     public net.minecraft.world.level.block.entity.BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
@@ -174,6 +201,14 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     @OnlyIn(Dist.CLIENT)
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (level.isClientSide) {
+            if (stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem && player.hasPermissions(2)) {
+                markProtectedByOpClient(level, pos, state);
+            }
+            if (stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem) {
+                neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
+                    new neutka.marallys.marallyzen.network.PosterBookBindPacket(pos, hand == InteractionHand.MAIN_HAND)
+                );
+            }
             // Check if player is holding a written book and this is oldposter (ID 11)
             if (posterNumber == 11 && stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem) {
                 // Extract book title to determine variant using DataComponents
@@ -244,6 +279,9 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                             if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
                                 String oldVariant = posterBe.getOldposterVariant();
                                 posterBe.setOldposterVariant(variant);
+                                if (player.hasPermissions(2)) {
+                                    posterBe.setProtectedByOp(true);
+                                }
                                 
                                 // Save player name(s) based on variant
                                 if (!playerNames.isEmpty()) {
@@ -283,6 +321,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                                             final BlockPos finalPos = pos;
                                             final java.util.List<String> finalPlayerNames = new java.util.ArrayList<>(playerNames);
                                             // Execute on server thread to ensure thread safety
+                                            final boolean protectByOp = player.hasPermissions(2);
                                             minecraft.getSingleplayerServer().execute(() -> {
                                                 net.minecraft.world.level.block.entity.BlockEntity serverBe = serverLevel.getBlockEntity(finalPos);
                                                 // Create BlockEntity if it doesn't exist
@@ -295,6 +334,9 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                                                 }
                                                 if (serverBe instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity serverPosterBe) {
                                                     serverPosterBe.setOldposterVariant(finalVariant);
+                                                    if (protectByOp) {
+                                                        serverPosterBe.setProtectedByOp(true);
+                                                    }
                                                     if (!finalPlayerNames.isEmpty()) {
                                                         if (finalVariant.equals("band")) {
                                                             serverPosterBe.setTargetPlayerNames(finalPlayerNames);
@@ -358,6 +400,36 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
             );
         }
         return ItemInteractionResult.SUCCESS;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static void markProtectedByOpClient(Level level, BlockPos pos, BlockState state) {
+        net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) {
+            be = new PosterBlockEntity(pos, state);
+            if (be != null && level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel) {
+                clientLevel.setBlockEntity(be);
+            }
+        }
+        if (be instanceof PosterBlockEntity posterBe) {
+            posterBe.setProtectedByOp(true);
+        }
+
+        if (level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel) {
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+            if (minecraft.getSingleplayerServer() != null) {
+                net.minecraft.server.level.ServerLevel serverLevel = minecraft.getSingleplayerServer().getLevel(clientLevel.dimension());
+                if (serverLevel != null) {
+                    final BlockPos finalPos = pos;
+                    minecraft.getSingleplayerServer().execute(() -> {
+                        net.minecraft.world.level.block.entity.BlockEntity serverBe = serverLevel.getBlockEntity(finalPos);
+                        if (serverBe instanceof PosterBlockEntity serverPosterBe) {
+                            serverPosterBe.setProtectedByOp(true);
+                        }
+                    });
+                }
+            }
+        }
     }
     
     @Override
