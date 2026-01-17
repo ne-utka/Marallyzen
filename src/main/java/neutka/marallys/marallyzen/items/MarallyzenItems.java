@@ -1,4 +1,4 @@
-package neutka.marallys.marallyzen.items;
+﻿package neutka.marallys.marallyzen.items;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.CreativeModeTab;
@@ -20,16 +20,10 @@ public class MarallyzenItems {
         DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Marallyzen.MODID);
     
     // Register all DMC items
-    public static final DeferredItem<Item> BAT = ITEMS.registerSimpleItem("bat");
-    public static final DeferredItem<Item> BATON = ITEMS.registerSimpleItem("baton");
     public static final DeferredItem<Item> CORD = ITEMS.registerSimpleItem("cord");
-    public static final DeferredItem<Item> HANDCUFFS = ITEMS.registerSimpleItem("handcuffs");
     public static final DeferredItem<Item> LOCATOR = ITEMS.registerSimpleItem("locator");
     public static final DeferredItem<Item> MAGNIFYING_GLASS = ITEMS.registerSimpleItem("magnifying_glass");
-    public static final DeferredItem<Item> CHEST = ITEMS.registerSimpleItem("chest");
     public static final DeferredItem<Item> FLASHLIGHT = ITEMS.register("flashlight", () -> new FlashlightItem(new Item.Properties()));
-    public static final DeferredItem<Item> KEY = ITEMS.registerSimpleItem("key");
-    public static final DeferredItem<Item> TURNKEY = ITEMS.registerSimpleItem("turnkey");
     public static final DeferredItem<Item> CROWBAR = ITEMS.registerSimpleItem("crowbar");
     public static final DeferredItem<Item> CUTTERS = ITEMS.registerSimpleItem("cutters");
     public static final DeferredItem<Item> PIPE_WRENCH = ITEMS.registerSimpleItem("pipe_wrench");
@@ -106,16 +100,13 @@ public class MarallyzenItems {
     public static final Supplier<CreativeModeTab> MARALLYZEN_TAB = CREATIVE_MODE_TABS.register(
         "marallyzen_tab",
         () -> CreativeModeTab.builder()
-            .icon(() -> new ItemStack(BAT.get()))
+            .icon(() -> new ItemStack(CORD.get()))
             .title(net.minecraft.network.chat.Component.translatable("itemGroup.marallyzen.items"))
             .displayItems((parameters, output) -> {
                 // Weapons
-                output.accept(BAT.get());
-                output.accept(BATON.get());
                 
                 // Instruments/Tools
                 output.accept(CORD.get());
-                output.accept(HANDCUFFS.get());
                 output.accept(LOCATOR.get());
                 output.accept(MAGNIFYING_GLASS.get());
                 output.accept(CROWBAR.get());
@@ -126,13 +117,10 @@ public class MarallyzenItems {
                 output.accept(CELLPHONE.get());
                 
                 // Items
-                output.accept(CHEST.get());
                 // Фонарик всегда выключен в креатив табе
                 ItemStack flashlightStack = new ItemStack(FLASHLIGHT.get());
                 FlashlightItem.setOn(flashlightStack, false);
                 output.accept(flashlightStack);
-                output.accept(KEY.get());
-                output.accept(TURNKEY.get());
                 
                 // Posters
                 output.accept(POSTER_1.get());
@@ -161,3 +149,4 @@ public class MarallyzenItems {
     );
     
 }
+
