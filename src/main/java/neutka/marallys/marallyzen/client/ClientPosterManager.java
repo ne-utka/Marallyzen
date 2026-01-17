@@ -3,11 +3,11 @@ package neutka.marallys.marallyzen.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.AABB;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
 import neutka.marallys.marallyzen.entity.PosterEntity;
@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.lang.reflect.Method;
 
 /**
  * Manages client-side PosterEntity instances.
@@ -26,10 +27,12 @@ import java.util.Set;
 public class ClientPosterManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientPosterManager.class);
     private static final Map<BlockPos, PosterEntity> clientPosters = new HashMap<>();
-    private static final Set<BlockPos> activePosterOrigins = new HashSet<>();
+    private static final Set<BlockPos> hiddenBlocks = new HashSet<>();
     // Store original block states to restore them later
     private static final Map<BlockPos, BlockState> originalBlockStates = new HashMap<>();
     private static int nextClientEntityId = -1; // Negative IDs for client-only entities
+    private static Method cachedBlockChanged;
+    private static Method cachedSetBlockDirty;
     
     // Separate cache for poster text data (independent of PosterEntity and BlockEntity)
     private static class PosterTextData {
@@ -78,6 +81,8 @@ public class ClientPosterManager {
         
         // Remove existing client poster at this position if any
         removeClientPoster(pos);
+        hiddenBlocks.add(pos);
+        forceRebuild(clientLevel, pos, originalBlockState);
         
         // Create new PosterEntity
         PosterEntity posterEntity = new PosterEntity(
@@ -415,6 +420,7 @@ public class ClientPosterManager {
     public static void removeClientPoster(BlockPos pos) {
         PosterEntity existing = clientPosters.remove(pos);
         BlockState originalState = originalBlockStates.remove(pos);
+        hiddenBlocks.remove(pos);
         
         if (existing != null) {
             Minecraft minecraft = Minecraft.getInstance();
@@ -425,6 +431,7 @@ public class ClientPosterManager {
                 // Restore block on client (visual only, doesn't affect server)
                 if (originalState != null) {
                     clientLevel.setBlock(pos, originalState, 3);
+                    forceRebuild(clientLevel, pos, originalState);
                     LOGGER.debug("Removed client-side PosterEntity at {} and restored block", pos);
                 } else {
                     LOGGER.debug("Removed client-side PosterEntity at {}", pos);
@@ -454,7 +461,7 @@ public class ClientPosterManager {
     }
 
     public static boolean isPosterHidden(BlockPos pos) {
-        return clientPosters.containsKey(pos) || activePosterOrigins.contains(pos);
+        return hiddenBlocks.contains(pos);
     }
     
     /**
@@ -473,20 +480,22 @@ public class ClientPosterManager {
         if (!(minecraft.level instanceof ClientLevel clientLevel)) {
             return;
         }
-        activePosterOrigins.clear();
-        if (minecraft.player != null) {
-            AABB scanBox = minecraft.player.getBoundingBox().inflate(256.0);
-            for (PosterEntity entity : clientLevel.getEntitiesOfClass(PosterEntity.class, scanBox)) {
-                BlockPos origin = entity.getOriginPos();
-                if (origin != null) {
-                    activePosterOrigins.add(origin);
+
+        // Cleanup stale client posters to avoid leaving blocks hidden.
+        java.util.Iterator<Map.Entry<BlockPos, PosterEntity>> iterator = clientPosters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<BlockPos, PosterEntity> entry = iterator.next();
+            PosterEntity entity = entry.getValue();
+            if (entity == null || entity.isRemoved() || !entity.isAlive()) {
+                BlockPos pos = entry.getKey();
+                BlockState originalState = originalBlockStates.remove(pos);
+                hiddenBlocks.remove(pos);
+                if (originalState != null) {
+                    clientLevel.setBlock(pos, originalState, 3);
+                    forceRebuild(clientLevel, pos, originalState);
+                    LOGGER.debug("ClientPosterManager.tick: Restored block for stale poster at {}", pos);
                 }
-            }
-        }
-        for (PosterEntity entity : clientPosters.values()) {
-            BlockPos origin = entity.getOriginPos();
-            if (origin != null) {
-                activePosterOrigins.add(origin);
+                iterator.remove();
             }
         }
         
@@ -738,6 +747,7 @@ public class ClientPosterManager {
         
         clientPosters.clear();
         originalBlockStates.clear();
+        hiddenBlocks.clear();
         posterTextCache.clear();
         oldposterVariantCache.clear();
         targetPlayerNameCache.clear();
@@ -747,5 +757,55 @@ public class ClientPosterManager {
         neutka.marallys.marallyzen.client.poster.text.PosterTextTextureCache.clear();
         
         LOGGER.debug("Cleared all client-side PosterEntity instances, text cache, variant cache, texture cache, and restored blocks");
+    }
+
+    private static void forceRebuild(ClientLevel level, BlockPos pos, BlockState state) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.levelRenderer == null) {
+            return;
+        }
+        if (state == null) {
+            state = level.getBlockState(pos);
+        }
+        try {
+            if (cachedBlockChanged == null) {
+                cachedBlockChanged = minecraft.levelRenderer.getClass().getMethod(
+                    "blockChanged", ClientLevel.class, BlockPos.class, BlockState.class, BlockState.class, int.class
+                );
+                cachedBlockChanged.setAccessible(true);
+            }
+        } catch (ReflectiveOperationException ignored) {
+            cachedBlockChanged = null;
+        }
+        try {
+            if (cachedSetBlockDirty == null) {
+                cachedSetBlockDirty = minecraft.levelRenderer.getClass().getMethod(
+                    "setBlockDirty", BlockPos.class, BlockState.class, BlockState.class
+                );
+                cachedSetBlockDirty.setAccessible(true);
+            }
+        } catch (ReflectiveOperationException ignored) {
+            cachedSetBlockDirty = null;
+        }
+
+        if (cachedBlockChanged != null) {
+            try {
+                cachedBlockChanged.invoke(minecraft.levelRenderer, level, pos, state, state, 0);
+            } catch (ReflectiveOperationException ignored) {
+                // Ignore and fall back.
+            }
+        }
+        if (cachedSetBlockDirty != null) {
+            try {
+                cachedSetBlockDirty.invoke(minecraft.levelRenderer, pos, state, state);
+            } catch (ReflectiveOperationException ignored) {
+                // Ignore and fall back.
+            }
+        }
+        level.setSectionDirtyWithNeighbors(
+            SectionPos.blockToSectionCoord(pos.getX()),
+            SectionPos.blockToSectionCoord(pos.getY()),
+            SectionPos.blockToSectionCoord(pos.getZ())
+        );
     }
 }
