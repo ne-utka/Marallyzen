@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/drying_fish_rack"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/drying_fish_rack",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/drying_fish_rack",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/drying_fish_rack",
+                                         "y":  270
+                                     }
+                 }
+}

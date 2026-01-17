@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/fishing_rod"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/fishing_rod",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/fishing_rod",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/fishing_rod",
+                                         "y":  270
+                                     }
+                 }
+}

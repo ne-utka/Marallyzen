@@ -77,6 +77,16 @@ public class MarallyzenClient {
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_TABLE_BAR.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_CHAIR_BAR.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DRYING_FISH_RACK.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_NET_WALL_DECORATION.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD_RACK.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX_EMPTY.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PILE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD.get(), RenderType.cutout());
         });
     }
 

@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/fish"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/fish",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/fish",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/fish",
+                                         "y":  270
+                                     }
+                 }
+}

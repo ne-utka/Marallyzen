@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/fish_prize_wall_decoration"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/fish_prize_wall_decoration",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/fish_prize_wall_decoration",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/fish_prize_wall_decoration",
+                                         "y":  270
+                                     }
+                 }
+}

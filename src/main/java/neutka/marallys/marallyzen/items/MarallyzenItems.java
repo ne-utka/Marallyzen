@@ -125,6 +125,26 @@ public class MarallyzenItems {
 
     public static final DeferredItem<Item> WOODEN_BUCKET = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET);
+    public static final DeferredItem<Item> DRYING_FISH_RACK = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DRYING_FISH_RACK);
+    public static final DeferredItem<Item> FISH = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH);
+    public static final DeferredItem<Item> FISHING_NET_WALL_DECORATION = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_NET_WALL_DECORATION);
+    public static final DeferredItem<Item> FISHING_ROD = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD);
+    public static final DeferredItem<Item> FISHING_ROD_RACK = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD_RACK);
+    public static final DeferredItem<Item> FISH_BOX = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX);
+    public static final DeferredItem<Item> FISH_BOX_EMPTY = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX_EMPTY);
+    public static final DeferredItem<Item> FISH_PILE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PILE);
+    public static final DeferredItem<Item> FISH_PRIZE_WALL_DECORATION = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION);
+    public static final DeferredItem<Item> LEANING_FISHING_ROD = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD);
     public static final DeferredItem<Item> INTERACTIVE_CHAIN = ITEMS.register(
         "interactive_chain",
         () -> new InteractiveChainItem(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), new Item.Properties())
@@ -200,6 +220,16 @@ public class MarallyzenItems {
                 output.accept(WEST_TABLE_BAR.get());
                 output.accept(WEST_CHAIR_BAR.get());
                 output.accept(WOODEN_BUCKET.get());
+                output.accept(DRYING_FISH_RACK.get());
+                output.accept(FISH.get());
+                output.accept(FISHING_NET_WALL_DECORATION.get());
+                output.accept(FISHING_ROD.get());
+                output.accept(FISHING_ROD_RACK.get());
+                output.accept(FISH_BOX.get());
+                output.accept(FISH_BOX_EMPTY.get());
+                output.accept(FISH_PILE.get());
+                output.accept(FISH_PRIZE_WALL_DECORATION.get());
+                output.accept(LEANING_FISHING_ROD.get());
             })
             .build()
     );

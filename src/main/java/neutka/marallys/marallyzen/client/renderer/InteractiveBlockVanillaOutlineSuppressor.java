@@ -9,6 +9,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.blocks.InteractiveBlockTargeting;
+import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
 public class InteractiveBlockVanillaOutlineSuppressor {
@@ -26,7 +27,8 @@ public class InteractiveBlockVanillaOutlineSuppressor {
 
         BlockHitResult blockHit = (BlockHitResult) target;
         if (InteractiveBlockTargeting.getType(mc.level.getBlockState(blockHit.getBlockPos()))
-            != InteractiveBlockTargeting.Type.NONE) {
+            != InteractiveBlockTargeting.Type.NONE
+            || MarallyzenBlocks.isBlocksTabBlock(mc.level.getBlockState(blockHit.getBlockPos()))) {
             event.setCanceled(true);
         }
     }

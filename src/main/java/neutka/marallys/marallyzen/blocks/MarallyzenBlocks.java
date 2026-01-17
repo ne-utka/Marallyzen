@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.blocks;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.block.SoundType;
@@ -177,14 +178,18 @@ public class MarallyzenBlocks {
             .strength(1.0f)
             .sound(SoundType.WOOD)
             .noOcclusion(),
-            "assets/marallyzen/models/block/barrel_full_pile.json"));
+            "assets/marallyzen/models/block/barrel_full_pile.json",
+            true,
+            true));
 
     public static final DeferredBlock<Block> COACH = BLOCKS.register("coach",
         () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
             .strength(1.5f)
             .sound(SoundType.WOOD)
             .noOcclusion(),
-            "assets/marallyzen/models/block/coach.json"));
+            "assets/marallyzen/models/block/coach.json",
+            true,
+            true));
 
     public static final DeferredBlock<Block> LARGE_CACTUS_POT = BLOCKS.register("large_cactus_pot",
         () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
@@ -227,4 +232,129 @@ public class MarallyzenBlocks {
             .sound(SoundType.WOOD)
             .noOcclusion(),
             "assets/marallyzen/models/block/wooden_bucket.json"));
+
+    public static final DeferredBlock<Block> DRYING_FISH_RACK = BLOCKS.register("drying_fish_rack",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/drying_fish_rack.json"));
+
+    public static final DeferredBlock<Block> FISH = BLOCKS.register("fish",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fish.json"));
+
+    public static final DeferredBlock<Block> FISHING_NET_WALL_DECORATION = BLOCKS.register("fishing_net_wall_decoration",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fishing_net_wall_decoration.json"));
+
+    public static final DeferredBlock<Block> FISHING_ROD = BLOCKS.register("fishing_rod",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fishing_rod.json",
+            true,
+            false,
+            0,
+            true,
+            -0.125,
+            0.235,
+            false,
+            false,
+            true,
+            0.21875,
+            -0.625));
+
+    public static final DeferredBlock<Block> FISHING_ROD_RACK = BLOCKS.register("fishing_rod_rack",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fishing_rod_rack.json",
+            true,
+            false,
+            0,
+            true,
+            0.0,
+            0.0,
+            false,
+            false,
+            true));
+
+    public static final DeferredBlock<Block> FISH_BOX = BLOCKS.register("fish_box",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fish_box.json"));
+
+    public static final DeferredBlock<Block> FISH_BOX_EMPTY = BLOCKS.register("fish_box_empty",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fish_box_empty.json"));
+
+    public static final DeferredBlock<Block> FISH_PILE = BLOCKS.register("fish_pile",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fish_pile.json"));
+
+    public static final DeferredBlock<Block> FISH_PRIZE_WALL_DECORATION = BLOCKS.register("fish_prize_wall_decoration",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/fish_prize_wall_decoration.json"));
+
+    public static final DeferredBlock<Block> LEANING_FISHING_ROD = BLOCKS.register("leaning_fishing_rod",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/leaning_fishing_rod.json",
+            true,
+            false,
+            0,
+            true,
+            -0.125,
+            0.234375,
+            false,
+            false,
+            true,
+            0.21875,
+            -0.625));
+
+    public static boolean isBlocksTabBlock(BlockState state) {
+        return state.is(BANK_SIGN.get())
+            || state.is(BAR_SIGN.get())
+            || state.is(BARREL_FULL.get())
+            || state.is(BARREL_FULL_PILE.get())
+            || state.is(COACH.get())
+            || state.is(LARGE_CACTUS_POT.get())
+            || state.is(MEDIUM_CACTUS_POT.get())
+            || state.is(MINI_CACTUS_POT.get())
+            || state.is(WEST_TABLE_BAR.get())
+            || state.is(WEST_CHAIR_BAR.get())
+            || state.is(WOODEN_BUCKET.get())
+            || state.is(DRYING_FISH_RACK.get())
+            || state.is(FISH.get())
+            || state.is(FISHING_NET_WALL_DECORATION.get())
+            || state.is(FISHING_ROD.get())
+            || state.is(FISHING_ROD_RACK.get())
+            || state.is(FISH_BOX.get())
+            || state.is(FISH_BOX_EMPTY.get())
+            || state.is(FISH_PILE.get())
+            || state.is(FISH_PRIZE_WALL_DECORATION.get())
+            || state.is(LEANING_FISHING_ROD.get());
+    }
 }
