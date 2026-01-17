@@ -29,6 +29,7 @@ public class MarallyzenItems {
     public static final DeferredItem<Item> PIPE_WRENCH = ITEMS.registerSimpleItem("pipe_wrench");
     public static final DeferredItem<Item> WRENCH = ITEMS.registerSimpleItem("wrench");
     public static final DeferredItem<Item> CELLPHONE = ITEMS.registerSimpleItem("cellphone");
+    public static final DeferredItem<Item> PUMPGUN = ITEMS.registerSimpleItem("pumpgun");
     
     // Poster block items
     @SuppressWarnings("unchecked")
@@ -113,6 +114,7 @@ public class MarallyzenItems {
                 output.accept(CUTTERS.get());
                 output.accept(PIPE_WRENCH.get());
                 output.accept(WRENCH.get());
+                output.accept(PUMPGUN.get());
                 output.accept(VIDEO_CAMERA.get());
                 output.accept(CELLPHONE.get());
                 
