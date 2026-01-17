@@ -145,6 +145,36 @@ public class MarallyzenItems {
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION);
     public static final DeferredItem<Item> LEANING_FISHING_ROD = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD);
+    public static final DeferredItem<Item> TAVERN_BENCH = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BENCH);
+    public static final DeferredItem<Item> TAVERN_BIG_KEG = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG);
+    public static final DeferredItem<Item> TAVERN_BIG_KEG2 = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG2);
+    public static final DeferredItem<Item> TAVERN_BIG_TABLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_TABLE);
+    public static final DeferredItem<Item> TAVERN_KEG = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG);
+    public static final DeferredItem<Item> TAVERN_KEG2 = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG2);
+    public static final DeferredItem<Item> TAVERN_KEG_SUPPORT = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT);
+    public static final DeferredItem<Item> TAVERN_KEG_SUPPORT_DOUBLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT_DOUBLE);
+    public static final DeferredItem<Item> TAVERN_MULTIPLE_BOTTLES = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MULTIPLE_BOTTLES);
+    public static final DeferredItem<Item> TAVERN_MURAL_SHELF = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MURAL_SHELF);
+    public static final DeferredItem<Item> TAVERN_PILE_BOTTLES = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_PILE_BOTTLES);
+    public static final DeferredItem<Item> TAVERN_RED_BOTTLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_RED_BOTTLE);
+    public static final DeferredItem<Item> TAVERN_SMALL_GREEN_BOTTLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_SMALL_GREEN_BOTTLE);
+    public static final DeferredItem<Item> TAVERN_STOOL = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_STOOL);
+    public static final DeferredItem<Item> TAVERN_TABLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_TABLE);
     public static final DeferredItem<Item> INTERACTIVE_CHAIN = ITEMS.register(
         "interactive_chain",
         () -> new InteractiveChainItem(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), new Item.Properties())
@@ -230,6 +260,21 @@ public class MarallyzenItems {
                 output.accept(FISH_PILE.get());
                 output.accept(FISH_PRIZE_WALL_DECORATION.get());
                 output.accept(LEANING_FISHING_ROD.get());
+                output.accept(TAVERN_BENCH.get());
+                output.accept(TAVERN_BIG_KEG.get());
+                output.accept(TAVERN_BIG_KEG2.get());
+                output.accept(TAVERN_BIG_TABLE.get());
+                output.accept(TAVERN_KEG.get());
+                output.accept(TAVERN_KEG2.get());
+                output.accept(TAVERN_KEG_SUPPORT.get());
+                output.accept(TAVERN_KEG_SUPPORT_DOUBLE.get());
+                output.accept(TAVERN_MULTIPLE_BOTTLES.get());
+                output.accept(TAVERN_MURAL_SHELF.get());
+                output.accept(TAVERN_PILE_BOTTLES.get());
+                output.accept(TAVERN_RED_BOTTLE.get());
+                output.accept(TAVERN_SMALL_GREEN_BOTTLE.get());
+                output.accept(TAVERN_STOOL.get());
+                output.accept(TAVERN_TABLE.get());
             })
             .build()
     );

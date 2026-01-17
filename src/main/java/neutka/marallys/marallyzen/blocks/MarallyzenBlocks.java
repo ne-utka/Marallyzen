@@ -334,6 +334,111 @@ public class MarallyzenBlocks {
             0.21875,
             -0.625));
 
+    public static final DeferredBlock<Block> TAVERN_BENCH = BLOCKS.register("tavern_bench",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_bench.json"));
+
+    public static final DeferredBlock<Block> TAVERN_BIG_KEG = BLOCKS.register("tavern_big_keg",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_big_keg.json"));
+
+    public static final DeferredBlock<Block> TAVERN_BIG_KEG2 = BLOCKS.register("tavern_big_keg2",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_big_keg2.json"));
+
+    public static final DeferredBlock<Block> TAVERN_BIG_TABLE = BLOCKS.register("tavern_big_table",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_big_table.json"));
+
+    public static final DeferredBlock<Block> TAVERN_KEG = BLOCKS.register("tavern_keg",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_keg.json"));
+
+    public static final DeferredBlock<Block> TAVERN_KEG2 = BLOCKS.register("tavern_keg2",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_keg2.json"));
+
+    public static final DeferredBlock<Block> TAVERN_KEG_SUPPORT = BLOCKS.register("tavern_keg_support",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_keg_support.json"));
+
+    public static final DeferredBlock<Block> TAVERN_KEG_SUPPORT_DOUBLE = BLOCKS.register("tavern_keg_support_double",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_keg_support_double.json"));
+
+    public static final DeferredBlock<Block> TAVERN_MULTIPLE_BOTTLES = BLOCKS.register("tavern_multiple_bottles",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_multiple_bottles.json"));
+
+    public static final DeferredBlock<Block> TAVERN_MURAL_SHELF = BLOCKS.register("tavern_mural_shelf",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_mural_shelf.json"));
+
+    public static final DeferredBlock<Block> TAVERN_PILE_BOTTLES = BLOCKS.register("tavern_pile_bottles",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_pile_bottles.json"));
+
+    public static final DeferredBlock<Block> TAVERN_RED_BOTTLE = BLOCKS.register("tavern_red_bottle",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_red_bottle.json"));
+
+    public static final DeferredBlock<Block> TAVERN_SMALL_GREEN_BOTTLE = BLOCKS.register("tavern_small_green_bottle",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_small_green_bottle.json"));
+
+    public static final DeferredBlock<Block> TAVERN_STOOL = BLOCKS.register("tavern_stool",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_stool.json"));
+
+    public static final DeferredBlock<Block> TAVERN_TABLE = BLOCKS.register("tavern_table",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/tavern_furniture/tavern_table.json"));
+
     public static boolean isBlocksTabBlock(BlockState state) {
         return state.is(BANK_SIGN.get())
             || state.is(BAR_SIGN.get())
@@ -355,6 +460,21 @@ public class MarallyzenBlocks {
             || state.is(FISH_BOX_EMPTY.get())
             || state.is(FISH_PILE.get())
             || state.is(FISH_PRIZE_WALL_DECORATION.get())
-            || state.is(LEANING_FISHING_ROD.get());
+            || state.is(LEANING_FISHING_ROD.get())
+            || state.is(TAVERN_BENCH.get())
+            || state.is(TAVERN_BIG_KEG.get())
+            || state.is(TAVERN_BIG_KEG2.get())
+            || state.is(TAVERN_BIG_TABLE.get())
+            || state.is(TAVERN_KEG.get())
+            || state.is(TAVERN_KEG2.get())
+            || state.is(TAVERN_KEG_SUPPORT.get())
+            || state.is(TAVERN_KEG_SUPPORT_DOUBLE.get())
+            || state.is(TAVERN_MULTIPLE_BOTTLES.get())
+            || state.is(TAVERN_MURAL_SHELF.get())
+            || state.is(TAVERN_PILE_BOTTLES.get())
+            || state.is(TAVERN_RED_BOTTLE.get())
+            || state.is(TAVERN_SMALL_GREEN_BOTTLE.get())
+            || state.is(TAVERN_STOOL.get())
+            || state.is(TAVERN_TABLE.get());
     }
 }

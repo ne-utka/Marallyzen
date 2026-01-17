@@ -87,6 +87,21 @@ public class MarallyzenClient {
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PILE.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BENCH.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG2.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_TABLE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG2.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT_DOUBLE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MULTIPLE_BOTTLES.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MURAL_SHELF.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_PILE_BOTTLES.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_RED_BOTTLE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_SMALL_GREEN_BOTTLE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_STOOL.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_TABLE.get(), RenderType.cutout());
         });
     }
 

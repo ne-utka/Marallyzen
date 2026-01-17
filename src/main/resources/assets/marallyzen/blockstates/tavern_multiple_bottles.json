@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_multiple_bottles"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_multiple_bottles",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_multiple_bottles",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_multiple_bottles",
+                                         "y":  270
+                                     }
+                 }
+}

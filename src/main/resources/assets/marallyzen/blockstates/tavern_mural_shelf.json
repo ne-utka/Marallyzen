@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_mural_shelf"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_mural_shelf",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_mural_shelf",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_mural_shelf",
+                                         "y":  270
+                                     }
+                 }
+}

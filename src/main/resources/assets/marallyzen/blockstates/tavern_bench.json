@@ -1,0 +1,19 @@
+{
+    "variants":  {
+                     "facing=north":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_bench"
+                                      },
+                     "facing=south":  {
+                                          "model":  "marallyzen:block/tavern_furniture/tavern_bench",
+                                          "y":  180
+                                      },
+                     "facing=east":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_bench",
+                                         "y":  90
+                                     },
+                     "facing=west":  {
+                                         "model":  "marallyzen:block/tavern_furniture/tavern_bench",
+                                         "y":  270
+                                     }
+                 }
+}
