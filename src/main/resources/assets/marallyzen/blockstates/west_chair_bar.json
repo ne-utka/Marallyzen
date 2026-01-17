@@ -1,0 +1,8 @@
+﻿{
+  "variants": {
+    "facing=north": { "model": "marallyzen:block/west_chair_bar" },
+    "facing=east": { "model": "marallyzen:block/west_chair_bar", "y": 90 },
+    "facing=south": { "model": "marallyzen:block/west_chair_bar", "y": 180 },
+    "facing=west": { "model": "marallyzen:block/west_chair_bar", "y": 270 }
+  }
+}

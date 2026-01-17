@@ -1,0 +1,8 @@
+﻿{
+  "variants": {
+    "facing=north": { "model": "marallyzen:block/bar_sign" },
+    "facing=east": { "model": "marallyzen:block/bar_sign", "y": 90 },
+    "facing=south": { "model": "marallyzen:block/bar_sign", "y": 180 },
+    "facing=west": { "model": "marallyzen:block/bar_sign", "y": 270 }
+  }
+}

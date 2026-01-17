@@ -1,0 +1,8 @@
+﻿{
+  "variants": {
+    "facing=north": { "model": "marallyzen:block/coach" },
+    "facing=east": { "model": "marallyzen:block/coach", "y": 90 },
+    "facing=south": { "model": "marallyzen:block/coach", "y": 180 },
+    "facing=west": { "model": "marallyzen:block/coach", "y": 270 }
+  }
+}

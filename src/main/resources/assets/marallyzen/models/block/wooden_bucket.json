@@ -1,0 +1,240 @@
+﻿{
+    "format_version":  "1.21.6",
+    "credit":  "Made with Blockbench",
+    "texture_size":  [
+                         32,
+                         32
+                     ],
+    "textures":  {
+                     "0":  "marallyzen:block/wooden_bucket",
+                     "particle":  "marallyzen:block/wooden_bucket"
+                 },
+    "elements":  [
+                     {
+                         "from":  [
+                                      4,
+                                      0.0625,
+                                      4
+                                  ],
+                         "to":  [
+                                    12,
+                                    9.0625,
+                                    12
+                                ],
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         4.5625,
+                                                         8
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                0,
+                                                                0,
+                                                                4,
+                                                                4.5
+                                                            ],
+                                                     "texture":  "#0"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               4,
+                                                               0,
+                                                               8,
+                                                               4.5
+                                                           ],
+                                                    "texture":  "#0"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                0,
+                                                                4.5,
+                                                                4,
+                                                                9
+                                                            ],
+                                                     "texture":  "#0"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               4,
+                                                               4.5,
+                                                               8,
+                                                               9
+                                                           ],
+                                                    "texture":  "#0"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             12,
+                                                             4,
+                                                             8,
+                                                             0
+                                                         ],
+                                                  "texture":  "#0"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               12,
+                                                               4,
+                                                               8,
+                                                               8
+                                                           ],
+                                                    "texture":  "#0"
+                                                }
+                                   }
+                     },
+                     {
+                         "name":  "cube inverted",
+                         "from":  [
+                                      12,
+                                      9.0625,
+                                      12
+                                  ],
+                         "to":  [
+                                    4,
+                                    0.0625,
+                                    4
+                                ],
+                         "rotation":  {
+                                          "angle":  0,
+                                          "axis":  "y",
+                                          "origin":  [
+                                                         8,
+                                                         4.5625,
+                                                         8
+                                                     ]
+                                      },
+                         "faces":  {
+                                       "north":  {
+                                                     "uv":  [
+                                                                0,
+                                                                9,
+                                                                4,
+                                                                4.5
+                                                            ],
+                                                     "texture":  "#0"
+                                                 },
+                                       "east":  {
+                                                    "uv":  [
+                                                               4,
+                                                               9,
+                                                               8,
+                                                               4.5
+                                                           ],
+                                                    "texture":  "#0"
+                                                },
+                                       "south":  {
+                                                     "uv":  [
+                                                                0,
+                                                                4.5,
+                                                                4,
+                                                                0
+                                                            ],
+                                                     "texture":  "#0"
+                                                 },
+                                       "west":  {
+                                                    "uv":  [
+                                                               4,
+                                                               4.5,
+                                                               8,
+                                                               0
+                                                           ],
+                                                    "texture":  "#0"
+                                                },
+                                       "up":  {
+                                                  "uv":  [
+                                                             8,
+                                                             4,
+                                                             12,
+                                                             8
+                                                         ],
+                                                  "texture":  "#0"
+                                              },
+                                       "down":  {
+                                                    "uv":  [
+                                                               8,
+                                                               4,
+                                                               12,
+                                                               0
+                                                           ],
+                                                    "texture":  "#0"
+                                                }
+                                   }
+                     }
+                 ],
+    "display":  {
+                    "thirdperson_righthand":  {
+                                                  "rotation":  [
+                                                                   64.5,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                                  "translation":  [
+                                                                      0,
+                                                                      -2.75,
+                                                                      0
+                                                                  ]
+                                              },
+                    "thirdperson_lefthand":  {
+                                                 "rotation":  [
+                                                                  64.5,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                                 "translation":  [
+                                                                     0,
+                                                                     -2.75,
+                                                                     0
+                                                                 ]
+                                             },
+                    "ground":  {
+                                   "translation":  [
+                                                       0,
+                                                       3,
+                                                       0
+                                                   ],
+                                   "scale":  [
+                                                 0.25,
+                                                 0.25,
+                                                 0.25
+                                             ]
+                               },
+                    "gui":  {
+                                "rotation":  [
+                                                 30,
+                                                 -135,
+                                                 0
+                                             ],
+                                "translation":  [
+                                                    0,
+                                                    1.5,
+                                                    0
+                                                ],
+                                "scale":  [
+                                              0.90234,
+                                              0.90234,
+                                              0.90234
+                                          ]
+                            }
+                },
+    "groups":  [
+                   {
+                       "name":  "group",
+                       "origin":  [
+                                      8,
+                                      8,
+                                      8
+                                  ],
+                       "color":  0,
+                       "children":  [
+                                        0,
+                                        1
+                                    ]
+                   }
+               ],
+    "ambientocclusion":  false
+}

@@ -150,4 +150,81 @@ public class MarallyzenBlocks {
             .strength(0.5f)
             .sound(SoundType.METAL)
             .noOcclusion()));
+
+    public static final DeferredBlock<Block> BANK_SIGN = BLOCKS.register("bank_sign",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/bank_sign.json"));
+
+    public static final DeferredBlock<Block> BAR_SIGN = BLOCKS.register("bar_sign",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/bar_sign.json"));
+
+    public static final DeferredBlock<Block> BARREL_FULL = BLOCKS.register("barrel_full",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/barrel_full.json"));
+
+    public static final DeferredBlock<Block> BARREL_FULL_PILE = BLOCKS.register("barrel_full_pile",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/barrel_full_pile.json"));
+
+    public static final DeferredBlock<Block> COACH = BLOCKS.register("coach",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.5f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/coach.json"));
+
+    public static final DeferredBlock<Block> LARGE_CACTUS_POT = BLOCKS.register("large_cactus_pot",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(0.8f)
+            .sound(SoundType.STONE)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/large_cactus_pot.json"));
+
+    public static final DeferredBlock<Block> MEDIUM_CACTUS_POT = BLOCKS.register("medium_cactus_pot",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(0.8f)
+            .sound(SoundType.STONE)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/medium_cactus_pot.json"));
+
+    public static final DeferredBlock<Block> MINI_CACTUS_POT = BLOCKS.register("mini_cactus_pot",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(0.8f)
+            .sound(SoundType.STONE)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/mini_cactus_pot.json"));
+
+    public static final DeferredBlock<Block> WEST_TABLE_BAR = BLOCKS.register("west_table_bar",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/west_table_bar.json"));
+
+    public static final DeferredBlock<Block> WEST_CHAIR_BAR = BLOCKS.register("west_chair_bar",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/west_chair_bar.json"));
+
+    public static final DeferredBlock<Block> WOODEN_BUCKET = BLOCKS.register("wooden_bucket",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(0.8f)
+            .sound(SoundType.WOOD)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/wooden_bucket.json"));
 }

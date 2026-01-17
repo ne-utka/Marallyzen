@@ -1,4 +1,4 @@
-﻿package neutka.marallys.marallyzen.items;
+package neutka.marallys.marallyzen.items;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.CreativeModeTab;
@@ -92,6 +92,39 @@ public class MarallyzenItems {
     @SuppressWarnings("unchecked")
     public static final DeferredItem<Item> DICTAPHONE_SIMPLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DICTAPHONE_SIMPLE);
+
+    public static final DeferredItem<Item> BANK_SIGN = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN);
+
+    public static final DeferredItem<Item> BAR_SIGN = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BAR_SIGN);
+
+    public static final DeferredItem<Item> BARREL_FULL = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL);
+
+    public static final DeferredItem<Item> BARREL_FULL_PILE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL_PILE);
+
+    public static final DeferredItem<Item> COACH = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.COACH);
+
+    public static final DeferredItem<Item> LARGE_CACTUS_POT = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LARGE_CACTUS_POT);
+
+    public static final DeferredItem<Item> MEDIUM_CACTUS_POT = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MEDIUM_CACTUS_POT);
+
+    public static final DeferredItem<Item> MINI_CACTUS_POT = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MINI_CACTUS_POT);
+
+    public static final DeferredItem<Item> WEST_TABLE_BAR = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_TABLE_BAR);
+
+    public static final DeferredItem<Item> WEST_CHAIR_BAR = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_CHAIR_BAR);
+
+    public static final DeferredItem<Item> WOODEN_BUCKET = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET);
     public static final DeferredItem<Item> INTERACTIVE_CHAIN = ITEMS.register(
         "interactive_chain",
         () -> new InteractiveChainItem(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), new Item.Properties())
@@ -146,6 +179,27 @@ public class MarallyzenItems {
                 output.accept(VIDEO_CAMERA.get());
                 output.accept(DICTAPHONE_SIMPLE.get());
                 output.accept(INTERACTIVE_CHAIN.get());
+            })
+            .build()
+    );
+
+    public static final Supplier<CreativeModeTab> MARALLYZEN_BLOCKS_TAB = CREATIVE_MODE_TABS.register(
+        "marallyzen_blocks_tab",
+        () -> CreativeModeTab.builder()
+            .icon(() -> new ItemStack(POSTER_1.get()))
+            .title(net.minecraft.network.chat.Component.translatable("itemGroup.marallyzen.blocks"))
+            .displayItems((parameters, output) -> {
+                output.accept(BANK_SIGN.get());
+                output.accept(BAR_SIGN.get());
+                output.accept(BARREL_FULL.get());
+                output.accept(BARREL_FULL_PILE.get());
+                output.accept(COACH.get());
+                output.accept(LARGE_CACTUS_POT.get());
+                output.accept(MEDIUM_CACTUS_POT.get());
+                output.accept(MINI_CACTUS_POT.get());
+                output.accept(WEST_TABLE_BAR.get());
+                output.accept(WEST_CHAIR_BAR.get());
+                output.accept(WOODEN_BUCKET.get());
             })
             .build()
     );

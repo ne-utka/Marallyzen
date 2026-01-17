@@ -66,6 +66,17 @@ public class MarallyzenClient {
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_1.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_2.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BAR_SIGN.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL_PILE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.COACH.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LARGE_CACTUS_POT.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MEDIUM_CACTUS_POT.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MINI_CACTUS_POT.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_TABLE_BAR.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_CHAIR_BAR.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET.get(), RenderType.cutout());
         });
     }
 

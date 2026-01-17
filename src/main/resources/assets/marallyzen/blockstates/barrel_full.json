@@ -1,0 +1,8 @@
+﻿{
+  "variants": {
+    "facing=north": { "model": "marallyzen:block/barrel_full" },
+    "facing=east": { "model": "marallyzen:block/barrel_full", "y": 90 },
+    "facing=south": { "model": "marallyzen:block/barrel_full", "y": 180 },
+    "facing=west": { "model": "marallyzen:block/barrel_full", "y": 270 }
+  }
+}
