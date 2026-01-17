@@ -30,6 +30,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcExpressionManager;
+import net.minecraft.world.phys.AABB;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -363,10 +364,16 @@ public class NpcRegistry {
         if (level == null) {
             return 0;
         }
+        Map<String, Entity> existingEntities = scanExistingNpcEntities(level);
         Set<String> disabled = NpcStateStore.loadDisabled();
         int spawned = 0;
         for (NpcData data : npcDataMap.values()) {
             if (disabled.contains(data.getId())) {
+                continue;
+            }
+            Entity existing = existingEntities.get(data.getId());
+            if (existing != null) {
+                registerExistingNpcEntity(existing);
                 continue;
             }
             if (getNpc(data.getId()) != null) {
@@ -697,6 +704,7 @@ public class NpcRegistry {
         if (level == null) {
             return 0;
         }
+        Map<String, Entity> existingEntities = scanExistingNpcEntities(level);
         Set<String> disabled = NpcStateStore.loadDisabled();
         int spawned = 0;
         for (NpcData data : npcDataMap.values()) {
@@ -704,6 +712,11 @@ public class NpcRegistry {
                 continue;
             }
             if (data.getSpawnPos() == null) {
+                continue;
+            }
+            Entity existing = existingEntities.get(data.getId());
+            if (existing != null) {
+                registerExistingNpcEntity(existing);
                 continue;
             }
             if (getNpc(data.getId()) != null) {
@@ -1066,6 +1079,33 @@ public class NpcRegistry {
             return lower;
         }
         return VALK_PATTERN_RANDOM;
+    }
+
+    private static Map<String, Entity> scanExistingNpcEntities(ServerLevel level) {
+        Map<String, Entity> result = new HashMap<>();
+        AABB box = new AABB(
+            -3.0E7, level.getMinBuildHeight(), -3.0E7,
+            3.0E7, level.getMaxBuildHeight(), 3.0E7
+        );
+        for (GeckoNpcEntity entity : level.getEntitiesOfClass(GeckoNpcEntity.class, box)) {
+            if (entity == null || entity.isRemoved()) {
+                continue;
+            }
+            String npcId = entity.getNpcId();
+            if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
+                result.put(npcId, entity);
+            }
+        }
+        for (NpcEntity entity : level.getEntitiesOfClass(NpcEntity.class, box)) {
+            if (entity == null || entity.isRemoved()) {
+                continue;
+            }
+            String npcId = entity.getNpcId();
+            if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
+                result.put(npcId, entity);
+            }
+        }
+        return result;
     }
 
     /**
