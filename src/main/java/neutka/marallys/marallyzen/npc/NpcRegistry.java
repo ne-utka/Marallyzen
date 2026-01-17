@@ -193,6 +193,13 @@ public class NpcRegistry {
         }
         
         level.addFreshEntity(entity);
+
+        if (level instanceof ServerLevel serverLevel) {
+            NpcSavedData.get(serverLevel).putState(
+                    npcId,
+                    new NpcState(serverLevel.dimension(), entity.blockPosition(), entity.getYRot(), npcId, null, null)
+            );
+        }
         
         // After adding entity, ensure all nearby players can see it
         if (entity instanceof ServerPlayer fakePlayer) {
@@ -384,6 +391,10 @@ public class NpcRegistry {
                 ServerLevel stateLevel = level.getServer().getLevel(state.dimension());
                 if (stateLevel != null) {
                     try {
+                        BlockPos statePos = BlockPos.containing(state.x(), state.y(), state.z());
+                        if (!stateLevel.hasChunkAt(statePos)) {
+                            continue;
+                        }
                         spawnNpc(data.getId(), stateLevel, BlockPos.containing(state.x(), state.y(), state.z()), state.yaw(), state.pitch());
                         spawned++;
                         continue;
@@ -396,6 +407,9 @@ public class NpcRegistry {
                 continue;
             }
             try {
+                if (!level.hasChunkAt(data.getSpawnPos())) {
+                    continue;
+                }
                 spawnNpc(data.getId(), level, data.getSpawnPos());
                 spawned++;
             } catch (Exception e) {
@@ -723,6 +737,9 @@ public class NpcRegistry {
                 continue;
             }
             try {
+                if (!level.hasChunkAt(data.getSpawnPos())) {
+                    continue;
+                }
                 spawnNpc(data.getId(), level, data.getSpawnPos());
                 spawned++;
             } catch (Exception e) {
@@ -1081,7 +1098,7 @@ public class NpcRegistry {
         return VALK_PATTERN_RANDOM;
     }
 
-    private static Map<String, Entity> scanExistingNpcEntities(ServerLevel level) {
+    private Map<String, Entity> scanExistingNpcEntities(ServerLevel level) {
         Map<String, Entity> result = new HashMap<>();
         AABB box = new AABB(
             -3.0E7, level.getMinBuildHeight(), -3.0E7,
@@ -1092,6 +1109,13 @@ public class NpcRegistry {
                 continue;
             }
             String npcId = entity.getNpcId();
+            if (npcId == null || npcId.isEmpty()) {
+                String resolved = resolveNpcIdFromName(entity);
+                if (resolved != null) {
+                    entity.setNpcId(resolved);
+                    npcId = resolved;
+                }
+            }
             if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
                 result.put(npcId, entity);
             }
@@ -1101,11 +1125,46 @@ public class NpcRegistry {
                 continue;
             }
             String npcId = entity.getNpcId();
+            if (npcId == null || npcId.isEmpty()) {
+                String resolved = resolveNpcIdFromName(entity);
+                if (resolved != null) {
+                    entity.setNpcId(resolved);
+                    npcId = resolved;
+                }
+            }
             if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
                 result.put(npcId, entity);
             }
         }
         return result;
+    }
+
+    private String resolveNpcIdFromName(Entity entity) {
+        if (entity == null) {
+            return null;
+        }
+        net.minecraft.network.chat.Component customName = entity.getCustomName();
+        String name = customName != null ? customName.getString() : null;
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String match = null;
+        for (NpcData data : npcDataMap.values()) {
+            if (data == null) {
+                continue;
+            }
+            String dataName = data.getName();
+            String dataId = data.getId();
+            boolean nameMatches = dataName != null && !dataName.isBlank() && name.equalsIgnoreCase(dataName);
+            boolean idMatches = dataId != null && !dataId.isBlank() && name.equalsIgnoreCase(dataId);
+            if (nameMatches || idMatches) {
+                if (match != null && !match.equals(dataId)) {
+                    return null;
+                }
+                match = dataId;
+            }
+        }
+        return match;
     }
 
     /**

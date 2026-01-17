@@ -22,7 +22,6 @@ import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcLoader;
 import neutka.marallys.marallyzen.npc.NpcSpawner;
-import neutka.marallys.marallyzen.npc.NpcStateStore;
 import neutka.marallys.marallyzen.items.MarallyzenItems;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.audio.VoiceIntegration;
@@ -103,15 +102,12 @@ public class Marallyzen {
         registry.resetRuntimeState();
         NpcLoader.loadNpcsFromDirectory(registry);
         NpcSpawner.bootstrap(event.getServer().overworld(), registry);
-        var states = NpcStateStore.load();
-        int spawned = registry.spawnConfiguredNpcs(event.getServer().overworld(), states);
-        LOGGER.info("Marallyzen server started. Loaded {} NPCs, spawned {}.", registry.getAllNpcData().size(), spawned);
+        LOGGER.info("Marallyzen server started. Loaded {} NPCs, spawning via chunk loader.", registry.getAllNpcData().size());
     }
 
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         var registry = NpcClickHandler.getRegistry();
-        NpcStateStore.save(registry.captureNpcStates());
         neutka.marallys.marallyzen.npc.NpcSpawner.resetBootstrap();
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().shutdown();
         LOGGER.info("Marallyzen server stopping. Saved {} NPC state(s).", registry.captureNpcStates().size());

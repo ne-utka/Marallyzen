@@ -23,7 +23,9 @@ import neutka.marallys.marallyzen.npc.DialogScriptLoader;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcData;
 import neutka.marallys.marallyzen.npc.NpcLoader;
+import neutka.marallys.marallyzen.npc.NpcSavedData;
 import neutka.marallys.marallyzen.npc.NpcStateStore;
+import neutka.marallys.marallyzen.npc.NpcSpawner;
 
 import java.util.Objects;
 
@@ -148,8 +150,6 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
             
             // Reload NPCs from JSON files
             var registry = NpcClickHandler.getRegistry();
-            var states = registry.captureNpcStates();
-            NpcStateStore.save(states);
             registry.clearNpcData();
             NpcLoader.loadNpcsFromDirectory(registry);
             int removed = registry.despawnMissingNpcs();
@@ -158,7 +158,7 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
             int respawned = 0;
             ServerLevel serverLevel = context.getSource().getServer().overworld();
             if (serverLevel != null) {
-                respawned = registry.spawnConfiguredNpcs(serverLevel, states);
+                NpcSpawner.bootstrap(serverLevel, registry);
             } else {
                 Marallyzen.LOGGER.warn("Reload: overworld is not available, skipping NPC auto-spawn.");
             }
@@ -326,6 +326,9 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
             return 0;
         }
         registry.despawnNpc(npcId);
+        if (source.getLevel() instanceof ServerLevel serverLevel) {
+            NpcSavedData.get(serverLevel).removeState(npcId);
+        }
         NpcStateStore.addDisabled(npcId);
         NpcStateStore.save(registry.captureNpcStates());
         source.sendSuccess(

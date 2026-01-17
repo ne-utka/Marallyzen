@@ -50,17 +50,21 @@ public class NpcProtectionHandler {
         }
 
         NpcData npcData = NpcClickHandler.getRegistry().getNpcData(npcId);
-        if (npcData == null) {
-            return;
-        }
+        boolean shouldBeInvulnerable = npcData != null && npcData.getInvulnerable() != null
+                ? npcData.getInvulnerable()
+                : true;
 
         // If NPC is invulnerable, prevent death
-        boolean shouldBeInvulnerable = npcData.getInvulnerable() != null ? npcData.getInvulnerable() : true;
         if (shouldBeInvulnerable) {
             event.setCanceled(true);
             // Restore health to max
             entity.setHealth(entity.getMaxHealth());
+            return;
         }
+
+        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            NpcSavedData.get(serverLevel).removeState(npcId);
+        }
+        NpcStateStore.addDisabled(npcId);
     }
 }
-

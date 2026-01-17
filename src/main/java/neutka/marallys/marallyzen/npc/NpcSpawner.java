@@ -26,8 +26,11 @@ public final class NpcSpawner {
         bootstrapped = false;
         registerAllExisting(level, registry);
         NpcSavedData data = NpcSavedData.get(level);
-        syncSavedDataWithConfigs(data, registry, level);
+        if (data.getNpcStates().isEmpty()) {
+            syncSavedDataWithConfigs(data, registry, level);
+        }
         data.rebuildIndex();
+        spawnExistingFromSavedData(level, registry, data);
         bootstrapped = true;
     }
 
@@ -41,10 +44,10 @@ public final class NpcSpawner {
             return;
         }
         NpcRegistry registry = NpcClickHandler.getRegistry();
-        registerExistingEntities(level, registry, event.getChunk().getPos());
         if (!bootstrapped) {
             return;
         }
+        registerExistingEntities(level, registry, event.getChunk().getPos());
         spawnForChunk(level, registry, event.getChunk().getPos());
     }
 
@@ -61,11 +64,15 @@ public final class NpcSpawner {
             return;
         }
         NpcSavedData data = NpcSavedData.get(level);
+        Set<String> disabled = NpcStateStore.loadDisabled();
         Set<String> ids = data.getNpcIdsForChunk(level.dimension(), chunkPos.toLong());
         if (ids.isEmpty()) {
             return;
         }
         for (String npcId : ids) {
+            if (disabled.contains(npcId)) {
+                continue;
+            }
             if (registry.getNpc(npcId) != null) {
                 continue;
             }
@@ -195,6 +202,33 @@ public final class NpcSpawner {
             String appearanceId = npcData.getId();
             NpcState state = new NpcState(level.dimension(), spawnPos, 0.0f, appearanceId, null, null);
             data.putState(npcData.getId(), state);
+        }
+    }
+
+    private static void spawnExistingFromSavedData(ServerLevel level, NpcRegistry registry, NpcSavedData data) {
+        if (level == null || registry == null || data == null) {
+            return;
+        }
+        Set<String> disabled = NpcStateStore.loadDisabled();
+        for (var entry : data.getNpcStates().entrySet()) {
+            String npcId = entry.getKey();
+            NpcState state = entry.getValue();
+            if (npcId == null || state == null) {
+                continue;
+            }
+            if (disabled.contains(npcId)) {
+                continue;
+            }
+            if (!level.dimension().equals(state.dimension())) {
+                continue;
+            }
+            if (registry.getNpc(npcId) != null) {
+                continue;
+            }
+            if (!level.hasChunkAt(state.pos())) {
+                continue;
+            }
+            registry.spawnNpcFromState(npcId, level, state);
         }
     }
 }

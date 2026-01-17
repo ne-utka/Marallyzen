@@ -22,14 +22,14 @@ public class MarallyzenDenizenEvents {
         npcStateSaveTicks++;
         if (npcStateSaveTicks >= NPC_STATE_SAVE_INTERVAL) {
             npcStateSaveTicks = 0;
-            neutka.marallys.marallyzen.npc.NpcStateStore.save(NpcClickHandler.getRegistry().captureNpcStates());
+            // SavedData handles persistence; keep disabled list separate.
         }
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         MarallyzenFlagStore.saveAll();
-        neutka.marallys.marallyzen.npc.NpcStateStore.save(NpcClickHandler.getRegistry().captureNpcStates());
+        // SavedData handles persistence; keep disabled list separate.
         DenizenService.shutdown();
     }
 }
