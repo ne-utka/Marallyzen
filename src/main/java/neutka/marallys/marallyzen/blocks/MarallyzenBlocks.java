@@ -100,6 +100,13 @@ public class MarallyzenBlocks {
             .noOcclusion(),
             "assets/marallyzen/models/block/old_laptop.json"));
 
+    public static final DeferredBlock<Block> RADIO = BLOCKS.register("radio",
+        () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.METAL)
+            .noOcclusion(),
+            "assets/marallyzen/models/block/radio.json"));
+
     public static final DeferredBlock<Block> OLD_TV = BLOCKS.register("old_tv",
         () -> new OldTvBlock(BlockBehaviour.Properties.of()
             .strength(1.0f)

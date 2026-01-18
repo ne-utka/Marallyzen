@@ -24,32 +24,7 @@ public final class PosterNarrationService {
     }
 
     public static void tick() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) {
-            clearIfNeeded();
-            return;
-        }
-
-        Component message = null;
-        HitResult hit = mc.hitResult;
-        if (hit instanceof BlockHitResult blockHit) {
-            message = resolveBlockMessage(mc, blockHit);
-        } else if (hit instanceof EntityHitResult entityHit) {
-            message = resolveEntityMessage(mc, entityHit);
-        }
-        if (message == null) {
-            PosterEntity posterEntity = findPosterEntityInFront(mc);
-            if (posterEntity != null) {
-                message = resolvePosterEntityMessage(mc, posterEntity);
-            }
-        }
-
-        if (message != null) {
-            NarrationManager.getInstance().updateProximity(message, null, 1.0f);
-            wasShowing = true;
-        } else {
-            clearIfNeeded();
-        }
+        // Narration disabled (poster prompts rendered client-side).
     }
 
     private static Component resolveBlockMessage(Minecraft mc, BlockHitResult hit) {

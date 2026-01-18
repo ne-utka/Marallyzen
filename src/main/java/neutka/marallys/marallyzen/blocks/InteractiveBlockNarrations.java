@@ -1,6 +1,7 @@
 package neutka.marallys.marallyzen.blocks;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 
 /**
@@ -40,19 +41,19 @@ public final class InteractiveBlockNarrations {
     }
 
     public static Component oldLaptopMessage() {
-        return Component.translatable("narration.marallyzen.old_laptop_instruction", pkm());
+        return rmbPrompt("\u0412\u043a\u043b.");
     }
 
     public static Component oldTvMessage() {
-        return oldTvTurnOnMessage();
+        return rmbPrompt("\u0412\u043a\u043b.");
     }
 
     public static Component oldTvTurnOnMessage() {
-        return Component.translatable("narration.marallyzen.old_tv_turn_on", pkm());
+        return rmbPrompt("\u0412\u043a\u043b.");
     }
 
     public static Component oldTvTurnOffMessage() {
-        return Component.translatable("narration.marallyzen.old_tv_turn_off", pkm());
+        return rmbPrompt("\u0412\u044b\u043a\u043b.");
     }
 
     public static Component chainInstructionMessage() {
@@ -61,5 +62,13 @@ public final class InteractiveBlockNarrations {
 
     public static Component dictaphoneMessage() {
         return Component.translatable("narration.marallyzen.dictaphone_listen", pkm());
+    }
+
+    public static Component rmbPrompt(String label) {
+        Component separator = Component.literal(" >> ")
+            .withStyle(style -> style.withColor(TextColor.fromRgb(0x555555)));
+        Component text = Component.literal(label)
+            .withStyle(style -> style.withColor(TextColor.fromRgb(0xFFFFFF)));
+        return pkm().copy().append(Component.literal(" ")).append(separator).append(text);
     }
 }

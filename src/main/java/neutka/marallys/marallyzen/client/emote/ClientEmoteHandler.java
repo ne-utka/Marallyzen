@@ -5,6 +5,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder;
+import neutka.marallys.marallyzen.replay.client.ReplayClientRecorder;
+import neutka.marallys.marallyzen.replay.client.ReplayEmoteStateTracker;
 
 import java.io.InputStream;
 import java.util.HashSet;
@@ -953,6 +955,10 @@ public final class ClientEmoteHandler {
             return;
         }
 
+        if (ReplayClientRecorder.getInstance().isRecording()) {
+            ReplayEmoteStateTracker.setActive(entityId, emoteId);
+        }
+
         if (record) {
             CutsceneRecorder recorder = CutsceneRecorder.getInstance();
             if (recorder != null && recorder.isRecording()) {
@@ -964,6 +970,30 @@ public final class ClientEmoteHandler {
         playEmoteOnNpc(entity, emote);
     }
 
+    public static void handleEntity(Entity entity, String emoteId, boolean record) {
+        if (entity == null || emoteId == null || emoteId.isEmpty()) {
+            return;
+        }
+        Object emote = loadEmoteFromRegistry(emoteId);
+        if (emote == null) {
+            Marallyzen.LOGGER.warn("ClientEmoteHandler: Could not load emote '{}' for entity {}", emoteId, entity.getUUID());
+            return;
+        }
+
+        if (ReplayClientRecorder.getInstance().isRecording()) {
+            ReplayEmoteStateTracker.setActive(entity.getUUID(), emoteId);
+        }
+
+        if (record) {
+            CutsceneRecorder recorder = CutsceneRecorder.getInstance();
+            if (recorder != null && recorder.isRecording()) {
+                recorder.recordEmoteEvent(entity, emoteId);
+            }
+        }
+
+        playEmoteOnNpc(entity, emote);
+    }
+
     public static void stop(UUID entityId) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || entityId == null) {
@@ -972,6 +1002,16 @@ public final class ClientEmoteHandler {
         Entity entity = findEntity(mc, entityId);
         if (entity == null) {
             Marallyzen.LOGGER.warn("ClientEmoteHandler: Entity not found for UUID {} (stop)", entityId);
+            return;
+        }
+        if (ReplayClientRecorder.getInstance().isRecording()) {
+            ReplayEmoteStateTracker.clear(entityId);
+        }
+        stop(entity);
+    }
+
+    public static void stop(Entity entity) {
+        if (entity == null) {
             return;
         }
         try {

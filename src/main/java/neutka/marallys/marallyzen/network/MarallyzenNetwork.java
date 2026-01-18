@@ -245,6 +245,12 @@ public class MarallyzenNetwork {
                 OldTvBookBindPacket::handle
         );
 
+        registrar.playToServer(
+                RadioInteractPacket.TYPE,
+                RadioInteractPacket.STREAM_CODEC,
+                RadioInteractPacket::handle
+        );
+
         Marallyzen.LOGGER.info("Marallyzen network packets registered");
     }
 }

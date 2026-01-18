@@ -66,6 +66,8 @@ public class InteractiveBlockOutlineRenderer {
 
     private static final ResourceLocation OLD_LAPTOP_TEX =
         ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_laptop.png");
+    private static final ResourceLocation RADIO_TEX =
+        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/radio.png");
     private static final ResourceLocation OLD_TV_TEX =
         ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_tv.png");
     private static final ResourceLocation MIRROR_TEX =
@@ -108,6 +110,7 @@ public class InteractiveBlockOutlineRenderer {
         POSTER,
         MIRROR,
         OLD_LAPTOP,
+        RADIO,
         OLD_TV,
         VIDEO_CAMERA,
         CHAIN,
@@ -186,6 +189,7 @@ public class InteractiveBlockOutlineRenderer {
             case POSTER -> OutlineMode.POSTER;
             case MIRROR -> OutlineMode.MIRROR;
             case OLD_LAPTOP -> OutlineMode.OLD_LAPTOP;
+            case RADIO -> OutlineMode.RADIO;
             case OLD_TV -> OutlineMode.OLD_TV;
             case VIDEO_CAMERA -> null;
             case CHAIN -> OutlineMode.CHAIN;
@@ -212,6 +216,10 @@ public class InteractiveBlockOutlineRenderer {
         if (mode == OutlineMode.OLD_LAPTOP && block == MarallyzenBlocks.OLD_LAPTOP.get()) {
             return new OutlineSpec(OLD_LAPTOP_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
                 OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/old_laptop.json"));
+        }
+        if (mode == OutlineMode.RADIO && block == MarallyzenBlocks.RADIO.get()) {
+            return new OutlineSpec(RADIO_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
+                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/radio.json"));
         }
         if (mode == OutlineMode.OLD_TV && block == MarallyzenBlocks.OLD_TV.get()) {
             return new OutlineSpec(OLD_TV_TEX, 0.0f, 0.0f, 0.0f, 0.0f,

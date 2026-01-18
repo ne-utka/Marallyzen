@@ -149,6 +149,13 @@ public class NarrationOverlay {
     public Component getText() {
         return text;
     }
+
+    /**
+     * Updates the displayed text without restarting the animation state.
+     */
+    public void updateText(Component text) {
+        this.text = text;
+    }
     
     /**
      * Gets the NPC UUID associated with this narration.
@@ -190,4 +197,3 @@ public class NarrationOverlay {
         }
     }
 }
-

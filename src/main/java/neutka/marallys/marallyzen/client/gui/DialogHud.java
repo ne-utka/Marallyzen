@@ -1,7 +1,9 @@
 package neutka.marallys.marallyzen.client.gui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
+import org.lwjgl.opengl.GL11;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -10,6 +12,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
+import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
+import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -505,6 +509,7 @@ public class DialogHud {
         
         // Get render buffer and font
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
+        MultiBufferSource textSource = new NoDepthTextBufferSource(bufferSource);
         Font font = mc.font;
         Matrix4f baseMatrix = poseStack.last().pose(); // Base matrix before any option-specific transformations
         
@@ -513,6 +518,9 @@ public class DialogHud {
         // Increased offset to position text higher (reduced by 10% then 5%: 16.0 * 0.9 * 0.95)
         float startY = PADDING_PIXELS + 13.68f; // Add extra 13.68 pixels above
         
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
         // Render options with background fill for selected option
         float currentY = startY;
         for (int i = 0; i < options.size(); i++) {
@@ -600,7 +608,7 @@ public class DialogHud {
                 textColor = (alpha << 24) | 0xFFFFFF;
             }
             // Use proper text rendering with see-through flag
-            drawText(textMatrix, bufferSource, font, optionText, 0, currentY + OPTION_HEIGHT_PIXELS / 2 - 4, textColor);
+            drawText(textMatrix, textSource, font, optionText, 0, currentY + OPTION_HEIGHT_PIXELS / 2 - 4, textColor);
             
             // Pop transformations if applied
             if (isSelected) {
@@ -611,6 +619,7 @@ public class DialogHud {
         }
         
         bufferSource.endBatch();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         poseStack.popPose();
     }
     
@@ -620,10 +629,9 @@ public class DialogHud {
      */
     private void fillRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
                          float x, float y, float width, float height, int color) {
-        // Use entityTranslucent render type with white texture for proper transparency in 3D
-        // This ensures proper depth testing and transparency support
+        // Use text see-through render type so background doesn't z-fight or get depth-culled.
         com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
-                net.minecraft.client.renderer.RenderType.entityTranslucent(
+                NoDepthTextRenderType.textNoDepth(
                         net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
                 )
         );
@@ -638,7 +646,7 @@ public class DialogHud {
         float top = y;
         float right = x + width;
         float bottom = y + height;
-        float z = -0.002f; // Slightly behind text to avoid z-fighting
+        float z = 0.01f; // Push behind text to avoid covering it
         
         // Full bright lighting and no overlay for entityTranslucent
         int light = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
@@ -685,9 +693,8 @@ public class DialogHud {
      * Draws text in 3D space.
      * Simplified version for rendering dialog options.
      */
-    private void drawText(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource, Font font,
+    private void drawText(Matrix4f matrix, MultiBufferSource bufferSource, Font font,
                          String text, float x, float y, int color) {
-        // Use see-through mode to avoid z-fighting with world geometry
         font.drawInBatch(
                 text,
                 x,

@@ -75,6 +75,9 @@ public class MarallyzenItems {
     public static final DeferredItem<Item> OLD_LAPTOP = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.OLD_LAPTOP);
     @SuppressWarnings("unchecked")
+    public static final DeferredItem<Item> RADIO = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.RADIO);
+    @SuppressWarnings("unchecked")
     public static final DeferredItem<Item> OLD_TV = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.OLD_TV);
     @SuppressWarnings("unchecked")
@@ -222,6 +225,7 @@ public class MarallyzenItems {
                 output.accept(PAPER_POSTER_1.get());
                 output.accept(PAPER_POSTER_2.get());
                 output.accept(OLD_LAPTOP.get());
+                output.accept(RADIO.get());
                 output.accept(OLD_TV.get());
                 output.accept(MIRROR.get());
                 output.accept(NAILED_PLANKS.get());

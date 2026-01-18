@@ -13,6 +13,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -20,13 +21,17 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Marker;
 import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.client.emote.ClientEmoteHandler;
 import neutka.marallys.marallyzen.replay.ReplayChunkSnapshot;
+import neutka.marallys.marallyzen.replay.ReplayClientFrame;
+import neutka.marallys.marallyzen.replay.ReplayClientTrack;
 import neutka.marallys.marallyzen.replay.ReplayData;
 import neutka.marallys.marallyzen.replay.ReplayEntityFrame;
 import neutka.marallys.marallyzen.replay.ReplayEntityInfo;
 import neutka.marallys.marallyzen.replay.ReplayServerSnapshot;
 import neutka.marallys.marallyzen.replay.ReplayServerTrack;
 import neutka.marallys.marallyzen.replay.ReplayStorage;
+import neutka.marallys.marallyzen.replay.client.ReplayEmoteVisualChannel;
 
 public final class ReplayPlayer {
     private static final ReplayPlayer INSTANCE = new ReplayPlayer();
@@ -43,6 +48,10 @@ public final class ReplayPlayer {
     private List<ReplayChunkSnapshot> chunkSnapshots = new ArrayList<>();
     private int nextChunkSnapshotIndex = 0;
     private long lastWorldTickApplied = -1;
+    private Map<UUID, List<ReplayEmoteEvent>> emoteEvents = new HashMap<>();
+    private Map<UUID, Integer> emoteEventIndices = new HashMap<>();
+    private Map<UUID, String> lastEmoteByEntity = new HashMap<>();
+    private long lastEmoteTickApplied = -1;
     private long currentTick = 0;
     private boolean playing = false;
     private boolean paused = false;
@@ -112,6 +121,7 @@ public final class ReplayPlayer {
         this.camera = createCamera(mode, cameraTrack);
         buildGhosts(data.getServerTrack());
         buildChunkSnapshots(data.getServerTrack());
+        buildEmoteEvents(data.getClientTrack());
 
         this.currentTick = 0;
         this.playing = true;
@@ -142,6 +152,10 @@ public final class ReplayPlayer {
         this.chunkSnapshots = new ArrayList<>();
         this.nextChunkSnapshotIndex = 0;
         this.lastWorldTickApplied = -1;
+        this.emoteEvents = new HashMap<>();
+        this.emoteEventIndices = new HashMap<>();
+        this.lastEmoteByEntity = new HashMap<>();
+        this.lastEmoteTickApplied = -1;
         this.currentTick = 0;
         this.playing = false;
         this.paused = false;
@@ -192,6 +206,7 @@ public final class ReplayPlayer {
         }
         applyWorldSnapshot(time);
         applyGhosts(time);
+        applyEmoteEvents(time);
         if (camera != null && mc.gameRenderer != null) {
             camera.apply(mc.gameRenderer.getMainCamera(), time);
         }
@@ -244,6 +259,48 @@ public final class ReplayPlayer {
         for (GhostEntity ghost : ghosts.values()) {
             ghost.apply(time);
         }
+    }
+
+    private void applyEmoteEvents(float time) {
+        if (emoteEvents.isEmpty()) {
+            return;
+        }
+        long tick = (long) time;
+        if (tick < lastEmoteTickApplied) {
+            for (UUID entityId : lastEmoteByEntity.keySet()) {
+                GhostEntity ghost = ghosts.get(entityId);
+                if (ghost != null && ghost.getEntity() != null) {
+                    ClientEmoteHandler.stop(ghost.getEntity());
+                }
+            }
+            emoteEventIndices.clear();
+            lastEmoteByEntity.clear();
+        }
+
+        for (Map.Entry<UUID, List<ReplayEmoteEvent>> entry : emoteEvents.entrySet()) {
+            UUID entityId = entry.getKey();
+            List<ReplayEmoteEvent> events = entry.getValue();
+            if (events == null || events.isEmpty()) {
+                continue;
+            }
+            int index = emoteEventIndices.getOrDefault(entityId, 0);
+            while (index < events.size() && events.get(index).tick <= tick) {
+                ReplayEmoteEvent event = events.get(index);
+                GhostEntity ghost = ghosts.get(entityId);
+                if (ghost != null && ghost.getEntity() != null) {
+                    if (event.stop) {
+                        ClientEmoteHandler.stop(ghost.getEntity());
+                        lastEmoteByEntity.remove(entityId);
+                    } else if (event.emoteId != null && !event.emoteId.isEmpty()) {
+                        ClientEmoteHandler.handleEntity(ghost.getEntity(), event.emoteId, false);
+                        lastEmoteByEntity.put(entityId, event.emoteId);
+                    }
+                }
+                index++;
+            }
+            emoteEventIndices.put(entityId, index);
+        }
+        lastEmoteTickApplied = tick;
     }
 
     private ReplayCamera createCamera(ReplayCameraMode mode, ReplayCameraTrack track) {
@@ -299,6 +356,39 @@ public final class ReplayPlayer {
         }
         chunkSnapshots.addAll(serverTrack.getChunkSnapshots());
         chunkSnapshots.sort(Comparator.comparingLong(ReplayChunkSnapshot::tick));
+    }
+
+    private void buildEmoteEvents(ReplayClientTrack clientTrack) {
+        emoteEvents = new HashMap<>();
+        emoteEventIndices = new HashMap<>();
+        lastEmoteByEntity = new HashMap<>();
+        lastEmoteTickApplied = -1;
+        if (clientTrack == null || clientTrack.getFrames().isEmpty()) {
+            return;
+        }
+        for (ReplayClientFrame frame : clientTrack.getFrames()) {
+            long tick = frame.getTick();
+            for (Map.Entry<UUID, CompoundTag> entry : frame.getEntityVisuals().entrySet()) {
+                CompoundTag entityTag = entry.getValue();
+                if (entityTag == null || !entityTag.contains(ReplayEmoteVisualChannel.CHANNEL_ID)) {
+                    continue;
+                }
+                CompoundTag emoteTag = entityTag.getCompound(ReplayEmoteVisualChannel.CHANNEL_ID);
+                if (emoteTag.isEmpty()) {
+                    continue;
+                }
+                boolean stop = emoteTag.getBoolean("stop");
+                String emoteId = emoteTag.getString("id");
+                if (!stop && (emoteId == null || emoteId.isEmpty())) {
+                    continue;
+                }
+                emoteEvents.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
+                    .add(new ReplayEmoteEvent(tick, emoteId, stop));
+            }
+        }
+        for (List<ReplayEmoteEvent> events : emoteEvents.values()) {
+            events.sort(Comparator.comparingLong(event -> event.tick));
+        }
     }
 
     private Entity createGhostEntity(ClientLevel level, ReplayEntityInfo info) {
@@ -358,6 +448,18 @@ public final class ReplayPlayer {
         ghosts.clear();
         if (cameraEntity != null) {
             cameraEntity.remove(Entity.RemovalReason.DISCARDED);
+        }
+    }
+
+    private static final class ReplayEmoteEvent {
+        private final long tick;
+        private final String emoteId;
+        private final boolean stop;
+
+        private ReplayEmoteEvent(long tick, String emoteId, boolean stop) {
+            this.tick = tick;
+            this.emoteId = emoteId;
+            this.stop = stop;
         }
     }
 }

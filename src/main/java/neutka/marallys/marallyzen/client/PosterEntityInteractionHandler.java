@@ -1,7 +1,6 @@
 package neutka.marallys.marallyzen.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -14,7 +13,6 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.entity.PosterEntity;
 import neutka.marallys.marallyzen.client.ClientPosterManager;
-import neutka.marallys.marallyzen.client.narration.NarrationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -203,26 +201,7 @@ public class PosterEntityInteractionHandler {
      * @param posterNumber The poster number (11 = oldposter, which doesn't show narration)
      */
     public static void showFlipNarration(PosterEntity posterEntity) {
-        if (posterEntity == null) {
-            return;
-        }
-        int posterNumber = posterEntity.getPosterNumber();
-        // Don't show narration for oldposter (ID 11)
-        if (posterNumber == 11) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) {
-            return;
-        }
-        boolean flipped = posterEntity.isFlipped();
-        Component narrationText = flipped
-            ? neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations.posterFlipToFrontMessage()
-            : neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations.posterFlipToBackMessage();
-        NarrationManager manager = NarrationManager.getInstance();
-        // Use very long stay time (999999 ticks) - will be cleared when poster leaves VIEWING state
-        manager.startNarration(narrationText, null, 5, 999999, 3);
+        return;
     }
     
     /**
@@ -239,7 +218,6 @@ public class PosterEntityInteractionHandler {
      * Clears narration when poster leaves VIEWING state.
      */
     public static void clearFlipNarration() {
-        NarrationManager manager = NarrationManager.getInstance();
-        manager.clearNarration();
+        return;
     }
 }

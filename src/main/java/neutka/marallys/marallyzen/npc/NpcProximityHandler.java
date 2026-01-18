@@ -381,7 +381,7 @@ public class NpcProximityHandler {
         // Send message to chat if enabled (default: true)
         boolean showInChat = npcData.getShowProximityTextInChat() != null ? npcData.getShowProximityTextInChat() : true;
         if (showInChat) {
-            Component chatMessage = createFormattedMessage(npcName, proximityText, serverLevel);
+            Component chatMessage = buildRmbPrompt("\u0414\u0438\u0430\u043b\u043e\u0433");
             player.sendSystemMessage(chatMessage);
         }
         
@@ -428,6 +428,9 @@ public class NpcProximityHandler {
         if (player.connection == null) {
             return;
         }
+        if (hasDialog(npcData)) {
+            return;
+        }
         
         // If animation is at 0, clear proximity overlay
         if (animationProgress <= 0.0f) {
@@ -445,16 +448,7 @@ public class NpcProximityHandler {
         UUID currentNpcUuid = npcEntity != null ? npcEntity.getUUID() : null;
         UUID openDialogNpcUuid = playerOpenDialogNpc.get(playerId);
         
-        Component proximityMessage;
-        boolean isNavigationMessage = false;
-        if (openDialogNpcUuid != null && currentNpcUuid != null && openDialogNpcUuid.equals(currentNpcUuid)) {
-            // Dialog is open - show navigation instructions
-            proximityMessage = createNavigationMessage(npcName, serverLevel);
-            isNavigationMessage = true;
-        } else {
-            // Normal proximity text
-            proximityMessage = createFormattedMessage(npcName, proximityText, serverLevel);
-        }
+        Component proximityMessage = createFormattedMessage(npcName, proximityText, serverLevel);
         
         // Send proximity packet with animation progress as alpha
         // animationProgress goes from 0.0 to 1.0, which is perfect for alpha
@@ -555,6 +549,14 @@ public class NpcProximityHandler {
      */
     private static Component createNavigationMessage(String npcName, ServerLevel serverLevel) {
         return Component.translatable("narration.marallyzen.dialog_navigation", NarrationIcons.rmb());
+    }
+
+    private static Component buildRmbPrompt(String label) {
+        Component separator = Component.literal(" >> ")
+            .withStyle(style -> style.withColor(TextColor.fromRgb(0x555555)));
+        Component text = Component.literal(label)
+            .withStyle(style -> style.withColor(TextColor.fromRgb(0xFFFFFF)));
+        return NarrationIcons.rmb().copy().append(Component.literal(" ")).append(separator).append(text);
     }
     
     /**

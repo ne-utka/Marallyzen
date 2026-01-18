@@ -14,6 +14,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.ItemStack;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -115,15 +116,32 @@ public class CutsceneRecorder {
         private final String name;
         private final String skinValue;
         private final String skinSignature;
+        private final String npcId;
+        private final String geckoModel;
+        private final String geckoAnimation;
+        private final String geckoTexture;
+        private final String expression;
 
         public RecordedActorInfo(UUID id, String entityTypeId, boolean player, String name,
-                                 String skinValue, String skinSignature) {
+                                 String skinValue, String skinSignature, String npcId,
+                                 String geckoModel, String geckoAnimation, String geckoTexture,
+                                 String expression) {
             this.id = id;
             this.entityTypeId = entityTypeId;
             this.player = player;
             this.name = name;
             this.skinValue = skinValue;
             this.skinSignature = skinSignature;
+            this.npcId = npcId;
+            this.geckoModel = geckoModel;
+            this.geckoAnimation = geckoAnimation;
+            this.geckoTexture = geckoTexture;
+            this.expression = expression;
+        }
+
+        public RecordedActorInfo(UUID id, String entityTypeId, boolean player, String name,
+                                 String skinValue, String skinSignature) {
+            this(id, entityTypeId, player, name, skinValue, skinSignature, null, null, null, null, null);
         }
 
         public UUID getId() {
@@ -148,6 +166,26 @@ public class CutsceneRecorder {
 
         public String getSkinSignature() {
             return skinSignature;
+        }
+
+        public String getNpcId() {
+            return npcId;
+        }
+
+        public String getGeckoModel() {
+            return geckoModel;
+        }
+
+        public String getGeckoAnimation() {
+            return geckoAnimation;
+        }
+
+        public String getGeckoTexture() {
+            return geckoTexture;
+        }
+
+        public String getExpression() {
+            return expression;
         }
     }
 
@@ -544,6 +582,11 @@ public class CutsceneRecorder {
                 String name = entity.getName().getString();
                 String skinValue = null;
                 String skinSignature = null;
+                String npcId = null;
+                String geckoModel = null;
+                String geckoAnimation = null;
+                String geckoTexture = null;
+                String expression = null;
                 if (isPlayer && entity instanceof AbstractClientPlayer clientPlayer) {
                     GameProfile profile = clientPlayer.getGameProfile();
                     if (profile != null) {
@@ -554,7 +597,21 @@ public class CutsceneRecorder {
                         }
                     }
                 }
-                info = new RecordedActorInfo(uuid, entityTypeId, isPlayer, name, skinValue, skinSignature);
+                if (entity instanceof GeckoNpcEntity geckoNpc) {
+                    npcId = geckoNpc.getNpcId();
+                    if (geckoNpc.getGeckolibModel() != null) {
+                        geckoModel = geckoNpc.getGeckolibModel().toString();
+                    }
+                    if (geckoNpc.getGeckolibAnimation() != null) {
+                        geckoAnimation = geckoNpc.getGeckolibAnimation().toString();
+                    }
+                    if (geckoNpc.getGeckolibTexture() != null) {
+                        geckoTexture = geckoNpc.getGeckolibTexture().toString();
+                    }
+                    expression = geckoNpc.getExpression();
+                }
+                info = new RecordedActorInfo(uuid, entityTypeId, isPlayer, name, skinValue, skinSignature, npcId,
+                    geckoModel, geckoAnimation, geckoTexture, expression);
                 recordedActors.put(uuid, info);
             }
 
@@ -676,6 +733,11 @@ public class CutsceneRecorder {
             String name = entity.getName().getString();
             String skinValue = null;
             String skinSignature = null;
+            String npcId = null;
+            String geckoModel = null;
+            String geckoAnimation = null;
+            String geckoTexture = null;
+            String expression = null;
             if (isPlayer && entity instanceof AbstractClientPlayer clientPlayer) {
                 GameProfile profile = clientPlayer.getGameProfile();
                 if (profile != null) {
@@ -686,7 +748,21 @@ public class CutsceneRecorder {
                     }
                 }
             }
-            info = new RecordedActorInfo(uuid, entityTypeId, isPlayer, name, skinValue, skinSignature);
+            if (entity instanceof GeckoNpcEntity geckoNpc) {
+                npcId = geckoNpc.getNpcId();
+                if (geckoNpc.getGeckolibModel() != null) {
+                    geckoModel = geckoNpc.getGeckolibModel().toString();
+                }
+                if (geckoNpc.getGeckolibAnimation() != null) {
+                    geckoAnimation = geckoNpc.getGeckolibAnimation().toString();
+                }
+                if (geckoNpc.getGeckolibTexture() != null) {
+                    geckoTexture = geckoNpc.getGeckolibTexture().toString();
+                }
+                expression = geckoNpc.getExpression();
+            }
+            info = new RecordedActorInfo(uuid, entityTypeId, isPlayer, name, skinValue, skinSignature, npcId,
+                geckoModel, geckoAnimation, geckoTexture, expression);
             recordedActors.put(uuid, info);
         }
         trackedActors.add(uuid);

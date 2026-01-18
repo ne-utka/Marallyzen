@@ -37,13 +37,32 @@ public class ProximityOverlay {
         if (text == null) {
             return;
         }
-        boolean changed = this.text == null || !this.text.equals(text) || (this.npcUuid != null && !this.npcUuid.equals(npcUuid));
+        boolean changed = hasMeaningfulChange(text, npcUuid);
         this.text = text;
         this.npcUuid = npcUuid;
         if (state == State.HIDDEN || state == State.FADE_OUT || changed) {
             state = State.FADE_IN;
             fadeInProgress = 0;
         }
+    }
+
+    private boolean hasMeaningfulChange(Component nextText, UUID nextNpcUuid) {
+        if (this.text == null) {
+            return true;
+        }
+        if (this.npcUuid != null && !this.npcUuid.equals(nextNpcUuid)) {
+            return true;
+        }
+        String currentValue = normalizeIconGlyphs(this.text.getString());
+        String nextValue = normalizeIconGlyphs(nextText.getString());
+        return !currentValue.equals(nextValue);
+    }
+
+    private static String normalizeIconGlyphs(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return value.replace('\ue901', '\ue900');
     }
 
     /**

@@ -24,6 +24,7 @@ import neutka.marallys.marallyzen.client.camera.CameraController;
 import neutka.marallys.marallyzen.client.camera.CameraManager;
 import neutka.marallys.marallyzen.client.cutscene.world.CutsceneWorldPlayback;
 import neutka.marallys.marallyzen.cutscene.world.CutsceneWorldTrack;
+import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -508,6 +509,9 @@ public class CutscenePreviewPlayer {
             }
             CutsceneRecorder.RecordedActorFrame first = frames.get(0);
             GhostActor ghost = new GhostActor(entity, frames);
+            if (entity instanceof GeckoNpcEntity && (info == null || info.getExpression() == null || info.getExpression().isBlank())) {
+                ghost.geckoAutoExpression = true;
+            }
             if (entity instanceof LivingEntity living) {
                 applyRecordedState(entity, living, first.getPose(), first.isCrouching(),
                     first.isSprinting(), first.isSwimming(), first.isFallFlying(),
@@ -564,6 +568,9 @@ public class CutscenePreviewPlayer {
         }
         CutsceneRecorder.RecordedActorFrame first = frames.get(0);
         GhostActor ghost = new GhostActor(entity, frames);
+        if (entity instanceof GeckoNpcEntity) {
+            ghost.geckoAutoExpression = true;
+        }
         entity.setPos(first.getPosition().x, first.getPosition().y, first.getPosition().z);
         entity.setYRot(first.getYaw());
         entity.setXRot(first.getPitch());
@@ -625,6 +632,17 @@ public class CutscenePreviewPlayer {
         }
         if (entity == null) {
             return null;
+        }
+        if (info != null && entity instanceof GeckoNpcEntity geckoNpc) {
+            geckoNpc.setNpcId(info.getNpcId());
+            String expression = info.getExpression();
+            if (expression == null || expression.isBlank()) {
+                expression = "idle";
+            }
+            geckoNpc.setExpression(expression);
+            geckoNpc.setGeckolibModel(safeParseResource(info.getGeckoModel()));
+            geckoNpc.setGeckolibAnimation(safeParseResource(info.getGeckoAnimation()));
+            geckoNpc.setGeckolibTexture(safeParseResource(info.getGeckoTexture()));
         }
         entity.setId(nextGhostEntityId--);
         entity.setNoGravity(true);
@@ -688,8 +706,8 @@ public class CutscenePreviewPlayer {
                 continue;
             }
             hideNameTag(actor.entity);
-            ActorPreviewState prevState = getRecordedActorStateNoLerp(actor.frames, currentTime - 1.0f);
-            ActorPreviewState curState = getRecordedActorStateNoLerp(actor.frames, currentTime);
+            ActorPreviewState prevState = getRecordedActorState(actor.frames, currentTime - 1.0f);
+            ActorPreviewState curState = getRecordedActorState(actor.frames, currentTime);
             if (curState == null || curState.position == null) {
                 continue;
             }
@@ -739,7 +757,27 @@ public class CutscenePreviewPlayer {
                 living.yHeadRotO = prevHeadYaw;
                 living.yBodyRotO = prevBodyYaw;
             }
-            actor.entity.setDeltaMovement(Vec3.ZERO);
+            if (actor.entity instanceof GeckoNpcEntity geckoNpc) {
+                Vec3 delta = Vec3.ZERO;
+                if (prevState != null && prevState.position != null) {
+                    delta = curState.position.subtract(prevState.position);
+                }
+                float speed = (float) delta.horizontalDistance();
+                if (actor.geckoAutoExpression) {
+                    if (actor.geckoMoving) {
+                        if (speed < 0.005f) {
+                            actor.geckoMoving = false;
+                            geckoNpc.setExpression("idle");
+                        }
+                    } else if (speed > 0.02f) {
+                        actor.geckoMoving = true;
+                        geckoNpc.setExpression("walk");
+                    }
+                }
+                geckoNpc.setDeltaMovement(delta);
+            } else {
+                actor.entity.setDeltaMovement(Vec3.ZERO);
+            }
         }
     }
 
@@ -1244,6 +1282,13 @@ public class CutscenePreviewPlayer {
         return start + (end - start) * t;
     }
 
+    private static ResourceLocation safeParseResource(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return ResourceLocation.tryParse(raw);
+    }
+
     private static float lerpAngle(float start, float end, float t) {
         float diff = end - start;
         if (Math.abs(start) <= 180.0f && Math.abs(end) <= 180.0f) {
@@ -1325,6 +1370,8 @@ public class CutscenePreviewPlayer {
         private float walkDistO;
         private float animationSpeed;
         private float animationSpeedOld;
+        private boolean geckoAutoExpression;
+        private boolean geckoMoving;
 
         private GhostActor(Entity entity, List<CutsceneRecorder.RecordedActorFrame> frames) {
             this.entity = entity;
@@ -1345,6 +1392,8 @@ public class CutscenePreviewPlayer {
             this.walkDistO = 0.0f;
             this.animationSpeed = 0.0f;
             this.animationSpeedOld = 0.0f;
+            this.geckoAutoExpression = false;
+            this.geckoMoving = false;
         }
     }
 

@@ -57,6 +57,11 @@ public class NarrationManager {
         lastNarrationEndTick = -1;
         narrationCompletePacketSent = false;
         ClientDictaphoneManager.onNarrationStart();
+
+        if (shouldKeepNarration(text, npcUuid)) {
+            narrationOverlay.updateText(text);
+            return;
+        }
         
         // IMPORTANT: Clear previous narration before starting new one to prevent overlap/duplication
         // This ensures that if a previous message is still displaying, it's immediately cleared
@@ -65,6 +70,30 @@ public class NarrationManager {
         }
         
         narrationOverlay.start(text, npcUuid, fadeInTicks, stayTicks, fadeOutTicks);
+    }
+
+    private boolean shouldKeepNarration(Component nextText, UUID nextNpcUuid) {
+        if (!narrationOverlay.isVisible()) {
+            return false;
+        }
+        Component currentText = narrationOverlay.getText();
+        if (currentText == null) {
+            return false;
+        }
+        UUID currentNpcUuid = narrationOverlay.getNpcUuid();
+        if (currentNpcUuid != null && !currentNpcUuid.equals(nextNpcUuid)) {
+            return false;
+        }
+        String currentValue = normalizeIconGlyphs(currentText.getString());
+        String nextValue = normalizeIconGlyphs(nextText.getString());
+        return currentValue.equals(nextValue);
+    }
+
+    private static String normalizeIconGlyphs(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return value.replace('\ue901', '\ue900');
     }
     
     /**

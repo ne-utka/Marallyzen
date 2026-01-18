@@ -11,6 +11,7 @@ public final class InteractiveBlockTargeting {
         POSTER,
         MIRROR,
         OLD_LAPTOP,
+        RADIO,
         OLD_TV,
         VIDEO_CAMERA,
         CHAIN,
@@ -29,6 +30,9 @@ public final class InteractiveBlockTargeting {
         }
         if (block == MarallyzenBlocks.OLD_LAPTOP.get()) {
             return Type.OLD_LAPTOP;
+        }
+        if (block == MarallyzenBlocks.RADIO.get()) {
+            return Type.RADIO;
         }
         if (block == MarallyzenBlocks.OLD_TV.get()) {
             return Type.OLD_TV;
@@ -50,26 +54,21 @@ public final class InteractiveBlockTargeting {
 
     public static Component getNarrationMessage(Type type) {
         return switch (type) {
-            case POSTER -> InteractiveBlockNarrations.posterMessage();
-            case MIRROR -> InteractiveBlockNarrations.mirrorMessage();
-            case OLD_LAPTOP -> InteractiveBlockNarrations.oldLaptopMessage();
-            case OLD_TV -> InteractiveBlockNarrations.oldTvMessage();
+            case POSTER -> null;
+            case MIRROR -> null;
+            case OLD_LAPTOP -> null;
+            case RADIO -> null;
+            case OLD_TV -> null;
             case VIDEO_CAMERA -> null;
             case CHAIN -> InteractiveBlockNarrations.chainInstructionMessage();
             case DICTAPHONE -> null;
-            case DICTAPHONE_SIMPLE -> InteractiveBlockNarrations.dictaphoneMessage();
+            case DICTAPHONE_SIMPLE -> null;
             case NONE -> null;
         };
     }
 
     public static Component getNarrationMessage(BlockState state) {
         Type type = getType(state);
-        if (type == Type.OLD_TV) {
-            if (state.hasProperty(OldTvBlock.ON) && state.getValue(OldTvBlock.ON)) {
-                return InteractiveBlockNarrations.oldTvTurnOffMessage();
-            }
-            return InteractiveBlockNarrations.oldTvTurnOnMessage();
-        }
         return getNarrationMessage(type);
     }
 }

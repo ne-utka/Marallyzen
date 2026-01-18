@@ -25,8 +25,8 @@ public class DialogHudRenderer {
     
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        // Render after entities but before particles
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+        // Render after particles so prompts are late in the world render order.
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null || mc.level == null) {
                 return;
@@ -53,4 +53,3 @@ public class DialogHudRenderer {
         // This handler was causing conflicts with DialogInputController
     }
 }
-

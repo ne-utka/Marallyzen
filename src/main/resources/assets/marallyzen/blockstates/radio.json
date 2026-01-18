@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "marallyzen:block/radio" },
+    "facing=east": { "model": "marallyzen:block/radio", "y": 90 },
+    "facing=south": { "model": "marallyzen:block/radio", "y": 180 },
+    "facing=west": { "model": "marallyzen:block/radio", "y": 270 }
+  }
+}

@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.loading.FMLPaths;
 import neutka.marallys.marallyzen.Marallyzen;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -24,8 +25,8 @@ import java.util.function.Supplier;
  * Supported formats: ogg, wav, mp3
  */
 public class MarallyzenAudioService {
-    
-    private static final Path AUDIO_BASE_DIR = FMLPaths.CONFIGDIR.get().resolve("marallyzen").resolve("audio");
+
+    private static final Path AUDIO_BASE_DIR = resolveAudioBaseDir();
     
     /**
      * Plays NPC audio (positional, with radius).
@@ -210,6 +211,78 @@ public class MarallyzenAudioService {
             return playFallbackSound(level, position, players, () -> SoundEvents.AMBIENT_CAVE.value());
         }
     }
+
+    public static long playRadioAudio(
+            ServerLevel level,
+            Vec3 position,
+            String audioFileName,
+            float radius,
+            boolean positional,
+            List<ServerPlayer> players
+    ) {
+        PlaybackHandle handle = playRadioAudioWithHandle(level, position, audioFileName, radius, positional, players);
+        return handle.durationMs();
+    }
+
+    public static PlaybackHandle playRadioAudioWithHandle(
+            ServerLevel level,
+            Vec3 position,
+            String audioFileName,
+            float radius,
+            boolean positional,
+            List<ServerPlayer> players
+    ) {
+        String resolvedPath = audioFileName;
+        if (resolvedPath != null && !resolvedPath.contains("/")) {
+            resolvedPath = "radio/" + resolvedPath;
+        }
+        Path audioFile = AUDIO_BASE_DIR.resolve(resolvedPath);
+
+        if (!audioFile.toFile().exists()) {
+            Marallyzen.LOGGER.warn("Radio audio file not found: {}", audioFile);
+            return new PlaybackHandle(-1, null);
+        }
+
+        try {
+            PlaybackHandle handle = playAudioViaPlasmoVoiceWithHandle(
+                    level,
+                    position,
+                    audioFile,
+                    radius,
+                    positional,
+                    players
+            );
+
+            if (handle.durationMs() > 0) {
+                return handle;
+            }
+
+            return new PlaybackHandle(-1, null);
+        } catch (Exception e) {
+            Marallyzen.LOGGER.error("Failed to play radio audio: {}", audioFileName, e);
+            return new PlaybackHandle(-1, null);
+        }
+    }
+
+    public static final class PlaybackHandle {
+        private final long durationMs;
+        private final Runnable stop;
+
+        public PlaybackHandle(long durationMs, Runnable stop) {
+            this.durationMs = durationMs;
+            this.stop = stop;
+        }
+
+        public long durationMs() {
+            return durationMs;
+        }
+
+        public void stop() {
+            if (stop != null) {
+                stop.run();
+            }
+        }
+    }
     
     /**
      * Plays audio via PlasmoVoice API 2.1.x using high-level API.
@@ -226,6 +299,18 @@ public class MarallyzenAudioService {
      * Uses only public API - no internal classes or methods.
      */
     private static long playAudioViaPlasmoVoice(
+            ServerLevel level,
+            Vec3 position,
+            Path audioFile,
+            float radius,
+            boolean positional,
+            List<ServerPlayer> players
+    ) {
+        PlaybackHandle handle = playAudioViaPlasmoVoiceWithHandle(level, position, audioFile, radius, positional, players);
+        return handle.durationMs();
+    }
+
+    private static PlaybackHandle playAudioViaPlasmoVoiceWithHandle(
             ServerLevel level,
             Vec3 position,
             Path audioFile,
@@ -254,7 +339,7 @@ public class MarallyzenAudioService {
             
             if (voiceServer == null || voiceServerClass == null) {
                 Marallyzen.LOGGER.warn("PlasmoVoice VoiceServer not available - using fallback");
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             // 2. Get ServerWorld (McServerWorld) from ServerLevel using McServerLib.getWorld(instance)
@@ -345,15 +430,15 @@ public class MarallyzenAudioService {
                 }
             } catch (NoSuchMethodException e) {
                 Marallyzen.LOGGER.error("PlasmoVoice getSourceLineManager() method not found - API version mismatch?");
-                return -1;
+                return new PlaybackHandle(-1, null);
             } catch (Exception e) {
                 Marallyzen.LOGGER.error("Failed to get SourceLineManager: {}", e.getMessage(), e);
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             if (sourceLineManager == null || sourceLineManagerClass == null) {
                 Marallyzen.LOGGER.error("PlasmoVoice SourceLineManager not available");
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             // 4. Get or create source line (use "proximity" line if available, otherwise create new one)
@@ -417,7 +502,7 @@ public class MarallyzenAudioService {
                     
                     if (builder == null) {
                         Marallyzen.LOGGER.error("createBuilder returned null");
-                        return -1;
+                        return new PlaybackHandle(-1, null);
                     }
                     
                     // Build the line
@@ -428,17 +513,17 @@ public class MarallyzenAudioService {
                         Marallyzen.LOGGER.debug("Created new source line 'marallyzen_audio'");
                     } else {
                         Marallyzen.LOGGER.error("build() returned null");
-                        return -1;
+                        return new PlaybackHandle(-1, null);
                     }
                 } catch (Exception e) {
                     Marallyzen.LOGGER.error("Failed to create source line: {}", e.getMessage(), e);
-                    return -1;
+                    return new PlaybackHandle(-1, null);
                 }
             }
             
             if (sourceLine == null || sourceLineClass == null) {
                 Marallyzen.LOGGER.error("Failed to get or create source line");
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             // 5. Decode audio file to PCM samples
@@ -462,7 +547,7 @@ public class MarallyzenAudioService {
                 } catch (Exception e2) {
                     Marallyzen.LOGGER.debug("Could not get duration from AudioMetadata: {}", e2.getMessage());
                 }
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             // 6. Create audio source (proximity or static)
@@ -578,7 +663,7 @@ public class MarallyzenAudioService {
                     positional, position != null ? position.toString() : "null", 
                     serverWorld != null ? serverWorld.getClass().getName() : "null",
                     players != null ? players.size() : "null");
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
 
             // Restrict playback to specific players when provided.
@@ -623,7 +708,7 @@ public class MarallyzenAudioService {
                 Marallyzen.LOGGER.debug("Created ArrayAudioFrameProvider and added {} samples", pcmSamples.length);
             } catch (Exception e) {
                 Marallyzen.LOGGER.error("Failed to create ArrayAudioFrameProvider: {}", e.getMessage(), e);
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
             
             // 8. Create AudioSender and start playback
@@ -636,19 +721,34 @@ public class MarallyzenAudioService {
                     short.class
                 );
                 Object audioSender = createAudioSenderMethod.invoke(audioSource, frameProvider, distance);
+                final Object playbackSource = audioSource;
+                Runnable stopRunnable = () -> {
+                    try {
+                        java.lang.reflect.Method stopMethod = audioSender.getClass().getMethod("stop");
+                        stopMethod.invoke(audioSender);
+                    } catch (Exception ignore) {
+                        // ignore
+                    }
+                    try {
+                        java.lang.reflect.Method removeMethod = playbackSource.getClass().getMethod("remove");
+                        removeMethod.invoke(playbackSource);
+                    } catch (Exception ignore) {
+                        // ignore
+                    }
+                };
                 
                 // Set onStop callback to remove source after playback completes
                 // This ensures sources don't conflict when multiple audio files play sequentially
                 try {
                     // AudioSender.onStop(Runnable) method
                     java.lang.reflect.Method onStopMethod = audioSender.getClass().getMethod("onStop", Runnable.class);
-                    final Object sourceToRemove = audioSource;
+                    final Object onStopSource = audioSource;
                     final String fileName = audioFile.getFileName().toString();
                     onStopMethod.invoke(audioSender, (Runnable) () -> {
                         try {
                             // Remove the source after playback completes to prevent conflicts with next audio
-                            java.lang.reflect.Method removeMethod = sourceToRemove.getClass().getMethod("remove");
-                            removeMethod.invoke(sourceToRemove);
+                            java.lang.reflect.Method removeMethod = onStopSource.getClass().getMethod("remove");
+                            removeMethod.invoke(onStopSource);
                             Marallyzen.LOGGER.debug("Removed audio source after playback completed: {}", fileName);
                         } catch (Exception e) {
                             Marallyzen.LOGGER.debug("Failed to remove audio source after playback: {}", e.getMessage());
@@ -657,15 +757,15 @@ public class MarallyzenAudioService {
                 } catch (NoSuchMethodException e) {
                     // onStop might not be available, schedule removal after duration
                     if (durationMs > 0) {
-                        final Object sourceToRemove = audioSource;
+                        final Object delayedSource = audioSource;
                         final String fileName = audioFile.getFileName().toString();
                         java.util.Timer timer = new java.util.Timer();
                         timer.schedule(new java.util.TimerTask() {
                             @Override
                             public void run() {
                                 try {
-                                    java.lang.reflect.Method removeMethod = sourceToRemove.getClass().getMethod("remove");
-                                    removeMethod.invoke(sourceToRemove);
+                                    java.lang.reflect.Method removeMethod = delayedSource.getClass().getMethod("remove");
+                                    removeMethod.invoke(delayedSource);
                                     Marallyzen.LOGGER.debug("Removed audio source after duration: {}", fileName);
                                 } catch (Exception e) {
                                     Marallyzen.LOGGER.debug("Failed to remove audio source after duration: {}", e.getMessage());
@@ -687,14 +787,14 @@ public class MarallyzenAudioService {
                 Marallyzen.LOGGER.info("Audio playback started via PlasmoVoice: {} (duration: {}ms)", 
                     audioFile.getFileName(), durationMs > 0 ? durationMs : "unknown");
                 
-                return durationMs > 0 ? durationMs : -1;
+                return new PlaybackHandle(durationMs > 0 ? durationMs : -1, stopRunnable);
             } catch (Exception e) {
                 Marallyzen.LOGGER.error("Failed to create AudioSender: {}", e.getMessage(), e);
-                return -1;
+                return new PlaybackHandle(-1, null);
             }
         } catch (Exception e) {
             Marallyzen.LOGGER.error("Failed to play audio via PlasmoVoice - using fallback", e);
-            return -1;
+            return new PlaybackHandle(-1, null);
         }
     }
     
@@ -744,5 +844,13 @@ public class MarallyzenAudioService {
      */
     public static Path getAudioBaseDir() {
         return AUDIO_BASE_DIR;
+    }
+
+    private static Path resolveAudioBaseDir() {
+        Path runConfig = FMLPaths.GAMEDIR.get().resolve("run").resolve("config");
+        if (Files.exists(runConfig)) {
+            return runConfig.resolve("marallyzen").resolve("audio");
+        }
+        return FMLPaths.CONFIGDIR.get().resolve("marallyzen").resolve("audio");
     }
 }

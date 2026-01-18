@@ -23,6 +23,8 @@ import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveChainBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
+import neutka.marallys.marallyzen.replay.client.ReplayEmoteVisualChannel;
+import neutka.marallys.marallyzen.replay.client.ReplayVisualChannelRegistry;
 
 @Mod(value = Marallyzen.MODID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
@@ -50,6 +52,8 @@ public class MarallyzenClient {
             // Load cutscenes
             neutka.marallys.marallyzen.client.camera.SceneLoader.loadScenes();
             Marallyzen.LOGGER.info("Loaded {} cutscenes", neutka.marallys.marallyzen.client.camera.SceneLoader.getAllScenes().size());
+
+            ReplayVisualChannelRegistry.register(new ReplayEmoteVisualChannel());
 
             // Poster blocks use masked transparency (holes). Force CUTOUT render layer to avoid translucent blending artifacts.
             ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_1.get(), RenderType.cutout());
@@ -186,6 +190,7 @@ public class MarallyzenClient {
         net.minecraft.client.Minecraft.getInstance().execute(() -> {
             neutka.marallys.marallyzen.client.ClientPosterManager.clearAll();
             neutka.marallys.marallyzen.client.ClientDictaphoneManager.clearAll();
+            neutka.marallys.marallyzen.client.ClientRadioManager.clearAll();
         });
     }
 

@@ -17,7 +17,7 @@ public final class CutscenePreviewGhostRenderHandler {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
             return;
         }
         float partialTick = resolvePartialTick(event.getPartialTick());

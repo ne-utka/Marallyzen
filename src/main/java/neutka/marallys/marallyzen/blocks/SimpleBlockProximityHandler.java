@@ -2,7 +2,6 @@ package neutka.marallys.marallyzen.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import neutka.marallys.marallyzen.util.NarrationIcons;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -108,23 +107,15 @@ public class SimpleBlockProximityHandler {
     private static Component getNarrationMessage(BlockState state) {
         Block block = state.getBlock();
         if (block == MarallyzenBlocks.MIRROR.get()) {
-            return createNarrationMessage("narration.marallyzen.mirror_instruction");
+            return null;
         }
         if (block == MarallyzenBlocks.OLD_LAPTOP.get()) {
-            return createNarrationMessage("narration.marallyzen.old_laptop_instruction");
+            return null;
         }
         if (block == MarallyzenBlocks.OLD_TV.get()) {
-            if (state.hasProperty(OldTvBlock.ON) && state.getValue(OldTvBlock.ON)) {
-                return createNarrationMessage("narration.marallyzen.old_tv_turn_off");
-            }
-            return createNarrationMessage("narration.marallyzen.old_tv_turn_on");
+            return null;
         }
         return null;
-    }
-
-    private static Component createNarrationMessage(String key) {
-        Component pkm = NarrationIcons.rmb();
-        return Component.translatable(key, pkm);
     }
 
     private static boolean isPlayerLookingAtBlock(ServerPlayer player, Vec3 blockCenter) {

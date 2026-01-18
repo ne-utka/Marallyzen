@@ -57,6 +57,8 @@ public final class ReplayClientRecorder {
         this.totalPauseTicks = 0;
         this.keyframeInterval = Math.max(1, keyframeInterval);
         this.track = new ReplayClientTrack();
+        ReplayEmoteStateTracker.clearAll();
+        ReplayEmoteVisualChannel.reset();
     }
 
     public ReplayClientTrack stop() {
@@ -65,6 +67,8 @@ public final class ReplayClientRecorder {
         }
         recording = false;
         paused = false;
+        ReplayEmoteStateTracker.clearAll();
+        ReplayEmoteVisualChannel.reset();
         return track;
     }
 
