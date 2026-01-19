@@ -27,10 +27,17 @@ public final class ReplayManager {
     }
 
     public static boolean isRecording() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return false;
+        }
         return activeReplayId != null && ReplayClientRecorder.getInstance().isRecording();
     }
 
     public static void startRecording(String replayId, List<ReplayMarker> markers) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            Marallyzen.LOGGER.warn("ReplayManager: legacy recording disabled.");
+            return;
+        }
         if (activeReplayId != null || replayId == null || replayId.isEmpty()) {
             return;
         }
@@ -48,6 +55,9 @@ public final class ReplayManager {
     }
 
     public static void stopRecording() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (activeReplayId == null) {
             return;
         }
@@ -79,6 +89,9 @@ public final class ReplayManager {
     }
 
     public static void updateMarkers(List<ReplayMarker> markers) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (activeReplayId == null) {
             return;
         }
@@ -86,6 +99,9 @@ public final class ReplayManager {
     }
 
     public static void pause() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (!isRecording()) {
             return;
         }
@@ -94,6 +110,9 @@ public final class ReplayManager {
     }
 
     public static void resume() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (!isRecording()) {
             return;
         }

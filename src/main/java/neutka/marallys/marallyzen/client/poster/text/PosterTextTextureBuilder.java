@@ -126,10 +126,19 @@ public class PosterTextTextureBuilder {
             float authorScale = data.style() == PosterStyle.PAPER ? 0.8f : 0.7f;
             boolean isAllCaps = data.style() != PosterStyle.PAPER;
             int textLineHeight = data.style() == PosterStyle.PAPER ? 14 : 13;
-            
-            int currentY = MARGIN;
+
+            int margin = MARGIN;
+            int workingWidth = WORKING_WIDTH;
+            int workingHeight = WORKING_HEIGHT;
+            if (data.style() == PosterStyle.PAPER) {
+                margin = MARGIN + 2;
+                workingWidth = WORKING_WIDTH - 4;
+                workingHeight = WORKING_HEIGHT - 6;
+            }
+
+            int currentY = margin;
             int centerX = TEXTURE_WIDTH / 2;
-            int maxY = MARGIN + WORKING_HEIGHT;
+            int maxY = margin + workingHeight;
             
             // Create a buffer source for rendering that uses our framebuffer
             // We need to create a custom buffer source that renders to our framebuffer
@@ -164,7 +173,7 @@ public class PosterTextTextureBuilder {
                     
                     // Calculate title width with scale
                     int titleWidth = (int)(font.width(titleComponent) * titleScale);
-                    int maxTitleWidth = WORKING_WIDTH;
+                    int maxTitleWidth = workingWidth;
                     
                     poseStack.pushPose();
                     poseStack.scale(titleScale, titleScale, 1.0f);
@@ -208,7 +217,7 @@ public class PosterTextTextureBuilder {
                     poseStack.popPose();
                     
                     // Draw separator line using simple pixel drawing
-                    for (int x = MARGIN; x < TEXTURE_WIDTH - MARGIN; x++) {
+                    for (int x = margin; x < TEXTURE_WIDTH - margin; x++) {
                         image.setPixelRGBA(x, currentY - 2, titleColor | 0xFF000000);
                     }
                     currentY += 6;
@@ -222,11 +231,11 @@ public class PosterTextTextureBuilder {
                     // Use full line height (not scaled) to ensure enough space, plus margin
                     authorHeight = font.lineHeight + MARGIN + 6; // Extra 6px for spacing to prevent compression
                 }
-                int maxYForText = TEXTURE_HEIGHT - MARGIN - authorHeight;
+                int maxYForText = Math.min(TEXTURE_HEIGHT - margin - authorHeight, maxY - authorHeight);
                 
                 if (data.pages() != null && !data.pages().isEmpty()) {
                     int textY = currentY;
-                    int wrapWidth = WORKING_WIDTH;
+                    int wrapWidth = workingWidth;
                     
                     for (String page : data.pages()) {
                         if (page == null || page.isEmpty()) {
@@ -302,11 +311,11 @@ public class PosterTextTextureBuilder {
                     int authorWidth = (int)(font.width(authorComponent) * authorScale);
                     // Position author with proper spacing from bottom, accounting for scale
                     // Use extra spacing to prevent compression
-                    int authorY = TEXTURE_HEIGHT - MARGIN - 6 - (int)(font.lineHeight * authorScale);
+                    int authorY = TEXTURE_HEIGHT - margin - 6 - (int)(font.lineHeight * authorScale);
                     
                     int authorX;
                     if (data.style() == PosterStyle.PAPER) {
-                        authorX = MARGIN + WORKING_WIDTH - authorWidth;
+                        authorX = margin + workingWidth - authorWidth;
                     } else {
                         authorX = centerX - authorWidth / 2;
                     }
@@ -407,4 +416,3 @@ public class PosterTextTextureBuilder {
         return image;
     }
 }
-

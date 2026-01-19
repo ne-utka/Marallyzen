@@ -47,6 +47,9 @@ public final class ReplayClientRecorder {
     }
 
     public void start(int keyframeInterval) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (recording || mc.level == null) {
             return;
         }
@@ -62,6 +65,9 @@ public final class ReplayClientRecorder {
     }
 
     public ReplayClientTrack stop() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return track;
+        }
         if (!recording) {
             return track;
         }
@@ -73,6 +79,9 @@ public final class ReplayClientRecorder {
     }
 
     public void pause() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (!recording || paused || mc.level == null) {
             return;
         }
@@ -81,6 +90,9 @@ public final class ReplayClientRecorder {
     }
 
     public void resume() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (!recording || !paused || mc.level == null) {
             return;
         }
@@ -90,6 +102,9 @@ public final class ReplayClientRecorder {
     }
 
     public void tick() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (!recording || paused || mc.level == null) {
             return;
         }

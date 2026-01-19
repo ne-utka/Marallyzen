@@ -39,10 +39,16 @@ public final class ReplayServerRecorder {
     }
 
     public static boolean isRecording(ServerPlayer player) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return false;
+        }
         return player != null && SESSIONS.containsKey(player.getUUID());
     }
 
     public static void start(ServerPlayer player, String replayId, int keyframeInterval) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (player == null || replayId == null || replayId.isEmpty()) {
             return;
         }
@@ -58,6 +64,9 @@ public final class ReplayServerRecorder {
     }
 
     public static ReplayServerResult stop(ServerPlayer player) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return null;
+        }
         if (player == null) {
             return null;
         }
@@ -71,6 +80,9 @@ public final class ReplayServerRecorder {
     }
 
     public static void pause(ServerPlayer player) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         ReplayServerSession session = player == null ? null : SESSIONS.get(player.getUUID());
         if (session == null || session.paused) {
             return;
@@ -80,6 +92,9 @@ public final class ReplayServerRecorder {
     }
 
     public static void resume(ServerPlayer player) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         ReplayServerSession session = player == null ? null : SESSIONS.get(player.getUUID());
         if (session == null || !session.paused) {
             return;
@@ -90,6 +105,9 @@ public final class ReplayServerRecorder {
     }
 
     public static void tick(ServerLevel level) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (level == null || SESSIONS.isEmpty()) {
             return;
         }

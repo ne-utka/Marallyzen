@@ -82,8 +82,38 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
             }
 
             if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
+                if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                    return;
+                }
+                String title = titleFilterable.raw();
+                java.util.List<String> pageTexts = new java.util.ArrayList<>();
+                var bookPages = bookContent.pages();
+                if (bookPages != null && !bookPages.isEmpty()) {
+                    for (var page : bookPages) {
+                        if (page != null && page.raw() != null) {
+                            String pageText = page.raw().getString();
+                            if (pageText != null && !pageText.isEmpty()) {
+                                pageTexts.add(pageText);
+                            }
+                        }
+                    }
+                }
+                String frontText = pageTexts.isEmpty() ? "" : pageTexts.get(0).trim();
+                String backText = pageTexts.size() > 1 ? pageTexts.get(1).trim() : "";
+
                 if (player.hasPermissions(2)) {
                     posterBe.setProtectedByOp(true);
+                }
+
+                if (!frontText.isEmpty()) {
+                    posterBe.setPosterText(frontText);
+                    posterBe.setPosterTitle(title);
+                    posterBe.setPosterCreatedAt(level.getGameTime());
+                }
+                if (!backText.isEmpty()) {
+                    posterBe.setPosterBackText(backText);
+                } else {
+                    posterBe.setPosterBackText("");
                 }
 
                 if (posterBlock.getPosterNumber() == 11) {

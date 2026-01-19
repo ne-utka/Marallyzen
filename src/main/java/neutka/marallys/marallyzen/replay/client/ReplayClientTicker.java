@@ -13,6 +13,9 @@ public final class ReplayClientTicker {
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         ReplayClientRecorder.getInstance().tick();
     }
 }

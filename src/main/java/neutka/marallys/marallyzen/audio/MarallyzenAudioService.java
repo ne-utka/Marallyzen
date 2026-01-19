@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.loading.FMLPaths;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.MarallyzenConfig;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -533,6 +534,7 @@ public class MarallyzenAudioService {
             try {
                 pcmSamples = AudioDecoder.decodeToPCM(audioFile);
                 if (pcmSamples != null && pcmSamples.length > 0) {
+                    applyPlasmoVoiceVolume(pcmSamples);
                     durationMs = AudioDecoder.getDurationMs(pcmSamples);
                     Marallyzen.LOGGER.debug("Decoded audio file to PCM: {} samples, duration: {}ms", pcmSamples.length, durationMs);
                 }
@@ -837,6 +839,29 @@ public class MarallyzenAudioService {
         
         // Return approximate duration for common sounds (1-2 seconds)
         return 1500;
+    }
+
+    private static void applyPlasmoVoiceVolume(short[] samples) {
+        double volume = MarallyzenConfig.PLASMO_AUDIO_VOLUME.get();
+        if (volume == 1.0 || samples == null || samples.length == 0) {
+            return;
+        }
+        if (volume <= 0.0) {
+            for (int i = 0; i < samples.length; i++) {
+                samples[i] = 0;
+            }
+            return;
+        }
+        double clamped = Math.min(2.0, Math.max(0.0, volume));
+        for (int i = 0; i < samples.length; i++) {
+            int scaled = (int) Math.round(samples[i] * clamped);
+            if (scaled > Short.MAX_VALUE) {
+                scaled = Short.MAX_VALUE;
+            } else if (scaled < Short.MIN_VALUE) {
+                scaled = Short.MIN_VALUE;
+            }
+            samples[i] = (short) scaled;
+        }
     }
     
     /**

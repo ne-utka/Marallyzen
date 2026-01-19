@@ -41,15 +41,7 @@ class CutsceneEditorKeyBindingsHandler {
         if (CutsceneEditorKeyBindings.OPEN_EDITOR.consumeClick()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.level != null) {
-                CutsceneEditorScreen activeFixed = CutsceneEditorScreen.getActiveFixedRecordingScreen();
-                if (activeFixed != null && activeFixed.isFixedRecordingActive()) {
-                    activeFixed.stopRecordingFromKeybind();
-                } else if (activeFixed != null) {
-                    mc.setScreen(activeFixed);
-                } else {
-                    // Open editor screen
-                    mc.setScreen(new CutsceneEditorScreen(CutsceneEditorScreen.getLastEditorData()));
-                }
+                neutka.marallys.marallyzen.replay.ReplayCompat.openReplayViewer();
             }
         }
     }

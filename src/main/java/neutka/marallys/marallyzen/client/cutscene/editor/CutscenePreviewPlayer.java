@@ -1398,6 +1398,9 @@ public class CutscenePreviewPlayer {
     }
 
     public static boolean isPreviewActive() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return false;
+        }
         return activePreviewPlaying && activePreviewData != null;
     }
 
@@ -1406,6 +1409,9 @@ public class CutscenePreviewPlayer {
     }
 
     public static long getActivePreviewTime() {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return 0L;
+        }
         return activePreviewTime;
     }
 

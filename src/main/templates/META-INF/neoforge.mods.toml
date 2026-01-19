@@ -100,3 +100,18 @@ config="marallyzen.mixins.json"
     versionRange="[2.4.0,)"
     ordering="AFTER"
     side="CLIENT"
+
+# Optional dependency on ReForgedPlay / ReplayMod for director layer (client-side only)
+[[dependencies.${mod_id}]]
+    modId="reforgedplaymod"
+    type="optional"
+    versionRange="[0.1,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="replaymod"
+    type="optional"
+    versionRange="[2.0.0,)"
+    ordering="AFTER"
+    side="CLIENT"

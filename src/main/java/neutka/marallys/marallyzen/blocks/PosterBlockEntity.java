@@ -14,6 +14,7 @@ public class PosterBlockEntity extends BlockEntity {
     private String posterText = "";
     private String posterTitle = "";
     private String posterAuthor = "";
+    private String posterBackText = "";
     private long posterCreatedAt = 0;
     private boolean protectedByOp = false;
     private String oldposterVariant = "default"; // For oldposter (ID 11): "default", "alive", "band", "dead"
@@ -35,6 +36,9 @@ public class PosterBlockEntity extends BlockEntity {
         }
         if (posterAuthor != null && !posterAuthor.isEmpty()) {
             tag.putString("PosterAuthor", posterAuthor);
+        }
+        if (posterBackText != null && !posterBackText.isEmpty()) {
+            tag.putString("PosterBackText", posterBackText);
         }
         if (posterCreatedAt > 0) {
             tag.putLong("PosterCreatedAt", posterCreatedAt);
@@ -71,6 +75,9 @@ public class PosterBlockEntity extends BlockEntity {
         }
         if (tag.contains("PosterAuthor")) {
             posterAuthor = tag.getString("PosterAuthor");
+        }
+        if (tag.contains("PosterBackText")) {
+            posterBackText = tag.getString("PosterBackText");
         }
         if (tag.contains("PosterCreatedAt")) {
             posterCreatedAt = tag.getLong("PosterCreatedAt");
@@ -137,10 +144,20 @@ public class PosterBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    public String getPosterBackText() {
+        return posterBackText != null ? posterBackText : "";
+    }
+
+    public void setPosterBackText(String posterBackText) {
+        this.posterBackText = posterBackText != null ? posterBackText : "";
+        setChanged();
+    }
+
     public boolean hasBoundText() {
         return (posterText != null && !posterText.isEmpty())
             || (posterTitle != null && !posterTitle.isEmpty())
-            || (posterAuthor != null && !posterAuthor.isEmpty());
+            || (posterAuthor != null && !posterAuthor.isEmpty())
+            || (posterBackText != null && !posterBackText.isEmpty());
     }
 
     public boolean isProtectedByOp() {

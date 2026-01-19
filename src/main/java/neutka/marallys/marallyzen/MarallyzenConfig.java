@@ -7,9 +7,15 @@ public class MarallyzenConfig {
 
     public static final ModConfigSpec.BooleanValue DEBUG_LOG = BUILDER
             .comment("Enable additional debug logging.")
+            .translation("marallyzen.configuration.debugLog")
             .define("debugLog", false);
 
-    static final ModConfigSpec SPEC = BUILDER.build();
+    public static final ModConfigSpec.DoubleValue PLASMO_AUDIO_VOLUME = BUILDER
+            .comment("Volume multiplier for Marallyzen audio played via PlasmoVoice.")
+            .translation("marallyzen.configuration.plasmovoiceAudioVolume")
+            .defineInRange("plasmovoiceAudioVolume", 1.0, 0.0, 2.0);
+
+    public static final ModConfigSpec SPEC = BUILDER.build();
 }
 
 

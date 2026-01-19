@@ -208,6 +208,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                 neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
                     new neutka.marallys.marallyzen.network.PosterBookBindPacket(pos, hand == InteractionHand.MAIN_HAND)
                 );
+                return ItemInteractionResult.CONSUME;
             }
             // Check if player is holding a written book and this is oldposter (ID 11)
             if (posterNumber == 11 && stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem) {

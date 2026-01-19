@@ -12,6 +12,9 @@ public final class ReplayServerTicker {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            return;
+        }
         if (event.getServer() == null) {
             return;
         }

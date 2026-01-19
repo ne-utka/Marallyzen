@@ -81,6 +81,9 @@ public class LargeBlockPlacementGuard {
             for (int dy = -CHECK_RADIUS; dy <= CHECK_RADIUS; dy++) {
                 for (int dz = -CHECK_RADIUS; dz <= CHECK_RADIUS; dz++) {
                     BlockPos checkPos = placedPos.offset(dx, dy, dz);
+                    if (checkPos.equals(placedPos)) {
+                        continue;
+                    }
                     BlockState state = level.getBlockState(checkPos);
                     if (!isProtectedLargeBlock(state)) {
                         continue;

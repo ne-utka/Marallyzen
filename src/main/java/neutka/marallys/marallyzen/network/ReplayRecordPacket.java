@@ -51,6 +51,9 @@ public record ReplayRecordPacket(String replayId, byte action, int keyframeInter
 
     public static void handle(ReplayRecordPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
+            if (!neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+                return;
+            }
             if (!(context.player() instanceof net.minecraft.server.level.ServerPlayer player)) {
                 return;
             }

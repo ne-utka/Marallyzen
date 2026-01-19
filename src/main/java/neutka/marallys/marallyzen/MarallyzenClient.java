@@ -19,16 +19,20 @@ import java.util.Map;
 
 import neutka.marallys.marallyzen.client.gui.DialogScreen;
 import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorKeyBindings;
+import neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveChainBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
+import neutka.marallys.marallyzen.replay.ReplayCompat;
 import neutka.marallys.marallyzen.replay.client.ReplayEmoteVisualChannel;
 import neutka.marallys.marallyzen.replay.client.ReplayVisualChannelRegistry;
 
 @Mod(value = Marallyzen.MODID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class MarallyzenClient {
+    private static String lastBlurScreenLogged = "";
+
     public MarallyzenClient(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
@@ -37,6 +41,7 @@ public class MarallyzenClient {
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             Marallyzen.LOGGER.info("Marallyzen client setup; player={}", Minecraft.getInstance().getUser().getName());
+            disableBlurForDirectorUi();
 
             // Check if Emotecraft is available (NeoForge version uses io.github.kosmx.* packages)
             try {
@@ -52,6 +57,15 @@ public class MarallyzenClient {
             // Load cutscenes
             neutka.marallys.marallyzen.client.camera.SceneLoader.loadScenes();
             Marallyzen.LOGGER.info("Loaded {} cutscenes", neutka.marallys.marallyzen.client.camera.SceneLoader.getAllScenes().size());
+
+            // Load replay camera tracks
+            neutka.marallys.marallyzen.replay.camera.ReplayCameraTrackLoader.loadTracks();
+            Marallyzen.LOGGER.info("Loaded {} replay camera tracks", neutka.marallys.marallyzen.replay.camera.ReplayCameraTrackLoader.getAllTracks().size());
+
+            // Load replay timelines
+            neutka.marallys.marallyzen.replay.timeline.TimelineLoader.loadTracks();
+            neutka.marallys.marallyzen.replay.timeline.TimelineActionRegistry.registerDefaults();
+            Marallyzen.LOGGER.info("Loaded {} replay timelines", neutka.marallys.marallyzen.replay.timeline.TimelineLoader.getAllTracks().size());
 
             ReplayVisualChannelRegistry.register(new ReplayEmoteVisualChannel());
 
@@ -109,10 +123,121 @@ public class MarallyzenClient {
         });
     }
 
+    private static void disableBlurForDirectorUi() {
+        try {
+            Class<?> configClass = Class.forName("eu.midnightdust.blur.config.BlurConfig");
+            var field = configClass.getField("forceDisabledScreens");
+            Object value = field.get(null);
+            if (value instanceof java.util.List<?> list) {
+                String screenName = "neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen";
+                if (!list.contains(screenName)) {
+                    @SuppressWarnings("unchecked")
+                    java.util.List<String> mutable = (java.util.List<String>) list;
+                    mutable.add(screenName);
+                    Marallyzen.LOGGER.info("Blur disabled for director UI.");
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            // Blur is not installed.
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to disable blur for director UI.", e);
+        }
+    }
+
+    private static void updateBlurDisableForCurrentScreen(Minecraft mc) {
+        if (mc.screen == null) {
+            return;
+        }
+        boolean shouldDisable = mc.screen instanceof DirectorReplayBrowserScreen || ReplayCompat.isReplayActive();
+        if (!shouldDisable) {
+            return;
+        }
+        try {
+            Class<?> configClass = Class.forName("eu.midnightdust.blur.config.BlurConfig");
+            var field = configClass.getField("forceDisabledScreens");
+            Object value = field.get(null);
+            if (value instanceof java.util.List<?> list) {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> mutable = (java.util.List<String>) list;
+                String name = mc.screen.getClass().getCanonicalName();
+                if (name != null && !name.equals(lastBlurScreenLogged)) {
+                    Marallyzen.LOGGER.info("Replay UI screen detected: {}", name);
+                    lastBlurScreenLogged = name;
+                }
+                addScreenAndParentsToBlurList(mutable, mc.screen.getClass());
+            }
+            forceDisableBlurAnimations();
+        } catch (ClassNotFoundException e) {
+            // Blur is not installed.
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to disable blur for current screen.", e);
+        }
+    }
+
+    private static void addScreenAndParentsToBlurList(java.util.List<String> list, Class<?> type) {
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            String name = current.getCanonicalName();
+            if (name != null && !list.contains(name)) {
+                list.add(name);
+            }
+            current = current.getSuperclass();
+        }
+    }
+
+    private static void forceDisableBlurAnimations() {
+        try {
+            Class<?> blurClass = Class.forName("eu.midnightdust.blur.Blur");
+            Object blurAnimation = blurClass.getField("blurAnimation").get(null);
+            Object backgroundAnimation = blurClass.getField("backgroundAnimation").get(null);
+            if (blurAnimation != null) {
+                setBlurAnimationDisabled(blurAnimation);
+            }
+            if (backgroundAnimation != null) {
+                setBlurAnimationDisabled(backgroundAnimation);
+            }
+            Class<?> configClass = Class.forName("eu.midnightdust.blur.config.BlurConfig");
+            configClass.getField("useGradient").setBoolean(null, false);
+        } catch (ClassNotFoundException e) {
+            // Blur is not installed.
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to force-disable blur animations.", e);
+        }
+    }
+
+    private static void setBlurAnimationDisabled(Object animation) throws ReflectiveOperationException {
+        Class<?> animClass = animation.getClass();
+        animClass.getField("enabled").setBoolean(animation, false);
+        animClass.getField("fadeProgress").setFloat(animation, 0.0f);
+        animClass.getField("fadeTimeState").setFloat(animation, 0.0f);
+    }
+
+    private static void tickReplayModScheduler() {
+        if (!ReplayCompat.isReplayAvailable()) {
+            return;
+        }
+        try {
+            Class<?> replayModClass = Class.forName("com.replaymod.core.ReplayMod");
+            var instanceField = replayModClass.getField("instance");
+            Object instance = instanceField.get(null);
+            if (instance == null) {
+                return;
+            }
+            var runTasks = replayModClass.getMethod("runTasks");
+            runTasks.invoke(instance);
+        } catch (ClassNotFoundException e) {
+            // ReplayMod is not installed.
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to tick ReplayMod scheduler.", e);
+        }
+    }
+
     @SubscribeEvent
     static void onClientTick(ClientTickEvent.Post event) {
         // Client-side DenizenCore tick (if needed in the future)
         // For now, scripts run server-side only
+
+        tickReplayModScheduler();
         
         // Tick narration manager (updates narration overlay state and alpha interpolation)
         neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance().tick();
@@ -131,15 +256,24 @@ public class MarallyzenClient {
         
         // Tick cutscene editor if open
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-        if (mc.screen instanceof neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorScreen editorScreen) {
-            editorScreen.tick();
-        } else {
-            // Keep recording even when the editor screen is closed.
-            var recorder = neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder.getInstance();
-            if (recorder.isRecording()) {
-                recorder.tick();
+        updateBlurDisableForCurrentScreen(mc);
+        if (neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
+            if (mc.screen instanceof neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorScreen editorScreen) {
+                editorScreen.tick();
+            } else {
+                // Keep recording even when the editor screen is closed.
+                var recorder = neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder.getInstance();
+                if (recorder.isRecording()) {
+                    recorder.tick();
+                }
             }
         }
+
+        // Tick replay camera director (ReplayMod-backed)
+        neutka.marallys.marallyzen.replay.camera.ReplayCameraDirector.getInstance().tick();
+
+        // Tick replay timeline scheduler (ReplayMod-backed)
+        neutka.marallys.marallyzen.replay.timeline.TimelineScheduler.getInstance().tick();
     }
 
     @SubscribeEvent

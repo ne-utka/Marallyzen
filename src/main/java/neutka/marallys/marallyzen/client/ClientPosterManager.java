@@ -39,11 +39,13 @@ public class ClientPosterManager {
         String text;
         String title;
         String author;
+        String backText;
         
-        PosterTextData(String text, String title, String author) {
+        PosterTextData(String text, String title, String author, String backText) {
             this.text = text != null ? text : "";
             this.title = title != null ? title : "";
             this.author = author != null ? author : "";
+            this.backText = backText != null ? backText : "";
         }
     }
     private static final Map<BlockPos, PosterTextData> posterTextCache = new HashMap<>();
@@ -73,7 +75,8 @@ public class ClientPosterManager {
                 posterTextCache.put(pos, new PosterTextData(
                     existingText,
                     existingPoster.getPosterTitle(),
-                    existingPoster.getPosterAuthor()
+                    existingPoster.getPosterAuthor(),
+                    ""
                 ));
                 LOGGER.info("ClientPosterManager.createClientPoster: Saved text to cache from existing poster, len={}", existingText.length());
             }
@@ -108,6 +111,7 @@ public class ClientPosterManager {
         String textToUse = "";
         String titleToUse = "";
         String authorToUse = "";
+        String backTextToUse = "";
 
         // Try to get BE (even if block is hidden)
         net.minecraft.world.level.block.entity.BlockEntity be = null;
@@ -192,13 +196,15 @@ public class ClientPosterManager {
         // Try BE first
         if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
             String beText = posterBe.getPosterText();
+            String beBackText = posterBe.getPosterBackText();
             LOGGER.info("ClientPosterManager: Got PosterBlockEntity, text length={}, title='{}', author='{}'", beText.length(), posterBe.getPosterTitle(), posterBe.getPosterAuthor());
             if (!beText.isEmpty()) {
                 textToUse = beText;
                 titleToUse = posterBe.getPosterTitle();
-                authorToUse = posterBe.getPosterAuthor();
+                authorToUse = "";
+                backTextToUse = beBackText;
                 // Update cache with BE data
-                posterTextCache.put(pos, new PosterTextData(textToUse, titleToUse, authorToUse));
+                posterTextCache.put(pos, new PosterTextData(textToUse, titleToUse, authorToUse, backTextToUse));
                 LOGGER.info("ClientPosterManager: Loaded text from BE, len={}", beText.length());
             } else {
                 LOGGER.info("ClientPosterManager: BE text is empty");
@@ -308,7 +314,8 @@ public class ClientPosterManager {
             if (cached != null && !cached.text.isEmpty()) {
                 textToUse = cached.text;
                 titleToUse = cached.title;
-                authorToUse = cached.author;
+                authorToUse = "";
+                backTextToUse = cached.backText;
                 LOGGER.info("ClientPosterManager: Loaded text from cache, len={}", textToUse.length());
             } else {
                 LOGGER.info("ClientPosterManager: Cache is empty or null");
@@ -322,7 +329,7 @@ public class ClientPosterManager {
                     authorToUse = "Тестовый автор";
                     
                     // Save to cache for persistence
-                    posterTextCache.put(pos, new PosterTextData(textToUse, titleToUse, authorToUse));
+                    posterTextCache.put(pos, new PosterTextData(textToUse, titleToUse, authorToUse, ""));
                     
                     // Also save to BlockEntity if it exists
                     if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
@@ -338,9 +345,9 @@ public class ClientPosterManager {
         LOGGER.info("========== ClientPosterManager: textToUse.isEmpty()={}, text.length={} ==========", textToUse.isEmpty(), textToUse.length());
 
         // Set text to entity using new texture system
-        if (!textToUse.isEmpty()) {
-            neutka.marallys.marallyzen.client.poster.text.PosterStyle style = 
-                neutka.marallys.marallyzen.client.poster.text.PosterStyle.fromPosterNumber(posterNumber);
+            if (!textToUse.isEmpty()) {
+                neutka.marallys.marallyzen.client.poster.text.PosterStyle style = 
+                    neutka.marallys.marallyzen.client.poster.text.PosterStyle.fromPosterNumber(posterNumber);
 
             java.util.List<String> pages = java.util.Arrays.asList(textToUse.split("\n\n"));
 
@@ -348,7 +355,7 @@ public class ClientPosterManager {
                 new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
                     titleToUse != null ? titleToUse : "",
                     pages,
-                    authorToUse != null ? authorToUse : "",
+                    "",
                     style
                 );
 
@@ -356,8 +363,17 @@ public class ClientPosterManager {
                 titleToUse, pages.size(), authorToUse, style);
             
             // Set text for both front and back sides
-            // Back side will use default test text if not provided
-            posterEntity.setText(textData, null);
+            neutka.marallys.marallyzen.client.poster.text.PosterTextData backData = null;
+            if (backTextToUse != null && !backTextToUse.isEmpty()) {
+                java.util.List<String> backPages = java.util.Arrays.asList(backTextToUse.split("\n\n"));
+                backData = new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
+                    "",
+                    backPages,
+                    "",
+                    style
+                );
+            }
+            posterEntity.setText(textData, backData);
             LOGGER.info("ClientPosterManager: Called posterEntity.setText(), frontTexture={}, backTexture={}", 
                 posterEntity.getTextTexture(), posterEntity.getTextTextureBack());
         } else {
@@ -525,16 +541,32 @@ public class ClientPosterManager {
                                 new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
                                     posterBe.getPosterTitle(),
                                     pages,
-                                    posterBe.getPosterAuthor(),
+                                    "",
                                     style
                                 );
-                            entity.setText(textData, null); // Back side will use default test text
+                            neutka.marallys.marallyzen.client.poster.text.PosterTextData backData = null;
+                            String beBackText = posterBe.getPosterBackText();
+                            if (beBackText != null && !beBackText.isEmpty()) {
+                                java.util.List<String> backPages = java.util.Arrays.asList(beBackText.split("\n\n"));
+                                backData = new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
+                                    "",
+                                    backPages,
+                                    "",
+                                    style
+                                );
+                            }
+                            entity.setText(textData, backData);
                             
                             // Also update legacy fields and cache
                             entity.setPosterText(beText);
                             entity.setPosterTitle(posterBe.getPosterTitle());
-                            entity.setPosterAuthor(posterBe.getPosterAuthor());
-                            posterTextCache.put(pos, new PosterTextData(beText, posterBe.getPosterTitle(), posterBe.getPosterAuthor()));
+                            entity.setPosterAuthor("");
+                            posterTextCache.put(pos, new PosterTextData(
+                                beText,
+                                posterBe.getPosterTitle(),
+                                "",
+                                posterBe.getPosterBackText()
+                            ));
                         }
                     } else if (entityText.isEmpty()) {
                         // BE is empty and entity is empty - try cache
@@ -549,15 +581,25 @@ public class ClientPosterManager {
                                 new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
                                     cached.title,
                                     pages,
-                                    cached.author,
+                                    "",
                                     style
                                 );
-                            entity.setText(textData, null); // Back side will use default test text
+                            neutka.marallys.marallyzen.client.poster.text.PosterTextData backData = null;
+                            if (cached.backText != null && !cached.backText.isEmpty()) {
+                                java.util.List<String> backPages = java.util.Arrays.asList(cached.backText.split("\n\n"));
+                                backData = new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
+                                    "",
+                                    backPages,
+                                    "",
+                                    style
+                                );
+                            }
+                            entity.setText(textData, backData);
                             
                             // Also update legacy fields
                             entity.setPosterText(cached.text);
                             entity.setPosterTitle(cached.title);
-                            entity.setPosterAuthor(cached.author);
+                            entity.setPosterAuthor("");
                         }
                     }
                 } else {
@@ -574,15 +616,25 @@ public class ClientPosterManager {
                                 new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
                                     cached.title,
                                     pages,
-                                    cached.author,
+                                    "",
                                     style
                                 );
-                            entity.setText(textData, null); // Back side will use default test text
+                            neutka.marallys.marallyzen.client.poster.text.PosterTextData backData = null;
+                            if (cached.backText != null && !cached.backText.isEmpty()) {
+                                java.util.List<String> backPages = java.util.Arrays.asList(cached.backText.split("\n\n"));
+                                backData = new neutka.marallys.marallyzen.client.poster.text.PosterTextData(
+                                    "",
+                                    backPages,
+                                    "",
+                                    style
+                                );
+                            }
+                            entity.setText(textData, backData);
                             
                             // Also update legacy fields
                             entity.setPosterText(cached.text);
                             entity.setPosterTitle(cached.title);
-                            entity.setPosterAuthor(cached.author);
+                            entity.setPosterAuthor("");
                         }
                     }
                 }
@@ -602,7 +654,7 @@ public class ClientPosterManager {
      */
     public static void saveTextToCache(BlockPos pos, String text, String title, String author) {
         if (text != null && !text.isEmpty()) {
-            posterTextCache.put(pos, new PosterTextData(text, title, author));
+            posterTextCache.put(pos, new PosterTextData(text, title, author, ""));
             LOGGER.info("ClientPosterManager.saveTextToCache: Saved text to cache at {}, len={}", pos, text.length());
         }
     }
