@@ -100,6 +100,10 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
             return ItemInteractionResult.CONSUME;
         }
         if (level.isClientSide) {
+            if (!neutka.marallys.marallyzen.client.ClientDictaphoneManager.isHidden(pos)) {
+                neutka.marallys.marallyzen.client.ClientDictaphoneManager.markHidden(pos.immutable());
+            }
+            neutka.marallys.marallyzen.client.gui.SimpleBlockPromptHud.getInstance().hidePromptFor(pos);
             neutka.marallys.marallyzen.client.ClientDictaphoneManager.createClientDictaphone(pos.immutable(), state);
         } else if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             if (neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isNarrationLocked(

@@ -19,12 +19,15 @@ import java.util.Map;
 
 import neutka.marallys.marallyzen.client.gui.DialogScreen;
 import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorKeyBindings;
+import neutka.marallys.marallyzen.client.director.DirectorReplayOverlayBridge;
 import neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveChainBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
 import neutka.marallys.marallyzen.replay.ReplayCompat;
+import neutka.marallys.marallyzen.replay.ReplayReturnManager;
+import neutka.marallys.marallyzen.replay.ReplayStartQueue;
 import neutka.marallys.marallyzen.replay.client.ReplayEmoteVisualChannel;
 import neutka.marallys.marallyzen.replay.client.ReplayVisualChannelRegistry;
 
@@ -32,6 +35,7 @@ import neutka.marallys.marallyzen.replay.client.ReplayVisualChannelRegistry;
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class MarallyzenClient {
     private static String lastBlurScreenLogged = "";
+    private static boolean lastReplayActive = false;
 
     public MarallyzenClient(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
@@ -212,33 +216,11 @@ public class MarallyzenClient {
         animClass.getField("fadeTimeState").setFloat(animation, 0.0f);
     }
 
-    private static void tickReplayModScheduler() {
-        if (!ReplayCompat.isReplayAvailable()) {
-            return;
-        }
-        try {
-            Class<?> replayModClass = Class.forName("com.replaymod.core.ReplayMod");
-            var instanceField = replayModClass.getField("instance");
-            Object instance = instanceField.get(null);
-            if (instance == null) {
-                return;
-            }
-            var runTasks = replayModClass.getMethod("runTasks");
-            runTasks.invoke(instance);
-        } catch (ClassNotFoundException e) {
-            // ReplayMod is not installed.
-        } catch (Exception e) {
-            Marallyzen.LOGGER.warn("Failed to tick ReplayMod scheduler.", e);
-        }
-    }
-
     @SubscribeEvent
     static void onClientTick(ClientTickEvent.Post event) {
         // Client-side DenizenCore tick (if needed in the future)
         // For now, scripts run server-side only
 
-        tickReplayModScheduler();
-        
         // Tick narration manager (updates narration overlay state and alpha interpolation)
         neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance().tick();
         
@@ -257,6 +239,21 @@ public class MarallyzenClient {
         // Tick cutscene editor if open
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         updateBlurDisableForCurrentScreen(mc);
+        ReplayCompat.tryOverrideReplayViewerLoadButton(mc.screen);
+        if (ReplayCompat.isReplayAvailable()) {
+            ReplayCompat.runReplayModTasks();
+        }
+        ReplayStartQueue.tick();
+        boolean replayActive = ReplayCompat.isReplayActive();
+        DirectorReplayOverlayBridge.updateReplayState(lastReplayActive, replayActive);
+        neutka.marallys.marallyzen.client.director.DirectorOverlayHud.tick();
+        var directorTimeSource = neutka.marallys.marallyzen.director.ReplayTimeSourceHolder.get();
+        if (directorTimeSource != null && neutka.marallys.marallyzen.director.DirectorRuntime.isPreviewing()) {
+            neutka.marallys.marallyzen.director.DirectorRuntime.tick(directorTimeSource.getTimestamp());
+        }
+        ReplayReturnManager.getInstance().onReplayStateChanged(lastReplayActive, replayActive);
+        ReplayReturnManager.getInstance().tick(mc, replayActive);
+        lastReplayActive = replayActive;
         if (neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
             if (mc.screen instanceof neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorScreen editorScreen) {
                 editorScreen.tick();
@@ -275,6 +272,7 @@ public class MarallyzenClient {
         // Tick replay timeline scheduler (ReplayMod-backed)
         neutka.marallys.marallyzen.replay.timeline.TimelineScheduler.getInstance().tick();
     }
+
 
     @SubscribeEvent
     static void onClientTickPre(ClientTickEvent.Pre event) {

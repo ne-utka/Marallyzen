@@ -47,12 +47,17 @@ public class NpcPromptHud {
     private float fadeOutProgress = 1.0f;
     private float previousFadeInProgress = 0.0f;
     private float previousFadeOutProgress = 1.0f;
+    private boolean dialogSuppressed = false;
 
     public static NpcPromptHud getInstance() {
         if (instance == null) {
             instance = new NpcPromptHud();
         }
         return instance;
+    }
+
+    private NpcPromptHud() {
+        DialogStateMachine.getInstance().addStateChangeListener(this::onDialogStateChanged);
     }
 
     public void tick() {
@@ -214,6 +219,10 @@ public class NpcPromptHud {
             targetVisible = false;
             return;
         }
+        if (dialogSuppressed) {
+            targetVisible = false;
+            return;
+        }
         DialogState state = DialogStateMachine.getInstance().getCurrentState();
         if (state != DialogState.IDLE && state != DialogState.CLOSED) {
             targetVisible = false;
@@ -296,9 +305,22 @@ public class NpcPromptHud {
             return true;
         }
         if (entity instanceof net.minecraft.world.entity.player.Player player) {
-            return !(player instanceof LocalPlayer);
+            if (player instanceof LocalPlayer) {
+                return false;
+            }
+            return entity.getTags().contains("marallyzen_npc");
         }
         return false;
+    }
+
+    public void suppressDialogPrompt() {
+        dialogSuppressed = true;
+    }
+
+    private void onDialogStateChanged(DialogState newState) {
+        if (newState == DialogState.CLOSED) {
+            dialogSuppressed = false;
+        }
     }
 
     private float easeOutCubic(float t) {

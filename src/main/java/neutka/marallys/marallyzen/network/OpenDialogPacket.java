@@ -46,6 +46,7 @@ public record OpenDialogPacket(String dialogId, String title, Map<String, String
     public static void handle(OpenDialogPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (FMLEnvironment.dist == Dist.CLIENT) {
+                neutka.marallys.marallyzen.client.gui.NpcPromptHud.getInstance().suppressDialogPrompt();
                 // Open dialog HUD on client
                 neutka.marallys.marallyzen.MarallyzenClient.openDialog(
                         packet.dialogId,
@@ -57,4 +58,3 @@ public record OpenDialogPacket(String dialogId, String title, Map<String, String
         });
     }
 }
-

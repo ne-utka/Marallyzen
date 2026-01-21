@@ -147,6 +147,18 @@ public class MarallyzenNetwork {
                 CutsceneWorldTrackPacket.STREAM_CODEC,
                 CutsceneWorldTrackPacket::handle
         );
+
+        registrar.playToClient(
+                QuestAudioPacket.TYPE,
+                QuestAudioPacket.STREAM_CODEC,
+                QuestAudioPacket::handle
+        );
+
+        registrar.playToClient(
+                QuestNarratePacket.TYPE,
+                QuestNarratePacket.STREAM_CODEC,
+                QuestNarratePacket::handle
+        );
         
         registrar.playToClient(
                 OldTvBindModePacket.TYPE,

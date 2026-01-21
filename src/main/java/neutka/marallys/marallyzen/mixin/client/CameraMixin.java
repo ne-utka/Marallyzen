@@ -7,6 +7,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.fpv.MarallyzenFpvController;
+import neutka.marallys.marallyzen.director.CameraState;
+import neutka.marallys.marallyzen.director.DirectorRuntime;
+import neutka.marallys.marallyzen.director.ReplayTimeSourceHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,9 +19,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CameraMixin {
     private static final double FPV_FORWARD_OFFSET = 0.32;
     private static java.lang.reflect.Method cachedSetPosition;
+    private static java.lang.reflect.Method cachedSetRotation;
 
     @Inject(method = "setup", at = @At("TAIL"), require = 0)
     private void marallyzen$fpvEmote(BlockGetter level, Entity entity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci) {
+        if (DirectorRuntime.isPreviewing()) {
+            long timeMs = ReplayTimeSourceHolder.get().getTimestamp();
+            DirectorRuntime.tick(timeMs);
+            CameraState state = DirectorRuntime.evaluate(timeMs);
+            if (state != null) {
+                Camera camera = (Camera) (Object) this;
+                applyCameraPosition(camera, state.position());
+                applyCameraRotation(camera, state.rotation());
+                return;
+            }
+        }
         var cameraController = neutka.marallys.marallyzen.client.camera.CameraManager.getInstance().getCameraController();
         if (neutka.marallys.marallyzen.client.cutscene.editor.CutscenePreviewPlayer.isPreviewActive()) {
             float time = neutka.marallys.marallyzen.client.cutscene.editor.CutscenePreviewPlayer.getActivePreviewTime()
@@ -68,6 +83,23 @@ public abstract class CameraMixin {
         }
     }
 
+    private static void applyCameraRotation(Camera camera, Vec3 rotation) {
+        try {
+            if (cachedSetRotation == null) {
+                cachedSetRotation = resolveSetRotation(camera.getClass());
+            }
+            if (cachedSetRotation == null) {
+                return;
+            }
+            if (cachedSetRotation.getParameterCount() == 3) {
+                cachedSetRotation.invoke(camera, (float) rotation.x, (float) rotation.y, (float) rotation.z);
+            } else {
+                cachedSetRotation.invoke(camera, (float) rotation.x, (float) rotation.y);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private static java.lang.reflect.Method resolveSetPosition(Class<?> cameraClass) {
         try {
             java.lang.reflect.Method method = cameraClass.getMethod("setPosition", double.class, double.class, double.class);
@@ -83,6 +115,22 @@ public abstract class CameraMixin {
         }
         try {
             java.lang.reflect.Method method = cameraClass.getMethod("setPosition", org.joml.Vector3f.class);
+            method.setAccessible(true);
+            return method;
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private static java.lang.reflect.Method resolveSetRotation(Class<?> cameraClass) {
+        try {
+            java.lang.reflect.Method method = cameraClass.getMethod("setRotation", float.class, float.class, float.class);
+            method.setAccessible(true);
+            return method;
+        } catch (Exception ignored) {
+        }
+        try {
+            java.lang.reflect.Method method = cameraClass.getMethod("setRotation", float.class, float.class);
             method.setAccessible(true);
             return method;
         } catch (Exception ignored) {

@@ -24,6 +24,7 @@ import neutka.marallys.marallyzen.network.NarratePacket;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.npc.DialogScriptLoader;
 import neutka.marallys.marallyzen.npc.NpcNarrateHandler;
+import neutka.marallys.marallyzen.quest.QuestManager;
 
 import java.io.File;
 import java.io.Reader;
@@ -288,6 +289,7 @@ public final class DictaphoneScriptManager {
                 level.getServer().execute(() -> {
                     playLocalSystemSound(level, player, SYSTEM_SOUND_STOP);
                     isPlayingByPos.remove(posKey);
+                    QuestManager.getInstance().fireCustomEvent(player, "dictaphone_finished", Map.of());
                     Marallyzen.LOGGER.info("DictaphoneScriptManager: stop sound played for posKey={}", posKey);
                 });
             }

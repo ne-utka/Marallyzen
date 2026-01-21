@@ -5,12 +5,11 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
 import neutka.marallys.marallyzen.entity.DictaphoneEntity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -19,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClientDictaphoneManager {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClientDictaphoneManager.class);
     private static final Map<BlockPos, DictaphoneEntity> clientDictaphones = new HashMap<>();
     private static final Map<BlockPos, BlockState> originalBlockStates = new HashMap<>();
     private static final Set<BlockPos> hiddenBlocks = new HashSet<>();
@@ -35,7 +33,6 @@ public final class ClientDictaphoneManager {
     public static void createClientDictaphone(BlockPos pos, BlockState originalBlockState) {
         Minecraft mc = Minecraft.getInstance();
         if (!(mc.level instanceof ClientLevel clientLevel)) {
-            LOGGER.warn("Cannot create client dictaphone: not in a client level");
             return;
         }
 
@@ -43,8 +40,13 @@ public final class ClientDictaphoneManager {
             return;
         }
 
+        if (originalBlockState == null) {
+            originalBlockState = clientLevel.getBlockState(pos);
+        }
+        originalBlockStates.put(pos, originalBlockState);
         markHidden(pos);
-        forceRebuild(clientLevel, pos, originalBlockState);
+        swapBlockState(clientLevel, pos, Blocks.AIR.defaultBlockState());
+        forceRebuild(clientLevel, pos, Blocks.AIR.defaultBlockState());
         activeNarrationPos = pos;
 
         DictaphoneEntity entity = new DictaphoneEntity(Marallyzen.DICTAPHONE_ENTITY.get(), clientLevel);
@@ -53,7 +55,6 @@ public final class ClientDictaphoneManager {
         entity.initializeFromBlock(pos, originalBlockState);
 
         clientDictaphones.put(pos, entity);
-        originalBlockStates.put(pos, originalBlockState);
         boolean added = false;
         try {
             var method = clientLevel.getClass().getDeclaredMethod("addEntity", net.minecraft.world.entity.Entity.class);
@@ -77,11 +78,7 @@ public final class ClientDictaphoneManager {
             added = clientLevel.addFreshEntity(entity);
         }
         if (!added) {
-            LOGGER.warn("ClientDictaphoneManager: failed to add dictaphone entity id={} at {}", entity.getId(), pos);
         }
-        LOGGER.info("ClientDictaphoneManager: spawned client dictaphone at {} id={} state={}",
-            pos, entity.getId(), entity.getCurrentState());
-
     }
 
     public static void removeClientDictaphone(BlockPos pos) {
@@ -98,6 +95,9 @@ public final class ClientDictaphoneManager {
             if (originalState == null) {
                 originalState = clientLevel.getBlockState(pos);
             }
+            if (originalState != null) {
+                swapBlockState(clientLevel, pos, originalState);
+            }
             forceRebuild(clientLevel, pos, originalState);
         }
         if (existing != null) {
@@ -110,6 +110,14 @@ public final class ClientDictaphoneManager {
     }
 
     public static void clearAll() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level instanceof ClientLevel clientLevel) {
+            for (var entry : originalBlockStates.entrySet()) {
+                if (entry.getValue() != null) {
+                    swapBlockState(clientLevel, entry.getKey(), entry.getValue());
+                }
+            }
+        }
         for (DictaphoneEntity entity : clientDictaphones.values()) {
             entity.discard();
         }
@@ -126,6 +134,15 @@ public final class ClientDictaphoneManager {
         }
         if (clientDictaphones.isEmpty()) {
             return;
+        }
+
+        if (!hiddenBlocks.isEmpty()) {
+            for (BlockPos pos : hiddenBlocks) {
+                BlockState current = clientLevel.getBlockState(pos);
+                if (!current.isAir()) {
+                    swapBlockState(clientLevel, pos, Blocks.AIR.defaultBlockState());
+                }
+            }
         }
 
         long gameTime = clientLevel.getGameTime();
@@ -174,6 +191,7 @@ public final class ClientDictaphoneManager {
     public static boolean isHidden(BlockPos pos) {
         return hiddenBlocks.contains(pos);
     }
+
 
     public static void onNarrationComplete() {
         Minecraft mc = Minecraft.getInstance();
@@ -226,6 +244,13 @@ public final class ClientDictaphoneManager {
             1.0f,
             false
         );
+    }
+
+    private static void swapBlockState(ClientLevel level, BlockPos pos, BlockState state) {
+        if (!level.hasChunkAt(pos)) {
+            return;
+        }
+        level.setBlock(pos, state, 19);
     }
 
     private static void forceRebuild(ClientLevel level, BlockPos pos, BlockState state) {

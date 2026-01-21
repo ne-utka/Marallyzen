@@ -263,6 +263,7 @@ public class QuestManager {
         }
         scheduleStepTimers(player, definition, instance);
         QuestUIBridge.sendFullSync(player, definitions, data, zones);
+        QuestNarrationScriptManager.playStepNarration(player, questId, 1);
         return instance;
     }
 
@@ -786,6 +787,7 @@ public class QuestManager {
             return;
         }
         scheduleStepTimers(player, definition, instance);
+        QuestNarrationScriptManager.playStepNarration(player, definition.id(), instance.currentStepIndex() + 1);
     }
 
     private void scheduleStepTimers(ServerPlayer player, QuestDefinition definition, QuestInstance instance) {

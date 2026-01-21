@@ -5,6 +5,10 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import neutka.marallys.marallyzen.blocks.PosterBlock;
+import neutka.marallys.marallyzen.quest.QuestManager;
+
+import java.util.Map;
 
 /**
  * C2S packet: Sent when player right-clicks on a poster block.
@@ -49,7 +53,20 @@ public record PosterInteractPacket(BlockPos blockPos) implements CustomPacketPay
 
             neutka.marallys.marallyzen.Marallyzen.LOGGER.info("PosterInteractPacket: Player {} interacted with poster at {}, playing poke animation", 
                     player.getName().getString(), packet.blockPos());
+
+            var state = player.level().getBlockState(packet.blockPos());
+            if (state.getBlock() instanceof PosterBlock posterBlock) {
+                int posterNumber = posterBlock.getPosterNumber();
+                String eventId;
+                if (posterNumber == 11) {
+                    eventId = "poster_old";
+                } else if (posterNumber == 12 || posterNumber == 13) {
+                    eventId = "poster_paper";
+                } else {
+                    eventId = "poster";
+                }
+                QuestManager.getInstance().fireCustomEvent(player, eventId, Map.of());
+            }
         });
     }
 }
-

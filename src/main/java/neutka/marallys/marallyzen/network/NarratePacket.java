@@ -102,6 +102,10 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
                         packet.stayTicks(),
                         packet.fadeOutTicks()
                 );
+
+                if (packet.npcUuid() != null) {
+                    neutka.marallys.marallyzen.client.gui.NpcPromptHud.getInstance().suppressDialogPrompt();
+                }
             }
         });
     }

@@ -17,9 +17,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
+import neutka.marallys.marallyzen.quest.QuestManager;
+
+import java.util.Map;
 
 public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
     public static final BooleanProperty ON = BooleanProperty.create("on");
@@ -82,10 +86,14 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
         if (!level.isClientSide) {
             BlockState nextState = state.cycle(ON);
             level.setBlock(pos, nextState, 3);
-            if (nextState.getValue(ON)) {
+            boolean isOn = nextState.getValue(ON);
+            if (isOn) {
                 level.playSound(null, pos, MarallyzenSounds.TV_ON.get(), net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 1.0f);
             } else {
                 level.playSound(null, pos, MarallyzenSounds.TV_OFF.get(), net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 1.0f);
+            }
+            if (player instanceof ServerPlayer serverPlayer) {
+                QuestManager.getInstance().fireCustomEvent(serverPlayer, isOn ? "tv_on" : "tv_off", Map.of());
             }
         }
         return ItemInteractionResult.SUCCESS;

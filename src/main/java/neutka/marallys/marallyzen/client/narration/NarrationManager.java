@@ -24,6 +24,7 @@ public class NarrationManager {
     
     // Track if we've already sent completion packet for current narration (prevent duplicate sends)
     private boolean narrationCompletePacketSent = false;
+    private boolean narrationTriggersDictaphone = true;
     
     private NarrationManager() {
         this.narrationOverlay = new NarrationOverlay();
@@ -53,10 +54,17 @@ public class NarrationManager {
      * @param fadeOutTicks Number of ticks for fade-out animation
      */
     public void startNarration(Component text, UUID npcUuid, int fadeInTicks, int stayTicks, int fadeOutTicks) {
+        startNarration(text, npcUuid, fadeInTicks, stayTicks, fadeOutTicks, true);
+    }
+
+    public void startNarration(Component text, UUID npcUuid, int fadeInTicks, int stayTicks, int fadeOutTicks, boolean triggerDictaphone) {
         // Reset delay timer and completion flag when new narration starts
         lastNarrationEndTick = -1;
         narrationCompletePacketSent = false;
-        ClientDictaphoneManager.onNarrationStart();
+        narrationTriggersDictaphone = triggerDictaphone;
+        if (narrationTriggersDictaphone) {
+            ClientDictaphoneManager.onNarrationStart();
+        }
 
         if (shouldKeepNarration(text, npcUuid)) {
             narrationOverlay.updateText(text);
@@ -213,7 +221,9 @@ public class NarrationManager {
                 neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
                         new neutka.marallys.marallyzen.network.NarrationCompletePacket()
                 );
-                ClientDictaphoneManager.onNarrationComplete();
+                if (narrationTriggersDictaphone) {
+                    ClientDictaphoneManager.onNarrationComplete();
+                }
             }
         } else if (wasVisible && !isVisible) {
             // Fallback: also track when narration becomes invisible (for proximity delay)

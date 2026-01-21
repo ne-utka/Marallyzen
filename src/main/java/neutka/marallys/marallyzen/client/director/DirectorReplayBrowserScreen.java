@@ -209,9 +209,13 @@ public class DirectorReplayBrowserScreen extends Screen {
             return;
         }
         statusMessage = "Starting replay...";
+        Marallyzen.LOGGER.info("DirectorReplayBrowserScreen: playSelectedReplay {}", file.getAbsolutePath());
+        Minecraft.getInstance().setScreen(null);
+        Marallyzen.LOGGER.info("DirectorReplayBrowserScreen: calling ReplayCompat.startReplay");
         boolean ok = ReplayCompat.startReplay(file);
+        Marallyzen.LOGGER.info("DirectorReplayBrowserScreen: ReplayCompat.startReplay result={}", ok);
         if (ok) {
-            Minecraft.getInstance().setScreen(null);
+            Minecraft.getInstance().setScreen(new ReplayInputScreen());
         }
         statusMessage = ok
             ? "Replay started."

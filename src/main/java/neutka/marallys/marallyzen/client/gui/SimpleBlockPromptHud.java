@@ -247,7 +247,9 @@ public class SimpleBlockPromptHud {
             }
         } else if (block == MarallyzenBlocks.DICTAPHONE.get()
                 || block == MarallyzenBlocks.DICTAPHONE_SIMPLE.get()) {
-            if (ClientDictaphoneManager.isHidden(pos) || ClientDictaphoneManager.isPlaybackActive(pos)) {
+            boolean hidden = ClientDictaphoneManager.isHidden(pos);
+            boolean playback = ClientDictaphoneManager.isPlaybackActive(pos);
+            if (hidden || playback) {
                 targetVisible = false;
                 return;
             }
@@ -256,6 +258,21 @@ public class SimpleBlockPromptHud {
             promptLabel = "\u041f\u0440\u043e\u0441\u043b\u0443\u0448\u0430\u0442\u044c";
         } else {
             targetVisible = false;
+        }
+    }
+
+    public void hidePromptFor(BlockPos pos) {
+        if (pos == null) {
+            return;
+        }
+        if (targetPos != null && targetPos.equals(pos)) {
+            targetVisible = false;
+            targetPos = null;
+            promptLabel = null;
+            fadeInProgress = 0.0f;
+            fadeOutProgress = 0.0f;
+            previousFadeInProgress = 0.0f;
+            previousFadeOutProgress = 0.0f;
         }
     }
 

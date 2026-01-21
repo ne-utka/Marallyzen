@@ -11,7 +11,11 @@
                ],
     "client":  [
                    "client.BlockHideRenderMixin",
+                   "client.ClientLevelBlockHideMixin",
+                   "client.MinecraftScreenMixin",
                    "client.PosterBlockEntityRenderMixin",
+                   "client.ReplayHandlerMixin",
+                   "client.ScreenRenderMixin",
                    "client.TabListNpcFilterMixin"
                ],
     "injectors":  {
