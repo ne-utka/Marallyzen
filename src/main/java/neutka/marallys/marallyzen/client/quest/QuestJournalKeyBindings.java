@@ -23,10 +23,19 @@ public class QuestJournalKeyBindings {
         GLFW.GLFW_KEY_J,
         "key.categories.marallyzen"
     );
+    public static final KeyMapping EXIT_INSTANCE = new KeyMapping(
+        "key.marallyzen.instance_exit",
+        KeyConflictContext.IN_GAME,
+        KeyModifier.NONE,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_H,
+        "key.categories.marallyzen"
+    );
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(OPEN_JOURNAL);
+        event.register(EXIT_INSTANCE);
     }
 }
 
@@ -35,6 +44,17 @@ class QuestJournalKeyBindingsHandler {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         if (!QuestJournalKeyBindings.OPEN_JOURNAL.consumeClick()) {
+            if (!QuestJournalKeyBindings.EXIT_INSTANCE.consumeClick()) {
+                return;
+            }
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || mc.level == null || mc.screen != null) {
+                return;
+            }
+            if (!neutka.marallys.marallyzen.client.instance.InstanceClientState.getInstance().isInInstance()) {
+                return;
+            }
+            mc.setScreen(new neutka.marallys.marallyzen.client.instance.InstanceExitScreen());
             return;
         }
         Minecraft mc = Minecraft.getInstance();

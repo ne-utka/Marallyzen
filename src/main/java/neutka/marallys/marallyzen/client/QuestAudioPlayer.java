@@ -1,5 +1,7 @@
 package neutka.marallys.marallyzen.client;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundSource;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenAudioService;
 
@@ -41,7 +43,7 @@ public final class QuestAudioPlayer {
         try (AudioInputStream stream = AudioSystem.getAudioInputStream(new BufferedInputStream(Files.newInputStream(audioFile)))) {
             Clip clip = AudioSystem.getClip();
             clip.open(stream);
-            applyVolume(clip, volume);
+            applyVolume(clip, volume * getVoiceVolume());
             clip.addLineListener(event -> {
                 if (event.getType() == LineEvent.Type.STOP || event.getType() == LineEvent.Type.CLOSE) {
                     clip.close();
@@ -75,6 +77,14 @@ public final class QuestAudioPlayer {
             db = max;
         }
         control.setValue(db);
+    }
+
+    private static float getVoiceVolume() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.options == null) {
+            return 1.0f;
+        }
+        return mc.options.getSoundSourceVolume(SoundSource.VOICE);
     }
 
     private static Path tryWavFallback(String filePath) {

@@ -41,6 +41,8 @@ public class QuestManager {
     private final QuestRewardHandler rewardHandler = new QuestRewardHandler();
     private final QuestTriggerSystem triggerSystem = new QuestTriggerSystem(conditionEvaluator, progressTracker, rewardHandler);
     private final QuestZoneIndex zoneIndex = new QuestZoneIndex();
+    private final neutka.marallys.marallyzen.instance.InstanceSessionManager instanceSessionManager =
+            neutka.marallys.marallyzen.instance.InstanceSessionManager.getInstance();
 
     private final Map<String, QuestDefinition> definitions = new HashMap<>();
     private final Map<String, QuestZoneDefinition> zones = new HashMap<>();
@@ -61,7 +63,9 @@ public class QuestManager {
 
     public void initialize(MinecraftServer server) {
         this.server = server;
+        instanceSessionManager.initialize(server);
         loadDefinitions();
+        instanceSessionManager.preRegisterInstanceWorlds(definitions.values());
         loadZones();
         playerData.clear();
         playerData.putAll(QuestStateStore.load());
@@ -72,7 +76,9 @@ public class QuestManager {
 
     public void reload(MinecraftServer server) {
         this.server = server;
+        instanceSessionManager.initialize(server);
         loadDefinitions();
+        instanceSessionManager.preRegisterInstanceWorlds(definitions.values());
         loadZones();
         ensureQuestAdvancements(server);
         if (server != null) {
@@ -86,6 +92,7 @@ public class QuestManager {
 
     public void shutdown() {
         QuestStateStore.save(playerData);
+        instanceSessionManager.shutdown();
         initialized = false;
     }
 
@@ -112,6 +119,7 @@ public class QuestManager {
             return;
         }
         runtime.remove(player.getUUID());
+        instanceSessionManager.onPlayerLogout(player);
         QuestStateStore.save(playerData);
     }
 
@@ -211,13 +219,68 @@ public class QuestManager {
                 currentZones.add(zone.id());
             }
         }
+        if (currentZones.isEmpty() && instanceSessionManager.isInstanceZoneEnterBlocked(player)) {
+            instanceSessionManager.clearInstanceZoneEnterBlock(player);
+        }
 
         Set<String> entered = new HashSet<>(currentZones);
         entered.removeAll(runtimeData.activeZones);
         runtimeData.activeZones = currentZones;
         for (String zoneId : entered) {
             Marallyzen.LOGGER.info("QuestManager: zone_enter {} at {} for {}", zoneId, currentPos, player.getGameProfile().getName());
-            fireEvent(player, new QuestEvent("zone_enter", Map.of("zoneId", zoneId), currentPos));
+            boolean instanceHandled = handleInstanceZoneEnter(player, zoneId);
+            if (!instanceHandled) {
+                fireEvent(player, new QuestEvent("zone_enter", Map.of("zoneId", zoneId), currentPos));
+            }
+        }
+    }
+
+    public void onZoneTeleportRequest(ServerPlayer player, String zoneId) {
+        if (!initialized || player == null || zoneId == null || zoneId.isBlank()) {
+            return;
+        }
+        if (instanceSessionManager.isInstanceZoneEnterBlocked(player)) {
+            Marallyzen.LOGGER.info(
+                    "QuestManager: teleport request blocked for {} in {}",
+                    player.getGameProfile().getName(),
+                    zoneId
+            );
+            return;
+        }
+        QuestZoneDefinition zone = zones.get(zoneId);
+        if (zone == null) {
+            return;
+        }
+        if (!player.level().dimension().equals(zone.dimension())) {
+            return;
+        }
+        if (!zone.contains(player.blockPosition())) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        if (!hasMagnetiteInZone(level, zone, player.blockPosition())) {
+            Marallyzen.LOGGER.info(
+                    "QuestManager: teleport request ignored for {} in {} (no magnetite)",
+                    player.getGameProfile().getName(),
+                    zoneId
+            );
+            return;
+        }
+        QuestPlayerData data = getOrCreatePlayerData(player.getUUID());
+        boolean started = false;
+        String activeId = data.activeQuestId();
+        if (activeId != null) {
+            started |= tryStartInstanceForQuest(player, activeId, zoneId, data);
+        }
+        for (String questId : data.activeFarmQuests()) {
+            started |= tryStartInstanceForQuest(player, questId, zoneId, data);
+        }
+        if (!started) {
+            Marallyzen.LOGGER.info(
+                    "QuestManager: teleport request ignored for {} in {} (no instance start)",
+                    player.getGameProfile().getName(),
+                    zoneId
+            );
         }
     }
 
@@ -273,6 +336,7 @@ public class QuestManager {
         }
         instance.setState(QuestInstance.State.COMPLETED);
         instance.setCompletedAt(System.currentTimeMillis());
+        instanceSessionManager.onQuestEnded(instance.questId());
         int rewardCount = definition.rewards() != null ? definition.rewards().size() : 0;
         Marallyzen.LOGGER.info(
                 "QuestManager: quest '{}' completed by {}, rewards={}",
@@ -294,6 +358,7 @@ public class QuestManager {
             return;
         }
         instance.setState(QuestInstance.State.FAILED);
+        instanceSessionManager.onQuestEnded(instance.questId());
         QuestDefinition definition = definitions.get(instance.questId());
         clearActiveQuestState(player, definition, instance);
         QuestUIBridge.sendFullSync(player, definitions, getOrCreatePlayerData(player.getUUID()), zones);
@@ -780,6 +845,143 @@ public class QuestManager {
         if (!zoneId.isBlank()) {
             zoneTriggerIds.add(zoneId);
         }
+    }
+
+    private boolean handleInstanceZoneEnter(ServerPlayer player, String zoneId) {
+        if (player == null || zoneId == null || zoneId.isBlank()) {
+            return false;
+        }
+        if (instanceSessionManager.isInstanceZoneEnterBlocked(player)) {
+            Marallyzen.LOGGER.info(
+                    "QuestManager: instance zone_enter suppressed for {} in {} (blocked)",
+                    player.getGameProfile().getName(),
+                    zoneId
+            );
+            return true;
+        }
+        QuestPlayerData data = getOrCreatePlayerData(player.getUUID());
+        String activeId = data.activeQuestId();
+        boolean instanceZone = false;
+        if (activeId != null) {
+            instanceZone |= isInstanceZoneForQuest(activeId, zoneId, data);
+        }
+        for (String questId : data.activeFarmQuests()) {
+            instanceZone |= isInstanceZoneForQuest(questId, zoneId, data);
+        }
+        return instanceZone;
+    }
+
+    private boolean tryStartInstanceForQuest(ServerPlayer player, String questId, String zoneId, QuestPlayerData data) {
+        QuestDefinition definition = definitions.get(questId);
+        if (definition == null || definition.instanceSpec() == null) {
+            return false;
+        }
+        QuestInstance instance = data.quests().get(questId);
+        if (instance == null || instance.state() != QuestInstance.State.ACTIVE || instance.isWaitingHandover()) {
+            return false;
+        }
+        QuestStep step = definition.getStep(instance.currentStepIndex());
+        if (step == null || step.triggers() == null) {
+            return false;
+        }
+        for (QuestTriggerDef trigger : step.triggers()) {
+            if (trigger == null || !"zone_enter".equals(trigger.type())) {
+                continue;
+            }
+            String triggerZone = QuestJsonUtils.getString(trigger.data(), "zoneId", "");
+            if (triggerZone.isBlank() || triggerZone.equals(zoneId)) {
+                instanceSessionManager.onZoneEnter(player, definition, definition.instanceSpec(), zoneId);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasMagnetiteInZone(ServerLevel level, QuestZoneDefinition zone, BlockPos nearPos) {
+        if (level == null || zone == null) {
+            return false;
+        }
+        int minX;
+        int minY;
+        int minZ;
+        int maxX;
+        int maxY;
+        int maxZ;
+        if (zone.shape() == QuestZoneDefinition.Shape.SPHERE && zone.center() != null) {
+            int r = (int) Math.ceil(zone.radius());
+            minX = zone.center().getX() - r;
+            minY = zone.center().getY() - r;
+            minZ = zone.center().getZ() - r;
+            maxX = zone.center().getX() + r;
+            maxY = zone.center().getY() + r;
+            maxZ = zone.center().getZ() + r;
+        } else if (zone.min() != null && zone.max() != null) {
+            minX = zone.min().getX();
+            minY = zone.min().getY();
+            minZ = zone.min().getZ();
+            maxX = zone.max().getX();
+            maxY = zone.max().getY();
+            maxZ = zone.max().getZ();
+        } else {
+            return false;
+        }
+
+        if (zone.ignoreHeight()) {
+            minY = level.getMinBuildHeight();
+            maxY = level.getMaxBuildHeight();
+        }
+
+        long volume = (long) (maxX - minX + 1) * (long) (maxY - minY + 1) * (long) (maxZ - minZ + 1);
+        if (volume > 32768L && nearPos != null) {
+            int radius = 8;
+            minX = nearPos.getX() - radius;
+            minY = nearPos.getY() - radius;
+            minZ = nearPos.getZ() - radius;
+            maxX = nearPos.getX() + radius;
+            maxY = nearPos.getY() + radius;
+            maxZ = nearPos.getZ() + radius;
+        }
+
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    cursor.set(x, y, z);
+                    if (!zone.contains(cursor)) {
+                        continue;
+                    }
+                    if (level.getBlockState(cursor).is(net.minecraft.world.level.block.Blocks.LODESTONE)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isInstanceZoneForQuest(String questId, String zoneId, QuestPlayerData data) {
+        QuestDefinition definition = definitions.get(questId);
+        if (definition == null || definition.instanceSpec() == null) {
+            return false;
+        }
+        QuestInstance instance = data.quests().get(questId);
+        if (instance == null || instance.state() != QuestInstance.State.ACTIVE || instance.isWaitingHandover()) {
+            return false;
+        }
+        QuestStep step = definition.getStep(instance.currentStepIndex());
+        if (step == null || step.triggers() == null) {
+            return false;
+        }
+        for (QuestTriggerDef trigger : step.triggers()) {
+            if (trigger == null || !"zone_enter".equals(trigger.type())) {
+                continue;
+            }
+            String triggerZone = QuestJsonUtils.getString(trigger.data(), "zoneId", "");
+            if (triggerZone.isBlank() || triggerZone.equals(zoneId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void onStepChanged(ServerPlayer player, QuestDefinition definition, QuestInstance instance) {

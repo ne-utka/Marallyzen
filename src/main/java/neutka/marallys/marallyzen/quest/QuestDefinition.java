@@ -23,6 +23,7 @@ public class QuestDefinition {
     private final List<QuestRewardDef> rewards;
     private final QuestFlags flags;
     private final QuestCategory category;
+    private final QuestInstanceSpec instanceSpec;
 
     public QuestDefinition(
             String id,
@@ -36,7 +37,8 @@ public class QuestDefinition {
             List<QuestConditionDef> failConditions,
             List<QuestRewardDef> rewards,
             QuestFlags flags,
-            QuestCategory category
+            QuestCategory category,
+            QuestInstanceSpec instanceSpec
     ) {
         this.id = id;
         this.version = version;
@@ -50,6 +52,7 @@ public class QuestDefinition {
         this.rewards = rewards != null ? rewards : List.of();
         this.flags = flags != null ? flags : new QuestFlags(false, false, false, false, false);
         this.category = category;
+        this.instanceSpec = instanceSpec;
     }
 
     public String id() {
@@ -100,6 +103,10 @@ public class QuestDefinition {
         return category;
     }
 
+    public QuestInstanceSpec instanceSpec() {
+        return instanceSpec;
+    }
+
     public QuestCategory resolvedCategory() {
         if (category != null) {
             return category;
@@ -133,6 +140,7 @@ public class QuestDefinition {
 
         QuestGiver giver = QuestGiver.fromJson(obj.has("giver") ? obj.getAsJsonObject("giver") : null);
         QuestFlags flags = QuestFlags.fromJson(obj.has("flags") ? obj.getAsJsonObject("flags") : null);
+        QuestInstanceSpec instanceSpec = QuestInstanceSpec.fromJson(obj.has("instance") ? obj.getAsJsonObject("instance") : null);
 
         List<QuestConditionDef> conditions = QuestConditionDef.listFromJson(obj.getAsJsonArray("conditions"));
         List<QuestTriggerDef> triggers = QuestTriggerDef.listFromJson(obj.getAsJsonArray("triggers"));
@@ -164,7 +172,8 @@ public class QuestDefinition {
                 failConditions,
                 rewards,
                 flags,
-                category
+                category,
+                instanceSpec
         );
         if (!definition.isValid()) {
             Marallyzen.LOGGER.warn("QuestDefinition '{}' is invalid (missing id or steps)", id);
@@ -208,6 +217,9 @@ public class QuestDefinition {
             obj.add("rewards", rewardArray);
         }
         obj.add("flags", flags.toJson());
+        if (instanceSpec != null) {
+            obj.add("instance", instanceSpec.toJson());
+        }
         return obj;
     }
 

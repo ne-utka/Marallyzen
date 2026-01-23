@@ -25,7 +25,10 @@ public class MarallyzenNetwork {
         registrar.playToClient(
                 OpenDialogPacket.TYPE,
                 OpenDialogPacket.STREAM_CODEC,
-                OpenDialogPacket::handle
+                (packet, ctx) -> {
+                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv OpenDialogPacket");
+                    OpenDialogPacket.handle(packet, ctx);
+                }
         );
 
         registrar.playToClient(
@@ -73,7 +76,10 @@ public class MarallyzenNetwork {
         registrar.playToClient(
                 NarratePacket.TYPE,
                 NarratePacket.STREAM_CODEC,
-                NarratePacket::handle
+                (packet, ctx) -> {
+                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv NarratePacket");
+                    NarratePacket.handle(packet, ctx);
+                }
         );
 
         registrar.playToClient(
@@ -97,7 +103,10 @@ public class MarallyzenNetwork {
         registrar.playToClient(
                 ScreenFadePacket.TYPE,
                 ScreenFadePacket.STREAM_CODEC,
-                ScreenFadePacket::handle
+                (packet, ctx) -> {
+                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv ScreenFadePacket");
+                    ScreenFadePacket.handle(packet, ctx);
+                }
         );
 
         registrar.playToClient(
@@ -158,6 +167,24 @@ public class MarallyzenNetwork {
                 QuestNarratePacket.TYPE,
                 QuestNarratePacket.STREAM_CODEC,
                 QuestNarratePacket::handle
+        );
+
+        registrar.playToClient(
+                InstanceStatusPacket.TYPE,
+                InstanceStatusPacket.STREAM_CODEC,
+                (packet, ctx) -> {
+                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv InstanceStatusPacket");
+                    InstanceStatusPacket.handle(packet, ctx);
+                }
+        );
+
+        registrar.playToClient(
+                InstanceRegistryPacket.TYPE,
+                InstanceRegistryPacket.STREAM_CODEC,
+                (packet, ctx) -> {
+                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv InstanceRegistryPacket");
+                    InstanceRegistryPacket.handle(packet, ctx);
+                }
         );
         
         registrar.playToClient(
@@ -261,6 +288,18 @@ public class MarallyzenNetwork {
                 RadioInteractPacket.TYPE,
                 RadioInteractPacket.STREAM_CODEC,
                 RadioInteractPacket::handle
+        );
+
+        registrar.playToServer(
+                InstanceLeaveRequestPacket.TYPE,
+                InstanceLeaveRequestPacket.STREAM_CODEC,
+                InstanceLeaveRequestPacket::handle
+        );
+
+        registrar.playToServer(
+                QuestZoneTeleportRequestPacket.TYPE,
+                QuestZoneTeleportRequestPacket.STREAM_CODEC,
+                QuestZoneTeleportRequestPacket::handle
         );
 
         Marallyzen.LOGGER.info("Marallyzen network packets registered");

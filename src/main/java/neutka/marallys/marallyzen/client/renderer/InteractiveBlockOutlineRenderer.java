@@ -1,14 +1,21 @@
 package neutka.marallys.marallyzen.client.renderer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -25,6 +32,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -37,6 +47,13 @@ import neutka.marallys.marallyzen.blocks.PosterBlock;
 import neutka.marallys.marallyzen.client.ClientDictaphoneManager;
 import neutka.marallys.marallyzen.client.ClientPosterManager;
 import neutka.marallys.marallyzen.client.renderer.PosterTextures;
+import neutka.marallys.marallyzen.client.quest.QuestClientState;
+import neutka.marallys.marallyzen.quest.QuestDefinition;
+import neutka.marallys.marallyzen.quest.QuestCategoryColors;
+import neutka.marallys.marallyzen.quest.QuestInstance;
+import neutka.marallys.marallyzen.quest.QuestJsonUtils;
+import neutka.marallys.marallyzen.quest.QuestStep;
+import neutka.marallys.marallyzen.quest.QuestTriggerDef;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +81,17 @@ public class InteractiveBlockOutlineRenderer {
     private static final float OUTLINE_THICKNESS = 0.03125f;
     private static final int ALPHA_THRESHOLD = 128;
 
+    private static final int QUEST_SCAN_INTERVAL = 6;
+    private static final double QUEST_SCAN_RADIUS = 15.0;
+    private static final int QUEST_MAX_TARGETS = 5;
+    private static final double QUEST_BAND_HEIGHT = 0.4;
+    private static final double QUEST_BAND_THICKNESS = 0.04;
+    private static final double QUEST_TOP_FADE_HEIGHT = 0.4;
+    private static final double QUEST_WAVE_FREQUENCY = 0.45;
+    private static final double QUEST_WAVE_SPEED = 2.2;
+    private static final int QUEST_BASE_ALPHA = 18;
+    private static final int QUEST_WAVE_ALPHA = 80;
+
     private static final ResourceLocation OLD_LAPTOP_TEX =
         ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_laptop.png");
     private static final ResourceLocation RADIO_TEX =
@@ -79,6 +107,11 @@ public class InteractiveBlockOutlineRenderer {
 
     private static final Map<ResourceLocation, List<EdgeSegment>> OUTLINE_CACHE = new HashMap<>();
     private static Target lastTarget = null;
+    private static long lastQuestScanTick = -1;
+    private static final List<AABB> cachedQuestAreas = new ArrayList<>();
+    private static int cachedQuestColor = OUTLINE_COLOR;
+    private static String cachedQuestId;
+    private static String cachedStepId;
 
     private static final class EdgeSegment {
         final float x1;
@@ -129,21 +162,29 @@ public class InteractiveBlockOutlineRenderer {
             return;
         }
 
+        // Quest area highlights disabled for now.
+        // List<AABB> questAreas = getQuestAreas(mc);
         Target target = getTarget(mc);
+        lastTarget = target;
+
         if (target == null) {
-            lastTarget = null;
             return;
         }
-        lastTarget = target;
 
         Camera camera = event.getCamera();
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
-        if (target.mode == OutlineMode.CHAIN) {
-            renderChainOutline(poseStack, bufferSource, camera, target.pos, target.spec);
-        } else {
-            renderBlockOutline(poseStack, bufferSource, camera, target.pos, target.spec, target.mode, target.state);
+        // Quest area highlights disabled for now.
+        // if (questAreas != null && !questAreas.isEmpty()) {
+        //     renderQuestAreas(poseStack, bufferSource, camera, questAreas);
+        // }
+        if (target != null) {
+            if (target.mode == OutlineMode.CHAIN) {
+                renderChainOutline(poseStack, bufferSource, camera, target.pos, target.spec);
+            } else {
+                renderBlockOutline(poseStack, bufferSource, camera, target.pos, target.spec, target.mode, target.state);
+            }
         }
 
         bufferSource.endBatch();
@@ -182,6 +223,382 @@ public class InteractiveBlockOutlineRenderer {
             return null;
         }
         return new Target(pos, state, mode, spec);
+    }
+
+    private enum QuestHintType {
+        POSTER_OLD,
+        POSTER_PAPER,
+        POSTER_REGULAR,
+        DICTAPHONE,
+        OLD_TV
+    }
+
+    private static List<AABB> getQuestAreas(Minecraft mc) {
+        if (mc.level == null || mc.player == null) {
+            return List.of();
+        }
+        QuestClientState questState = QuestClientState.getInstance();
+        QuestDefinition definition = questState.getActiveDefinition();
+        QuestInstance instance = questState.getActiveInstance();
+        if (definition == null || instance == null || instance.state() != QuestInstance.State.ACTIVE) {
+            return List.of();
+        }
+        QuestStep step = definition.getStep(instance.currentStepIndex());
+        if (step == null || step.triggers() == null || step.triggers().isEmpty()) {
+            return List.of();
+        }
+        List<QuestHintType> hintTypes = collectQuestHintTypes(step);
+        if (hintTypes.isEmpty()) {
+            return List.of();
+        }
+
+        String questId = definition.id();
+        String stepId = step.id();
+        if (cachedQuestId == null || cachedStepId == null
+            || !cachedQuestId.equals(questId) || !cachedStepId.equals(stepId)) {
+            cachedQuestId = questId;
+            cachedStepId = stepId;
+            cachedQuestAreas.clear();
+        }
+
+        long gameTime = mc.level.getGameTime();
+        cachedQuestColor = QuestCategoryColors.getColor(definition.resolvedCategory());
+        if (lastQuestScanTick >= 0 && gameTime - lastQuestScanTick < QUEST_SCAN_INTERVAL) {
+            return cachedQuestAreas;
+        }
+        lastQuestScanTick = gameTime;
+        cachedQuestAreas.clear();
+
+        Vec3 focus = mc.player.position();
+        AABB scanBox = new AABB(
+            focus.x - QUEST_SCAN_RADIUS, focus.y - QUEST_SCAN_RADIUS, focus.z - QUEST_SCAN_RADIUS,
+            focus.x + QUEST_SCAN_RADIUS, focus.y + QUEST_SCAN_RADIUS, focus.z + QUEST_SCAN_RADIUS
+        );
+
+        int minX = Mth.floor(scanBox.minX);
+        int minY = Mth.floor(scanBox.minY);
+        int minZ = Mth.floor(scanBox.minZ);
+        int maxX = Mth.floor(scanBox.maxX);
+        int maxY = Mth.floor(scanBox.maxY);
+        int maxZ = Mth.floor(scanBox.maxZ);
+
+        int found = 0;
+        for (int y = minY; y <= maxY && found < QUEST_MAX_TARGETS; y++) {
+            for (int x = minX; x <= maxX && found < QUEST_MAX_TARGETS; x++) {
+                for (int z = minZ; z <= maxZ && found < QUEST_MAX_TARGETS; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    BlockState state = mc.level.getBlockState(pos);
+                    if (!matchesQuestHint(state, hintTypes)) {
+                        continue;
+                    }
+                    addQuestArea(mc, pos, state);
+                    found++;
+                }
+            }
+        }
+        return cachedQuestAreas;
+    }
+
+    private static List<QuestHintType> collectQuestHintTypes(QuestStep step) {
+        List<QuestHintType> types = new ArrayList<>();
+        for (QuestTriggerDef trigger : step.triggers()) {
+            if (trigger == null || trigger.type() == null) {
+                continue;
+            }
+            if (!"custom".equals(trigger.type())) {
+                continue;
+            }
+            String eventId = QuestJsonUtils.getString(trigger.data(), "eventId", "");
+            if ("poster_old".equals(eventId)) {
+                types.add(QuestHintType.POSTER_OLD);
+            } else if ("poster_paper".equals(eventId)) {
+                types.add(QuestHintType.POSTER_PAPER);
+            } else if ("poster".equals(eventId)) {
+                types.add(QuestHintType.POSTER_REGULAR);
+            } else if ("dictaphone_finished".equals(eventId)) {
+                types.add(QuestHintType.DICTAPHONE);
+            } else if ("tv_on".equals(eventId) || "tv_off".equals(eventId)) {
+                types.add(QuestHintType.OLD_TV);
+            }
+        }
+        return types;
+    }
+
+    private static boolean matchesQuestHint(BlockState state, List<QuestHintType> hintTypes) {
+        if (state == null || hintTypes == null || hintTypes.isEmpty()) {
+            return false;
+        }
+        Block block = state.getBlock();
+        for (QuestHintType type : hintTypes) {
+            if (type == QuestHintType.OLD_TV && block == MarallyzenBlocks.OLD_TV.get()) {
+                return true;
+            }
+            if (type == QuestHintType.DICTAPHONE && (block == MarallyzenBlocks.DICTAPHONE.get()
+                || block == MarallyzenBlocks.DICTAPHONE_SIMPLE.get())) {
+                return true;
+            }
+            if (type == QuestHintType.POSTER_OLD && block instanceof PosterBlock posterBlock) {
+                if (posterBlock.getPosterNumber() == 11) {
+                    return true;
+                }
+            }
+            if (type == QuestHintType.POSTER_PAPER && block instanceof PosterBlock posterBlock) {
+                int number = posterBlock.getPosterNumber();
+                if (number == 12 || number == 13) {
+                    return true;
+                }
+            }
+            if (type == QuestHintType.POSTER_REGULAR && block instanceof PosterBlock posterBlock) {
+                int number = posterBlock.getPosterNumber();
+                if (number >= 1 && number <= 10) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void addQuestArea(Minecraft mc, BlockPos pos, BlockState state) {
+        double baseY = pos.getY();
+        if (state != null && state.getBlock() instanceof PosterBlock) {
+            baseY = questSurfaceY(mc, pos);
+        }
+        double minX = pos.getX() - 1.0;
+        double minZ = pos.getZ() - 1.0;
+        double maxX = pos.getX() + 2.0;
+        double maxZ = pos.getZ() + 2.0;
+        double minY = baseY;
+        double maxY = baseY + 1.0;
+        AABB area = new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+        mergeQuestArea(area);
+    }
+
+    private static void mergeQuestArea(AABB area) {
+        final double eps = 1.0e-6;
+        for (int i = 0; i < cachedQuestAreas.size(); i++) {
+            AABB existing = cachedQuestAreas.get(i);
+            if (touchesOrIntersects(existing, area, eps)) {
+                cachedQuestAreas.set(i, existing.minmax(area));
+                return;
+            }
+        }
+        cachedQuestAreas.add(area);
+    }
+
+    private static boolean touchesOrIntersects(AABB a, AABB b, double eps) {
+        boolean overlapX = a.maxX >= b.minX - eps && b.maxX >= a.minX - eps;
+        boolean overlapY = a.maxY >= b.minY - eps && b.maxY >= a.minY - eps;
+        boolean overlapZ = a.maxZ >= b.minZ - eps && b.maxZ >= a.minZ - eps;
+        return overlapX && overlapY && overlapZ;
+    }
+
+    private static void renderQuestAreas(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource,
+                                         Camera camera, List<AABB> areas) {
+        if (areas == null || areas.isEmpty()) {
+            return;
+        }
+        poseStack.pushPose();
+        Vec3 camPos = camera.getPosition();
+        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        Matrix4f matrix = poseStack.last().pose();
+        int r = (cachedQuestColor >> 16) & 0xFF;
+        int g = (cachedQuestColor >> 8) & 0xFF;
+        int b = cachedQuestColor & 0xFF;
+        float time = (float) (net.minecraft.Util.getMillis() / 1000.0);
+
+        for (AABB area : areas) {
+            double minX = area.minX;
+            double maxX = area.maxX;
+            double minZ = area.minZ;
+            double maxZ = area.maxZ;
+            double baseY = area.minY;
+            double topY = Math.min(baseY + QUEST_BAND_HEIGHT, area.maxY);
+            if (topY <= baseY) {
+                continue;
+            }
+            double maxEdge = Math.max(maxX - minX, maxZ - minZ);
+            double segment = Math.max(0.75, maxEdge / 96.0);
+            renderQuestEdgeX(matrix, minX, maxX, minZ, baseY, topY, r, g, b, time, segment);
+            renderQuestEdgeX(matrix, minX, maxX, maxZ, baseY, topY, r, g, b, time, segment);
+            renderQuestEdgeZ(matrix, minZ, maxZ, minX, baseY, topY, r, g, b, time, segment);
+            renderQuestEdgeZ(matrix, minZ, maxZ, maxX, baseY, topY, r, g, b, time, segment);
+            addQuestCorner(matrix, minX, minZ, baseY, topY, r, g, b, time, -1, -1);
+            addQuestCorner(matrix, minX, maxZ, baseY, topY, r, g, b, time, -1, 1);
+            addQuestCorner(matrix, maxX, minZ, baseY, topY, r, g, b, time, 1, -1);
+            addQuestCorner(matrix, maxX, maxZ, baseY, topY, r, g, b, time, 1, 1);
+        }
+
+        poseStack.popPose();
+        RenderSystem.disableBlend();
+        RenderSystem.depthMask(true);
+        RenderSystem.disableDepthTest();
+        RenderSystem.enableCull();
+    }
+
+    private static double questSurfaceY(Minecraft mc, BlockPos pos) {
+        if (mc == null || mc.level == null) {
+            return pos.getY();
+        }
+        if (!mc.level.hasChunkAt(pos)) {
+            return pos.getY();
+        }
+        int minY = mc.level.getMinBuildHeight();
+        int startY = pos.getY() - 1;
+        int endY = Math.max(minY, pos.getY() - 12);
+        BlockPos.MutableBlockPos scan = new BlockPos.MutableBlockPos();
+        for (int y = startY; y >= endY; y--) {
+            scan.set(pos.getX(), y, pos.getZ());
+            BlockState state = mc.level.getBlockState(scan);
+            if (!state.isAir() || !state.getFluidState().isEmpty()) {
+                return questBlockSurfaceY(mc, scan, state);
+            }
+        }
+        return pos.getY();
+    }
+
+    private static double questBlockSurfaceY(Minecraft mc, BlockPos pos, BlockState state) {
+        double collisionTop = 0.0;
+        VoxelShape shape = state.getCollisionShape(mc.level, pos);
+        if (!shape.isEmpty()) {
+            collisionTop = shape.max(Direction.Axis.Y);
+        }
+        double fluidTop = 0.0;
+        if (!state.getFluidState().isEmpty()) {
+            fluidTop = state.getFluidState().getHeight(mc.level, pos);
+        }
+        double top = Math.max(collisionTop, fluidTop);
+        if (top <= 0.0) {
+            return pos.getY();
+        }
+        return pos.getY() + top;
+    }
+
+    private static void renderQuestEdgeX(Matrix4f matrix,
+                                         double minX, double maxX, double z,
+                                         double baseY, double topY,
+                                         int r, int g, int b, float time, double segment) {
+        double half = QUEST_BAND_THICKNESS * 0.5;
+        renderQuestStripX(matrix, minX, maxX, z - half, baseY, topY, r, g, b, time, segment);
+        renderQuestStripX(matrix, minX, maxX, z + half, baseY, topY, r, g, b, time, segment);
+    }
+
+    private static void renderQuestEdgeZ(Matrix4f matrix,
+                                         double minZ, double maxZ, double x,
+                                         double baseY, double topY,
+                                         int r, int g, int b, float time, double segment) {
+        double half = QUEST_BAND_THICKNESS * 0.5;
+        renderQuestStripZ(matrix, minZ, maxZ, x - half, baseY, topY, r, g, b, time, segment);
+        renderQuestStripZ(matrix, minZ, maxZ, x + half, baseY, topY, r, g, b, time, segment);
+    }
+
+    private static void renderQuestStripX(Matrix4f matrix, double minX, double maxX, double z,
+                                          double baseY, double topY,
+                                          int r, int g, int b, float time, double segment) {
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        double x = minX;
+        while (x < maxX) {
+            int a = questWaveAlpha(x, z, time);
+            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, questFadeAlpha(a, baseY, topY));
+            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, questFadeAlpha(a, topY, topY));
+            x += segment;
+        }
+        int aEnd = questWaveAlpha(maxX, z, time);
+        addQuestStripVertex(buffer, matrix, maxX, baseY, z, r, g, b, questFadeAlpha(aEnd, baseY, topY));
+        addQuestStripVertex(buffer, matrix, maxX, topY, z, r, g, b, questFadeAlpha(aEnd, topY, topY));
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+    }
+
+    private static void renderQuestStripZ(Matrix4f matrix, double minZ, double maxZ, double x,
+                                          double baseY, double topY,
+                                          int r, int g, int b, float time, double segment) {
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        double z = minZ;
+        while (z < maxZ) {
+            int a = questWaveAlpha(x, z, time);
+            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, questFadeAlpha(a, baseY, topY));
+            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, questFadeAlpha(a, topY, topY));
+            z += segment;
+        }
+        int aEnd = questWaveAlpha(x, maxZ, time);
+        addQuestStripVertex(buffer, matrix, x, baseY, maxZ, r, g, b, questFadeAlpha(aEnd, baseY, topY));
+        addQuestStripVertex(buffer, matrix, x, topY, maxZ, r, g, b, questFadeAlpha(aEnd, topY, topY));
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+    }
+
+    private static void addQuestCorner(Matrix4f matrix,
+                                       double x, double z, double baseY, double topY,
+                                       int r, int g, int b, float time,
+                                       int xSign, int zSign) {
+        double half = QUEST_BAND_THICKNESS * 0.5;
+        double xOffset = x + xSign * half;
+        double zOffset = z + zSign * half;
+        int a = questWaveAlpha(x, z, time);
+        int aTop = questFadeAlpha(a, topY, topY);
+        drawQuestQuadGradient(matrix,
+            xOffset, baseY, z,
+            x, baseY, zOffset,
+            x, topY, zOffset,
+            xOffset, topY, z,
+            r, g, b,
+            a, a, aTop, aTop);
+    }
+
+    private static void addQuestStripVertex(BufferBuilder buffer, Matrix4f matrix,
+                                            double x, double y, double z,
+                                            int r, int g, int b, int a) {
+        buffer.addVertex(matrix, (float) x, (float) y, (float) z).setColor(r, g, b, a);
+    }
+
+    private static void drawQuestQuadGradient(Matrix4f matrix,
+                                              double x1, double y1, double z1,
+                                              double x2, double y2, double z2,
+                                              double x3, double y3, double z3,
+                                              double x4, double y4, double z4,
+                                              int r, int g, int b,
+                                              int a1, int a2, int a3, int a4) {
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        buffer.addVertex(matrix, (float) x1, (float) y1, (float) z1).setColor(r, g, b, a1);
+        buffer.addVertex(matrix, (float) x2, (float) y2, (float) z2).setColor(r, g, b, a2);
+        buffer.addVertex(matrix, (float) x3, (float) y3, (float) z3).setColor(r, g, b, a3);
+        buffer.addVertex(matrix, (float) x4, (float) y4, (float) z4).setColor(r, g, b, a4);
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+    }
+
+    private static int questWaveAlpha(double coord, double other, float time) {
+        double phase = (coord * QUEST_WAVE_FREQUENCY) + (other * 0.12) + (time * QUEST_WAVE_SPEED);
+        double wave = (Math.sin(phase) * 0.5) + 0.5;
+        int a = (int) (QUEST_BASE_ALPHA + wave * QUEST_WAVE_ALPHA);
+        if (a < 0) {
+            return 0;
+        }
+        if (a > 255) {
+            return 255;
+        }
+        return a;
+    }
+
+    private static int questFadeAlpha(int alpha, double y, double topY) {
+        double remaining = topY - y;
+        if (remaining <= 0.0) {
+            return 0;
+        }
+        double fade = Math.min(1.0, remaining / QUEST_TOP_FADE_HEIGHT);
+        int scaled = (int) Math.round(alpha * fade);
+        if (scaled < 0) {
+            return 0;
+        }
+        if (scaled > 255) {
+            return 255;
+        }
+        return scaled;
     }
 
     private static OutlineMode toOutlineMode(InteractiveBlockTargeting.Type type) {

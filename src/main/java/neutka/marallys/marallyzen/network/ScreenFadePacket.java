@@ -35,6 +35,8 @@ public record ScreenFadePacket(
                 return Component.Serializer.fromJson(json, buf.registryAccess());
             }
     );
+    public static final StreamCodec<RegistryFriendlyByteBuf, Component> NULLABLE_COMPONENT_CODEC =
+            NetworkCodecs.nullable(COMPONENT_CODEC);
     
     public static final StreamCodec<RegistryFriendlyByteBuf, Integer> INT_CODEC = StreamCodec.of(
             RegistryFriendlyByteBuf::writeInt,
@@ -53,8 +55,8 @@ public record ScreenFadePacket(
                 INT_CODEC.encode(buf, packet.fadeOutTicks());
                 INT_CODEC.encode(buf, packet.blackScreenTicks());
                 INT_CODEC.encode(buf, packet.fadeInTicks());
-                COMPONENT_CODEC.encode(buf, packet.titleText());
-                COMPONENT_CODEC.encode(buf, packet.subtitleText());
+                NULLABLE_COMPONENT_CODEC.encode(buf, packet.titleText());
+                NULLABLE_COMPONENT_CODEC.encode(buf, packet.subtitleText());
                 BOOLEAN_CODEC.encode(buf, packet.blockPlayerInput());
                 NULLABLE_STRING_CODEC.encode(buf, packet.soundId());
             },
@@ -62,8 +64,8 @@ public record ScreenFadePacket(
                     INT_CODEC.decode(buf),
                     INT_CODEC.decode(buf),
                     INT_CODEC.decode(buf),
-                    COMPONENT_CODEC.decode(buf),
-                    COMPONENT_CODEC.decode(buf),
+                    NULLABLE_COMPONENT_CODEC.decode(buf),
+                    NULLABLE_COMPONENT_CODEC.decode(buf),
                     BOOLEAN_CODEC.decode(buf),
                     NULLABLE_STRING_CODEC.decode(buf)
             )
@@ -100,4 +102,3 @@ public record ScreenFadePacket(
         });
     }
 }
-
