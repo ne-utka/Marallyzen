@@ -22,7 +22,7 @@ public record InstanceLeaveRequestPacket() implements CustomPacketPayload {
         context.enqueueWork(() -> {
             var player = context.player();
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-                InstanceSessionManager.getInstance().requestLeave(serverPlayer);
+                InstanceSessionManager.getInstance().leaveSession(serverPlayer, "leave_button");
             }
         });
     }

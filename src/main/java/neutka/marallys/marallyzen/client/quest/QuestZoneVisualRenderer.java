@@ -31,7 +31,7 @@ import org.joml.Matrix4f;
 
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
 public class QuestZoneVisualRenderer {
-    private static final boolean ENABLED = false;
+    private static boolean enabled = false;
     private static final double MAX_RENDER_DISTANCE = 64.0;
     private static final double BAND_HEIGHT = 0.4;
     private static final double BAND_THICKNESS = 0.04;
@@ -44,7 +44,7 @@ public class QuestZoneVisualRenderer {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (!ENABLED) {
+        if (!enabled) {
             return;
         }
         if (disabled) {

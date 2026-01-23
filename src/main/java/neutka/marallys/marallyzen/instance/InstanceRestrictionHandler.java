@@ -91,8 +91,12 @@ public class InstanceRestrictionHandler {
             return;
         }
         InstanceSessionManager manager = InstanceSessionManager.getInstance();
+        PlayerState state = manager.getPlayerState(player.getUUID());
+        if (state == PlayerState.LEAVE_PENDING || state == PlayerState.LOGIN_RESTORE_PENDING) {
+            return;
+        }
         if (manager.isPlayerInSession(player.getUUID()) && !isInstanceDimension(player) && !manager.isPendingInstanceRespawn(player)) {
-            manager.forceLeaveSession(player, "dimension_escape");
+            manager.leaveSession(player, "dimension_escape");
             return;
         }
         if (!manager.isPlayerInSession(player.getUUID()) || (!isInstanceDimension(player) && !manager.isPendingInstanceRespawn(player))) {

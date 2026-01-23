@@ -26,6 +26,10 @@ public final class NpcSpawner {
         }
         bootstrapped = false;
         registerAllExisting(level, registry);
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
+            bootstrapped = true;
+            return;
+        }
         NpcSavedData data = NpcSavedData.get(level);
         syncSavedDataWithConfigs(data, registry, level);
         data.rebuildIndex();
@@ -46,6 +50,9 @@ public final class NpcSpawner {
             return;
         }
         registerExistingEntities(level, registry, event.getChunk().getPos());
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
+            return;
+        }
         spawnForChunk(level, registry, event.getChunk().getPos());
     }
 
@@ -71,6 +78,9 @@ public final class NpcSpawner {
 
     private static void spawnForChunk(ServerLevel level, NpcRegistry registry, ChunkPos chunkPos) {
         if (level == null || registry == null || chunkPos == null) {
+            return;
+        }
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
             return;
         }
         NpcSavedData data = NpcSavedData.get(level);
@@ -144,7 +154,7 @@ public final class NpcSpawner {
                 return;
             }
             npcId = resolveNpcIdFromName(registry, entity);
-            if (npcId == null) {
+            if (npcId == null && NpcWorldPolicy.isPersistentLevel(level)) {
                 npcId = resolveNpcIdFromPosition(level, entity);
             }
             if (npcId == null) {
@@ -172,10 +182,12 @@ public final class NpcSpawner {
             return;
         }
         registry.registerExistingNpcEntity(entity);
-        NpcSavedData.get(level).putState(
-                npcId,
-                new NpcState(level.dimension(), entity.blockPosition(), entity.getYRot(), npcId, null, null)
-        );
+        if (NpcWorldPolicy.isPersistentLevel(level)) {
+            NpcSavedData.get(level).putState(
+                    npcId,
+                    new NpcState(level.dimension(), entity.blockPosition(), entity.getYRot(), npcId, null, null)
+            );
+        }
     }
 
     private static String resolveNpcIdFromName(NpcRegistry registry, Entity entity) {
@@ -208,6 +220,9 @@ public final class NpcSpawner {
 
     private static String resolveNpcIdFromPosition(ServerLevel level, Entity entity) {
         if (level == null || entity == null) {
+            return null;
+        }
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
             return null;
         }
         NpcSavedData data = NpcSavedData.get(level);
@@ -282,6 +297,9 @@ public final class NpcSpawner {
         if (level == null || registry == null || chunkPos == null) {
             return;
         }
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
+            return;
+        }
         NpcSavedData data = NpcSavedData.get(level);
         Set<String> ids = data.getNpcIdsForChunk(level.dimension(), chunkPos.toLong());
         if (ids.isEmpty()) {
@@ -293,6 +311,9 @@ public final class NpcSpawner {
     }
 
     private static void syncSavedDataWithConfigs(NpcSavedData data, NpcRegistry registry, ServerLevel level) {
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
+            return;
+        }
         for (NpcData npcData : registry.getAllNpcData()) {
             if (data.getState(npcData.getId()) != null) {
                 continue;
@@ -309,6 +330,9 @@ public final class NpcSpawner {
 
     private static void spawnExistingFromSavedData(ServerLevel level, NpcRegistry registry, NpcSavedData data) {
         if (level == null || registry == null || data == null) {
+            return;
+        }
+        if (!NpcWorldPolicy.isPersistentLevel(level)) {
             return;
         }
         Set<String> disabled = NpcStateStore.loadDisabled();

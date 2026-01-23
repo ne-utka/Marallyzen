@@ -8,7 +8,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.levelgen.Heightmap;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.network.InstanceStatusPacket;
 import neutka.marallys.marallyzen.network.InstanceRegistryPacket;
@@ -30,6 +29,7 @@ public class InstanceSessionManager {
     private final Map<UUID, InstanceSession> sessions = new HashMap<>();
     private final Map<String, UUID> sessionsByQuest = new HashMap<>();
     private final Map<UUID, UUID> playerToSession = new HashMap<>();
+    private final Map<UUID, PlayerState> playerStates = new HashMap<>();
     private final Set<UUID> restrictedPlayers = new HashSet<>();
     private final Map<String, Integer> worldUsage = new HashMap<>();
     private final Map<UUID, UUID> pendingInstanceRespawn = new HashMap<>();
@@ -44,9 +44,6 @@ public class InstanceSessionManager {
     private static final int PRE_TELEPORT_BLACK = 80;
     private static final int PRE_TELEPORT_FADE_IN = 5;
     private static final int PRE_TELEPORT_DELAY = PRE_TELEPORT_FADE_OUT + 2;
-    private static final int TELEPORT_FADE_OUT = 1;
-    private static final int TELEPORT_BLACK = 0;
-    private static final int TELEPORT_FADE_IN = 10;
 
     private InstanceSessionManager(InstanceWorldManager worldManager) {
         this.worldManager = worldManager;
@@ -84,17 +81,30 @@ public class InstanceSessionManager {
             endSession(sessionId, "shutdown");
         }
         restrictedPlayers.clear();
+        playerStates.clear();
+        pendingInstanceRespawn.clear();
+        pendingTeleports.clear();
+        blockedZoneEnter.clear();
     }
 
     public void onZoneEnter(ServerPlayer player, QuestDefinition definition, QuestInstanceSpec spec, String zoneId) {
         if (player == null || definition == null || spec == null || zoneId == null || zoneId.isBlank()) {
             return;
         }
+        if (blockedZoneEnter.contains(player.getUUID())) {
+            return;
+        }
         if (playerToSession.containsKey(player.getUUID())) {
             return;
         }
-        InstanceSession session = getOrCreateSession(definition, spec, zoneId);
+        InstanceSession session = getOrCreateSession(definition, spec, zoneId, player.getUUID());
         if (session == null) {
+            return;
+        }
+        if (session.state() != SessionState.WAITING) {
+            return;
+        }
+        if (!session.tryAllowPlayer(player.getUUID())) {
             return;
         }
         Marallyzen.LOGGER.info(
@@ -108,7 +118,7 @@ public class InstanceSessionManager {
         );
         session.addPlayer(player.getUUID());
         playerToSession.put(player.getUUID(), session.sessionId());
-        if (session.state() == InstanceSession.State.WAITING && session.isReady()) {
+        if (session.isReady()) {
             startSession(session);
         }
     }
@@ -118,25 +128,50 @@ public class InstanceSessionManager {
             return;
         }
         UUID sessionId = sessionsByQuest.get(questId);
-        if (sessionId != null) {
-            endSession(sessionId, "quest_end");
+        if (sessionId == null) {
+            return;
+        }
+        InstanceSession session = sessions.get(sessionId);
+        if (session == null || server == null) {
+            return;
+        }
+        for (UUID playerId : new HashSet<>(session.players())) {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+            if (player == null) {
+                session.removePlayer(playerId);
+                continue;
+            }
+            leaveSession(player, "quest_end");
+        }
+        if (sessions.containsKey(sessionId) && session.players().isEmpty()) {
+            endSession(sessionId, "quest_end_empty");
         }
     }
 
-    public void requestLeave(ServerPlayer player) {
+    public boolean leaveSession(ServerPlayer player, String reason) {
         if (player == null) {
-            return;
+            return false;
         }
+        UUID playerId = player.getUUID();
+        setPlayerState(playerId, PlayerState.LEAVE_PENDING);
         Marallyzen.LOGGER.info(
-                "[InstanceLeave] restoring snapshot player={}",
-                player.getGameProfile().getName()
+                "[InstanceLeave] restoring snapshot player={} reason={}",
+                player.getGameProfile().getName(),
+                reason
         );
-        if (restoreAfterLeave(player, "leave_button")) {
-            return;
+        if (restoreAfterLeave(player, reason)) {
+            return true;
         }
-        detachFromSessions(player, "leave_no_snapshot");
+        if (isInstanceDimension(player) && playerToSession.containsKey(playerId)) {
+            restrictedPlayers.add(playerId);
+            setPlayerState(playerId, PlayerState.IN_INSTANCE);
+            return false;
+        }
+        setPlayerState(playerId, PlayerState.OUTSIDE);
+        detachFromSessions(player, reason);
         clearRestrictions(player);
         NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(false, null));
+        return false;
     }
 
     public void onPlayerLogout(ServerPlayer player) {
@@ -147,7 +182,11 @@ public class InstanceSessionManager {
         pendingTeleports.remove(playerId);
         UUID sessionId = playerToSession.remove(playerId);
         restrictedPlayers.remove(playerId);
-        blockedZoneEnter.remove(playerId);
+        if (isInstanceDimension(player)) {
+            setPlayerState(playerId, PlayerState.LOGIN_RESTORE_PENDING);
+        } else {
+            setPlayerState(playerId, PlayerState.OUTSIDE);
+        }
         if (sessionId == null) {
             return;
         }
@@ -156,6 +195,9 @@ public class InstanceSessionManager {
             return;
         }
         session.removePlayer(playerId);
+        if (playerId.equals(session.leaderId())) {
+            promoteLeader(session);
+        }
         if (session.players().isEmpty()) {
             endSession(sessionId, "logout");
         }
@@ -169,6 +211,10 @@ public class InstanceSessionManager {
         if (!restrictedPlayers.contains(playerId)) {
             return false;
         }
+        PlayerState state = playerStates.getOrDefault(playerId, PlayerState.OUTSIDE);
+        if (state != PlayerState.IN_INSTANCE && state != PlayerState.IN_INSTANCE_DEAD) {
+            return false;
+        }
         UUID sessionId = playerToSession.get(playerId);
         if (sessionId == null) {
             return false;
@@ -180,26 +226,32 @@ public class InstanceSessionManager {
         if (!isInstanceDimension(player)) {
             return false;
         }
-        return session.state() == InstanceSession.State.LOADING || session.state() == InstanceSession.State.ACTIVE;
+        return session.state() == SessionState.LOADING || session.state() == SessionState.ACTIVE;
+    }
+
+    public PlayerState getPlayerState(UUID playerId) {
+        if (playerId == null) {
+            return PlayerState.OUTSIDE;
+        }
+        return playerStates.getOrDefault(playerId, PlayerState.OUTSIDE);
+    }
+
+    private void setPlayerState(UUID playerId, PlayerState state) {
+        if (playerId == null) {
+            return;
+        }
+        if (state == null || state == PlayerState.OUTSIDE) {
+            playerStates.remove(playerId);
+            return;
+        }
+        playerStates.put(playerId, state);
     }
 
     public boolean isPlayerInSession(UUID playerId) {
         return playerId != null && playerToSession.containsKey(playerId);
     }
 
-    public void forceLeaveSession(ServerPlayer player, String reason) {
-        if (player == null) {
-            return;
-        }
-        if (restoreAfterLeave(player, reason)) {
-            return;
-        }
-        detachFromSessions(player, reason);
-        clearRestrictions(player);
-        NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(false, null));
-    }
-
-    public boolean restoreAfterLeave(ServerPlayer player, String reason) {
+    private boolean restoreAfterLeave(ServerPlayer player, String reason) {
         return restoreFromSnapshotInternal(player, reason, true);
     }
 
@@ -219,6 +271,7 @@ public class InstanceSessionManager {
             );
             return false;
         }
+        setPlayerState(player.getUUID(), blockZoneEnter ? PlayerState.LEAVE_PENDING : PlayerState.LOGIN_RESTORE_PENDING);
         Marallyzen.LOGGER.info(
                 "LOGIN_SNAPSHOT_FOUND player={} dim={} snapshotDim={}",
                 player.getGameProfile().getName(),
@@ -226,16 +279,24 @@ public class InstanceSessionManager {
                 snapshot.dimension() != null ? snapshot.dimension().location() : null
         );
         clearRestrictions(player);
-        detachFromSessions(player, reason);
         boolean restored = snapshot.restore(player);
         if (!restored) {
+            UUID playerId = player.getUUID();
+            if (isInstanceDimension(player) && playerToSession.containsKey(playerId)) {
+                restrictedPlayers.add(playerId);
+                setPlayerState(playerId, PlayerState.IN_INSTANCE);
+            } else {
+                setPlayerState(playerId, PlayerState.OUTSIDE);
+            }
             Marallyzen.LOGGER.warn(
                     "LOGIN_RESTORE_FAILED player={} snapshot kept",
                     player.getGameProfile().getName()
             );
             return false;
         }
+        detachFromSessions(player, reason);
         PlayerSnapshot.clearFromPlayer(player);
+        setPlayerState(player.getUUID(), PlayerState.OUTSIDE);
         NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(false, null));
         if (blockZoneEnter) {
             blockInstanceZoneEnter(player, reason);
@@ -249,7 +310,7 @@ public class InstanceSessionManager {
         return true;
     }
 
-    public void forceEndAnySession(ServerPlayer player, String reason) {
+    private void forceEndAnySession(ServerPlayer player, String reason) {
         if (player == null) {
             return;
         }
@@ -258,10 +319,15 @@ public class InstanceSessionManager {
         playerToSession.remove(playerId);
         pendingInstanceRespawn.remove(playerId);
         blockedZoneEnter.remove(playerId);
+        pendingTeleports.remove(playerId);
+        setPlayerState(playerId, PlayerState.OUTSIDE);
         for (Map.Entry<UUID, InstanceSession> entry : new HashMap<>(sessions).entrySet()) {
             InstanceSession session = entry.getValue();
             if (session != null && session.players().contains(playerId)) {
                 session.removePlayer(playerId);
+                if (playerId.equals(session.leaderId())) {
+                    promoteLeader(session);
+                }
                 if (session.players().isEmpty()) {
                     endSession(entry.getKey(), reason);
                 }
@@ -278,6 +344,8 @@ public class InstanceSessionManager {
         restrictedPlayers.remove(playerId);
         playerToSession.remove(playerId);
         pendingInstanceRespawn.remove(playerId);
+        pendingTeleports.remove(playerId);
+        setPlayerState(playerId, PlayerState.OUTSIDE);
         for (Map.Entry<UUID, InstanceSession> entry : new HashMap<>(sessions).entrySet()) {
             InstanceSession session = entry.getValue();
             if (session == null) {
@@ -285,6 +353,9 @@ public class InstanceSessionManager {
             }
             if (session.players().contains(playerId)) {
                 session.removePlayer(playerId);
+                if (playerId.equals(session.leaderId())) {
+                    promoteLeader(session);
+                }
                 if (session.players().isEmpty()) {
                     endSession(entry.getKey(), reason);
                 }
@@ -300,13 +371,21 @@ public class InstanceSessionManager {
         restrictedPlayers.remove(player.getUUID());
     }
 
-    public void clearPlayerState(ServerPlayer player, String reason) {
+    public void markOutside(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        setPlayerState(player.getUUID(), PlayerState.OUTSIDE);
+    }
+
+    private void clearPlayerState(ServerPlayer player, String reason) {
         if (player == null) {
             return;
         }
         UUID playerId = player.getUUID();
         UUID sessionId = playerToSession.remove(playerId);
         restrictedPlayers.remove(playerId);
+        setPlayerState(playerId, PlayerState.OUTSIDE);
         if (sessionId == null) {
             return;
         }
@@ -328,8 +407,19 @@ public class InstanceSessionManager {
             return;
         }
         UUID playerId = player.getUUID();
+        if (getPlayerState(playerId) != PlayerState.IN_INSTANCE) {
+            return;
+        }
         UUID sessionId = playerToSession.get(playerId);
+        if (sessionId == null) {
+            return;
+        }
+        InstanceSession session = sessions.get(sessionId);
+        if (session == null || session.state() != SessionState.ACTIVE) {
+            return;
+        }
         pendingInstanceRespawn.put(playerId, sessionId);
+        setPlayerState(playerId, PlayerState.IN_INSTANCE_DEAD);
         Marallyzen.LOGGER.info(
                 "[InstanceDeath] queued respawn player={} session={}",
                 player.getGameProfile().getName(),
@@ -420,6 +510,7 @@ public class InstanceSessionManager {
         }
         player.teleportTo(target, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, player.getYRot(), player.getXRot());
         player.fallDistance = 0.0f;
+        setPlayerState(player.getUUID(), PlayerState.IN_INSTANCE);
         Marallyzen.LOGGER.info(
                 "[InstanceDeath] respawn in instance player={} dim={} spawn={}",
                 player.getGameProfile().getName(),
@@ -428,24 +519,24 @@ public class InstanceSessionManager {
         );
     }
 
-    private InstanceSession getOrCreateSession(QuestDefinition definition, QuestInstanceSpec spec, String zoneId) {
+    private InstanceSession getOrCreateSession(QuestDefinition definition, QuestInstanceSpec spec, String zoneId, UUID leaderId) {
         String questId = definition.id();
         UUID existing = sessionsByQuest.get(questId);
         if (existing != null) {
             return sessions.get(existing);
         }
         UUID sessionId = UUID.randomUUID();
-        InstanceSession session = new InstanceSession(sessionId, questId, zoneId, spec);
+        InstanceSession session = new InstanceSession(sessionId, questId, zoneId, spec, leaderId);
         sessions.put(sessionId, session);
         sessionsByQuest.put(questId, sessionId);
         return session;
     }
 
     private void startSession(InstanceSession session) {
-        if (session == null || session.state() != InstanceSession.State.WAITING || server == null) {
+        if (session == null || session.state() != SessionState.WAITING || server == null) {
             return;
         }
-        session.setState(InstanceSession.State.LOADING);
+        session.setState(SessionState.LOADING);
         Marallyzen.LOGGER.info(
                 "InstanceSessionManager: starting session {} quest={} players={}",
                 session.sessionId(),
@@ -500,6 +591,7 @@ public class InstanceSessionManager {
                     true,
                     null
             ));
+            setPlayerState(playerId, PlayerState.ENTER_PENDING);
             pendingTeleports.put(playerId, new PendingTeleport(session.sessionId(), PRE_TELEPORT_DELAY));
         }
     }
@@ -553,6 +645,7 @@ public class InstanceSessionManager {
                     e
             );
             pendingTeleports.remove(playerId);
+            restoreAfterLeave(player, "teleport_failed");
             return;
         }
         Marallyzen.LOGGER.info(
@@ -570,8 +663,9 @@ public class InstanceSessionManager {
         NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(true, session.questId()));
         sendWaitingOverlay(player);
         pendingTeleports.remove(playerId);
-        if (session.state() == InstanceSession.State.LOADING && !hasPendingTeleports(session.sessionId())) {
-            session.setState(InstanceSession.State.ACTIVE);
+        setPlayerState(playerId, PlayerState.IN_INSTANCE);
+        if (session.state() == SessionState.LOADING && !hasPendingTeleports(session.sessionId())) {
+            session.setState(SessionState.ACTIVE);
         }
     }
 
@@ -592,66 +686,25 @@ public class InstanceSessionManager {
         if (session == null) {
             return;
         }
-        session.setState(InstanceSession.State.ENDING);
+        session.setState(SessionState.ENDING);
         sessionsByQuest.remove(session.questId());
         if (server == null) {
             for (UUID playerId : new HashSet<>(session.players())) {
                 playerToSession.remove(playerId);
                 restrictedPlayers.remove(playerId);
+                setPlayerState(playerId, PlayerState.OUTSIDE);
             }
             return;
         }
         for (UUID playerId : new HashSet<>(session.players())) {
             playerToSession.remove(playerId);
             restrictedPlayers.remove(playerId);
-            ServerPlayer player = server != null ? server.getPlayerList().getPlayer(playerId) : null;
-            PlayerSnapshot snapshot = session.snapshots().get(playerId);
-            if (player != null && snapshot != null) {
-                boolean restored = snapshot.restore(player);
-                if (restored) {
-                    PlayerSnapshot.clearFromPlayer(player);
-                } else {
-                    Marallyzen.LOGGER.warn(
-                            "InstanceSessionManager: restore failed for {} during session end {}, leaving snapshot pending",
-                            player.getGameProfile().getName(),
-                            sessionId
-                    );
-                }
-                NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(false, session.questId()));
-            }
+            setPlayerState(playerId, PlayerState.OUTSIDE);
+            pendingTeleports.remove(playerId);
         }
         decrementWorldUsage(session.spec() != null ? session.spec().world() : null);
+        session.setState(SessionState.CLOSED);
         Marallyzen.LOGGER.info("InstanceSessionManager: ended session {} reason={} quest={}", sessionId, reason, session.questId());
-    }
-
-    private void leavePlayer(InstanceSession session, ServerPlayer player, String reason) {
-        if (session == null || player == null) {
-            return;
-        }
-        UUID playerId = player.getUUID();
-        PlayerSnapshot snapshot = session.snapshots().get(playerId);
-        if (snapshot == null) {
-            snapshot = PlayerSnapshot.loadFromPlayer(player);
-        }
-        playerToSession.remove(playerId);
-        restrictedPlayers.remove(playerId);
-        session.removePlayer(playerId);
-        if (snapshot != null) {
-            boolean restored = snapshot.restore(player);
-            if (restored) {
-                PlayerSnapshot.clearFromPlayer(player);
-            } else {
-                Marallyzen.LOGGER.warn(
-                        "InstanceSessionManager: restore failed for {} during leave {}, leaving snapshot pending",
-                        player.getGameProfile().getName(),
-                        session.sessionId()
-                );
-            }
-        }
-        NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(false, session.questId()));
-        if (session.players().isEmpty()) {
-            endSession(session.sessionId(), reason);
-        }
     }
 
     private void decrementWorldUsage(String worldName) {
@@ -730,6 +783,18 @@ public class InstanceSessionManager {
             if (player != null) {
                 player.sendSystemMessage(text);
             }
+        }
+    }
+
+    private void promoteLeader(InstanceSession session) {
+        if (session == null) {
+            return;
+        }
+        if (!session.players().isEmpty()) {
+            UUID newLeader = session.players().iterator().next();
+            session.setLeaderId(newLeader);
+        } else {
+            session.setLeaderId(null);
         }
     }
 

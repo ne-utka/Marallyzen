@@ -90,6 +90,9 @@ public class MarallyzenItems {
     public static final DeferredItem<Item> STACK_OF_NAILED_PLANKS = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.STACK_OF_NAILED_PLANKS);
     @SuppressWarnings("unchecked")
+    public static final DeferredItem<Item> TEST_BLOCK = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TEST_BLOCK);
+    @SuppressWarnings("unchecked")
     public static final DeferredItem<Item> VIDEO_CAMERA = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.VIDEO_CAMERA);
     @SuppressWarnings("unchecked")
@@ -254,6 +257,7 @@ public class MarallyzenItems {
                 output.accept(WEST_TABLE_BAR.get());
                 output.accept(WEST_CHAIR_BAR.get());
                 output.accept(WOODEN_BUCKET.get());
+                output.accept(TEST_BLOCK.get());
                 output.accept(DRYING_FISH_RACK.get());
                 output.accept(FISH.get());
                 output.accept(FISHING_NET_WALL_DECORATION.get());

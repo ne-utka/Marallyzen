@@ -62,9 +62,10 @@ public class NpcProtectionHandler {
             return;
         }
 
-        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && NpcWorldPolicy.isPersistentLevel(serverLevel)) {
             NpcSavedData.get(serverLevel).removeState(npcId);
+            NpcStateStore.addDisabled(npcId);
         }
-        NpcStateStore.addDisabled(npcId);
     }
 }

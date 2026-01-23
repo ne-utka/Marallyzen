@@ -202,8 +202,6 @@ public record PlayerSnapshot(
                 Marallyzen.LOGGER.debug("InstanceSnapshot: restore skipped (already restored)");
                 return false;
             }
-            tag.putBoolean("restored", true);
-            player.getPersistentData().put(PERSIST_TAG, tag);
         }
         Marallyzen.LOGGER.debug(
                 "InstanceSnapshot: restore start dim={} pos={} mode={} abilities=[invuln={},flying={},mayfly={},instabuild={},mayBuild={},flySpeed={},walkSpeed={}] restricted={}",
@@ -247,6 +245,10 @@ public record PlayerSnapshot(
             player.onUpdateAbilities();
         }
         player.teleportTo(target, position.x, position.y, position.z, yaw, pitch);
+        if (tag != null && !tag.isEmpty()) {
+            tag.putBoolean("restored", true);
+            player.getPersistentData().put(PERSIST_TAG, tag);
+        }
         Marallyzen.LOGGER.debug(
                 "InstanceSnapshot: restore done dim={} pos={} mode={} restricted={}",
                 player.level().dimension().location(),

@@ -194,7 +194,7 @@ public class NpcRegistry {
         
         level.addFreshEntity(entity);
 
-        if (level instanceof ServerLevel serverLevel) {
+        if (level instanceof ServerLevel serverLevel && NpcWorldPolicy.isPersistentLevel(serverLevel)) {
             NpcSavedData.get(serverLevel).putState(
                     npcId,
                     new NpcState(serverLevel.dimension(), entity.blockPosition(), entity.getYRot(), npcId, null, null)

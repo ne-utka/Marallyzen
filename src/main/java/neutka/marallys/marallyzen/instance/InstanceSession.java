@@ -10,28 +10,27 @@ import java.util.Set;
 import java.util.UUID;
 
 public class InstanceSession {
-    public enum State {
-        WAITING,
-        LOADING,
-        ACTIVE,
-        ENDING
-    }
-
     private final UUID sessionId;
     private final String questId;
     private final String zoneId;
     private final QuestInstanceSpec spec;
-    private State state;
+    private SessionState state;
+    private UUID leaderId;
+    private final Set<UUID> allowedPlayers = new HashSet<>();
     private final Set<UUID> players = new HashSet<>();
     private final Map<UUID, PlayerSnapshot> snapshots = new HashMap<>();
     private BlockPos spawn;
 
-    public InstanceSession(UUID sessionId, String questId, String zoneId, QuestInstanceSpec spec) {
+    public InstanceSession(UUID sessionId, String questId, String zoneId, QuestInstanceSpec spec, UUID leaderId) {
         this.sessionId = sessionId;
         this.questId = questId;
         this.zoneId = zoneId;
         this.spec = spec;
-        this.state = State.WAITING;
+        this.state = SessionState.WAITING;
+        this.leaderId = leaderId;
+        if (leaderId != null) {
+            allowedPlayers.add(leaderId);
+        }
     }
 
     public UUID sessionId() {
@@ -50,12 +49,27 @@ public class InstanceSession {
         return spec;
     }
 
-    public State state() {
+    public SessionState state() {
         return state;
     }
 
-    public void setState(State state) {
+    public void setState(SessionState state) {
         this.state = state;
+    }
+
+    public UUID leaderId() {
+        return leaderId;
+    }
+
+    public void setLeaderId(UUID leaderId) {
+        this.leaderId = leaderId;
+        if (leaderId != null) {
+            allowedPlayers.add(leaderId);
+        }
+    }
+
+    public Set<UUID> allowedPlayers() {
+        return allowedPlayers;
     }
 
     public Set<UUID> players() {
@@ -78,13 +92,33 @@ public class InstanceSession {
         return players.add(playerId);
     }
 
+    public boolean tryAllowPlayer(UUID playerId) {
+        if (playerId == null) {
+            return false;
+        }
+        if (allowedPlayers.contains(playerId)) {
+            return true;
+        }
+        if (allowedPlayers.size() >= requiredPlayers()) {
+            return false;
+        }
+        return allowedPlayers.add(playerId);
+    }
+
     public boolean removePlayer(UUID playerId) {
         snapshots.remove(playerId);
         return players.remove(playerId);
     }
 
     public boolean isReady() {
-        int required = spec != null ? Math.max(1, spec.groupRequired()) : 1;
-        return players.size() >= required;
+        return players.size() >= requiredPlayers();
+    }
+
+    public boolean canAcceptPlayer(UUID playerId) {
+        return playerId != null && allowedPlayers.contains(playerId);
+    }
+
+    public int requiredPlayers() {
+        return spec != null ? Math.max(1, spec.groupRequired()) : 1;
     }
 }

@@ -18,9 +18,6 @@ public class InstanceLoginHandler {
             return;
         }
         manager.clearRestrictions(player);
-        Marallyzen.LOGGER.info(
-                "LOGIN_RESTORE_SKIPPED player={} reason=no_snapshot",
-                player.getGameProfile().getName()
-        );
+        manager.markOutside(player);
     }
 }

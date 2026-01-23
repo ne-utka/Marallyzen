@@ -140,6 +140,11 @@ public class MarallyzenBlocks {
             .sound(SoundType.WOOD)
             .noOcclusion()));
 
+    public static final DeferredBlock<Block> TEST_BLOCK = BLOCKS.register("test_block",
+        () -> new Block(BlockBehaviour.Properties.of()
+            .strength(1.0f)
+            .sound(SoundType.STONE)));
+
     public static final DeferredBlock<Block> VIDEO_CAMERA = BLOCKS.register("video_camera",
         () -> new ModelShapeFacingBlock(BlockBehaviour.Properties.of()
             .strength(1.0f)
@@ -482,6 +487,7 @@ public class MarallyzenBlocks {
             || state.is(TAVERN_RED_BOTTLE.get())
             || state.is(TAVERN_SMALL_GREEN_BOTTLE.get())
             || state.is(TAVERN_STOOL.get())
-            || state.is(TAVERN_TABLE.get());
+            || state.is(TAVERN_TABLE.get())
+            || state.is(TEST_BLOCK.get());
     }
 }
