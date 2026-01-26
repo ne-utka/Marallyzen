@@ -16,6 +16,7 @@ import org.joml.Matrix4f;
 
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
+import neutka.marallys.marallyzen.client.DecoratedPotCarryClient;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity;
 import neutka.marallys.marallyzen.util.NarrationIcons;
@@ -293,6 +294,10 @@ public class DecoratedPotPromptHud {
     private void updateTarget() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
+            targetVisible = false;
+            return;
+        }
+        if (DecoratedPotCarryClient.isCarrying(mc)) {
             targetVisible = false;
             return;
         }

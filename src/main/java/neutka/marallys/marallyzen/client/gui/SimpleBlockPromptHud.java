@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import neutka.marallys.marallyzen.blocks.PosterBlock;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.ClientDictaphoneManager;
@@ -25,6 +26,7 @@ import neutka.marallys.marallyzen.blocks.OldTvBlock;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
+import neutka.marallys.marallyzen.client.DecoratedPotCarryClient;
 
 public class SimpleBlockPromptHud {
     private static SimpleBlockPromptHud instance;
@@ -216,6 +218,10 @@ public class SimpleBlockPromptHud {
             targetVisible = false;
             return;
         }
+        if (DecoratedPotCarryClient.isCarrying(mc)) {
+            targetVisible = false;
+            return;
+        }
         HitResult hitResult = mc.hitResult;
         if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
             targetVisible = false;
@@ -256,6 +262,10 @@ public class SimpleBlockPromptHud {
             targetVisible = true;
             targetPos = pos;
             promptLabel = "\u041f\u0440\u043e\u0441\u043b\u0443\u0448\u0430\u0442\u044c";
+        } else if (block == Blocks.DECORATED_POT) {
+            targetVisible = true;
+            targetPos = pos;
+            promptLabel = "\u0412\u0437\u0430\u0438\u043c\u043e\u0434\u0435\u0439\u0441\u0442\u0432\u043e\u0432\u0430\u0442\u044c";
         } else {
             targetVisible = false;
         }

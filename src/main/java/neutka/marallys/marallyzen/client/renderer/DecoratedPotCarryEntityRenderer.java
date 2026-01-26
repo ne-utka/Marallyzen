@@ -16,11 +16,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity;
 
 public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPotCarryEntity> {
+    private static final double BE_RENDER_DISTANCE_SQ = 128.0 * 128.0;
     public DecoratedPotCarryEntityRenderer(EntityRendererProvider.Context context) {
         super(context);
     }
@@ -94,14 +96,57 @@ public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPot
         if (level == null) {
             return;
         }
-        BlockEntity blockEntity = entity.getOrCreateRenderEntity(level);
-        if (blockEntity == null) {
+        int renderLight = LevelRenderer.getLightColor(level, BlockPos.containing(entity.getX(), entity.getY(), entity.getZ()));
+        Vec3 camPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        double dx = camPos.x - entity.getX();
+        double dy = camPos.y - entity.getY();
+        double dz = camPos.z - entity.getZ();
+        double distSq = dx * dx + dy * dy + dz * dz;
+
+        if (distSq > BE_RENDER_DISTANCE_SQ) {
+            BlockState stateToRender = entity.getStoredBlockState();
+            if (stateToRender == null || stateToRender.isAir()) {
+                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
+            }
+            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
+                stateToRender,
+                poseStack,
+                bufferSource,
+                renderLight,
+                OverlayTexture.NO_OVERLAY
+            );
             return;
         }
-        int renderLight = 0x00F000F0;
+
+        BlockEntity blockEntity = entity.getOrCreateRenderEntity(level);
+        if (blockEntity == null) {
+            BlockState stateToRender = entity.getStoredBlockState();
+            if (stateToRender == null || stateToRender.isAir()) {
+                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
+            }
+            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
+                stateToRender,
+                poseStack,
+                bufferSource,
+                renderLight,
+                OverlayTexture.NO_OVERLAY
+            );
+            return;
+        }
         var dispatcher = Minecraft.getInstance().getBlockEntityRenderDispatcher();
         var renderer = dispatcher.getRenderer(blockEntity);
         if (renderer == null) {
+            BlockState stateToRender = entity.getStoredBlockState();
+            if (stateToRender == null || stateToRender.isAir()) {
+                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
+            }
+            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
+                stateToRender,
+                poseStack,
+                bufferSource,
+                renderLight,
+                OverlayTexture.NO_OVERLAY
+            );
             return;
         }
         renderer.render(
