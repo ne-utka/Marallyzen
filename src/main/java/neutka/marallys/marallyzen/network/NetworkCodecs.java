@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.network;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.phys.Vec3;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -17,6 +18,25 @@ public class NetworkCodecs {
     public static final StreamCodec<RegistryFriendlyByteBuf, String> STRING = StreamCodec.of(
             NetworkCodecs::writeString,
             NetworkCodecs::readString
+    );
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, Integer> INT = StreamCodec.of(
+            RegistryFriendlyByteBuf::writeInt,
+            RegistryFriendlyByteBuf::readInt
+    );
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, Float> FLOAT = StreamCodec.of(
+            RegistryFriendlyByteBuf::writeFloat,
+            RegistryFriendlyByteBuf::readFloat
+    );
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, Vec3> VEC3 = StreamCodec.of(
+            (buf, vec) -> {
+                buf.writeDouble(vec.x);
+                buf.writeDouble(vec.y);
+                buf.writeDouble(vec.z);
+            },
+            buf -> new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble())
     );
 
     public static final StreamCodec<RegistryFriendlyByteBuf, Map<String, String>> STRING_MAP = StreamCodec.of(
@@ -67,7 +87,6 @@ public class NetworkCodecs {
         return map;
     }
 }
-
 
 
 

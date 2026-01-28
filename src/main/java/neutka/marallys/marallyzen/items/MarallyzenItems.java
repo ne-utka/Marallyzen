@@ -98,6 +98,9 @@ public class MarallyzenItems {
     @SuppressWarnings("unchecked")
     public static final DeferredItem<Item> DICTAPHONE_SIMPLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DICTAPHONE_SIMPLE);
+    @SuppressWarnings("unchecked")
+    public static final DeferredItem<Item> INTERACTIVE_LEVER = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_LEVER);
 
     public static final DeferredItem<Item> BANK_SIGN = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN);
@@ -235,6 +238,7 @@ public class MarallyzenItems {
                 output.accept(STACK_OF_NAILED_PLANKS.get());
                 output.accept(VIDEO_CAMERA.get());
                 output.accept(DICTAPHONE_SIMPLE.get());
+                output.accept(INTERACTIVE_LEVER.get());
                 output.accept(INTERACTIVE_CHAIN.get());
             })
             .build()
@@ -283,9 +287,9 @@ public class MarallyzenItems {
                 output.accept(TAVERN_SMALL_GREEN_BOTTLE.get());
                 output.accept(TAVERN_STOOL.get());
                 output.accept(TAVERN_TABLE.get());
+                output.accept(INTERACTIVE_LEVER.get());
             })
             .build()
     );
     
 }
-

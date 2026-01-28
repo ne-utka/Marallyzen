@@ -6,14 +6,17 @@
     "compatibilityLevel":  "JAVA_17",
     "mixins":  [
                    "common.LevelMixin",
+                   "common.LeverBlockMixin",
                    "common.BlockEntityMixin",
                    "common.ServerLevelParticlesMixin"
                ],
     "client":  [
-                   "client.BlockHideRenderMixin",
-                   "client.ClientLevelBlockHideMixin",
-                   "client.MinecraftScreenMixin",
-                   "client.PosterBlockEntityRenderMixin",
+        "client.BlockHideRenderMixin",
+        "client.ClientLevelBlockHideMixin",
+        "client.DecoratedPotRendererMixin",
+        "client.MinecraftScreenMixin",
+        "client.MouseHandlerMixin",
+        "client.PosterBlockEntityRenderMixin",
                    "client.ReplayHandlerMixin",
                    "client.ScreenRenderMixin",
                    "client.TabListNpcFilterMixin"

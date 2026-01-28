@@ -22,8 +22,10 @@ import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorKeyBindin
 import neutka.marallys.marallyzen.client.director.DirectorReplayOverlayBridge;
 import neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
+import neutka.marallys.marallyzen.client.renderer.DecoratedPotCarryEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveChainBlockEntityRenderer;
+import neutka.marallys.marallyzen.client.renderer.InteractiveLeverBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
 import neutka.marallys.marallyzen.replay.ReplayCompat;
 import neutka.marallys.marallyzen.replay.ReplayReturnManager;
@@ -292,6 +294,7 @@ public class MarallyzenClient {
         // Register poster entity renderer
         event.registerEntityRenderer(Marallyzen.POSTER_ENTITY.get(), neutka.marallys.marallyzen.client.renderer.PosterEntityRenderer::new);
         event.registerEntityRenderer(Marallyzen.DICTAPHONE_ENTITY.get(), neutka.marallys.marallyzen.client.renderer.DictaphoneEntityRenderer::new);
+        event.registerEntityRenderer(Marallyzen.DECORATED_POT_ENTITY.get(), DecoratedPotCarryEntityRenderer::new);
         event.registerBlockEntityRenderer(
                 MarallyzenBlockEntities.INTERACTIVE_CHAIN_BE.get(),
                 InteractiveChainBlockEntityRenderer::new
@@ -299,6 +302,10 @@ public class MarallyzenClient {
         event.registerBlockEntityRenderer(
                 MarallyzenBlockEntities.OLD_TV_BE.get(),
                 OldTvBlockEntityRenderer::new
+        );
+        event.registerBlockEntityRenderer(
+                MarallyzenBlockEntities.INTERACTIVE_LEVER_BE.get(),
+                InteractiveLeverBlockEntityRenderer::new
         );
     }
 
@@ -316,7 +323,8 @@ public class MarallyzenClient {
     static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         // Clear flashlight state cache on disconnect
         neutka.marallys.marallyzen.client.FlashlightStateCache.clear();
-        
+        neutka.marallys.marallyzen.client.animation.LeverShakeAnimationClient.clear();
+
         // Clear client poster entities on disconnect
         // Execute on render thread to avoid OpenGL errors with Sodium
         net.minecraft.client.Minecraft.getInstance().execute(() -> {

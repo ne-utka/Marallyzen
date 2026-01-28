@@ -41,6 +41,15 @@ public class PlayerInputBlocker {
                 shouldBlock = true;
             }
         }
+
+        // Check lever interaction sequence
+        if (neutka.marallys.marallyzen.client.lever.LeverInteractionClient.isBlockingInput()) {
+            if (neutka.marallys.marallyzen.client.lever.LeverInteractionClient.isMoveActive()) {
+                // Allow forced movement for lever approach; manual input stays blocked elsewhere.
+                return;
+            }
+            shouldBlock = true;
+        }
         
         if (shouldBlock) {
             // Block all movement input
