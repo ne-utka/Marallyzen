@@ -14,6 +14,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.items.MarallyzenItems;
 import neutka.marallys.marallyzen.blocks.PosterBlock;
 import neutka.marallys.marallyzen.blocks.InteractiveChainBlock;
+import neutka.marallys.marallyzen.blocks.InteractiveLeverBlock;
 import neutka.marallys.marallyzen.blocks.FacingBlock;
 import neutka.marallys.marallyzen.blocks.ModelShapeFacingBlock;
 import neutka.marallys.marallyzen.blocks.HiddenOutlineBlock;
@@ -156,6 +157,12 @@ public class MarallyzenBlocks {
         () -> new InteractiveChainBlock(BlockBehaviour.Properties.of()
             .strength(3.0f)
             .sound(SoundType.CHAIN)
+            .noOcclusion()));
+
+    public static final DeferredBlock<InteractiveLeverBlock> INTERACTIVE_LEVER = BLOCKS.register("interactive_lever",
+        () -> new InteractiveLeverBlock(BlockBehaviour.Properties.of()
+            .strength(0.5f)
+            .sound(SoundType.METAL)
             .noOcclusion()));
 
     public static final DeferredBlock<Block> DICTAPHONE_SIMPLE = BLOCKS.register("dictaphone_simple",

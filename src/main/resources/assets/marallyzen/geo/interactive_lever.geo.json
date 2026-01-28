@@ -1,0 +1,33 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.interactive_lever",
+        "texture_width": 16,
+        "texture_height": 16,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 2,
+        "visible_bounds_offset": [0, 0.5, 0]
+      },
+      "bones": [
+        {
+          "name": "base",
+          "pivot": [0, 0, 0],
+          "cubes": [
+            { "origin": [-2, 0, -2], "size": [4, 2, 4], "uv": [0, 0] }
+          ],
+          "children": [
+            {
+              "name": "bone2",
+              "pivot": [0, 2, 0],
+              "cubes": [
+                { "origin": [-1, 2, -1], "size": [2, 6, 2], "uv": [0, 6] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

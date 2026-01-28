@@ -34,12 +34,19 @@ public class MarallyzenBlockEntities {
                 MarallyzenBlocks.INTERACTIVE_CHAIN.get()
             ).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<InteractiveLeverBlockEntity>> INTERACTIVE_LEVER_BE =
+        BLOCK_ENTITIES.register("interactive_lever_be", () ->
+            BlockEntityType.Builder.of(InteractiveLeverBlockEntity::new,
+                MarallyzenBlocks.INTERACTIVE_LEVER.get()
+            ).build(null));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OldTvBlockEntity>> OLD_TV_BE =
         BLOCK_ENTITIES.register("old_tv_be", () ->
             BlockEntityType.Builder.of(OldTvBlockEntity::new,
                 MarallyzenBlocks.OLD_TV.get()
             ).build(null));
 }
+
 
 
 

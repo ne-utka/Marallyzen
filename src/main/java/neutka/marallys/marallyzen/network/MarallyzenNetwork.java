@@ -122,6 +122,24 @@ public class MarallyzenNetwork {
         );
 
         registrar.playToClient(
+                LeverShakePacket.TYPE,
+                LeverShakePacket.STREAM_CODEC,
+                LeverShakePacket::handle
+        );
+
+        registrar.playToClient(
+                LeverInteractionStartPacket.TYPE,
+                LeverInteractionStartPacket.STREAM_CODEC,
+                LeverInteractionStartPacket::handle
+        );
+
+        registrar.playToClient(
+                LeverInteractionMovePacket.TYPE,
+                LeverInteractionMovePacket.STREAM_CODEC,
+                LeverInteractionMovePacket::handle
+        );
+
+        registrar.playToClient(
                 InteractiveChainJumpPacket.TYPE,
                 InteractiveChainJumpPacket.STREAM_CODEC,
                 InteractiveChainJumpPacket::handle
@@ -300,6 +318,12 @@ public class MarallyzenNetwork {
                 QuestZoneTeleportRequestPacket.TYPE,
                 QuestZoneTeleportRequestPacket.STREAM_CODEC,
                 QuestZoneTeleportRequestPacket::handle
+        );
+
+        registrar.playToServer(
+                DecoratedPotCarryActionPacket.TYPE,
+                DecoratedPotCarryActionPacket.STREAM_CODEC,
+                DecoratedPotCarryActionPacket::handle
         );
 
         Marallyzen.LOGGER.info("Marallyzen network packets registered");
