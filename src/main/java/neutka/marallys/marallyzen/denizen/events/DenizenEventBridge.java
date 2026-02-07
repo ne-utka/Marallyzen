@@ -7,7 +7,7 @@ import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class DenizenEventBridge {
 
     @SubscribeEvent

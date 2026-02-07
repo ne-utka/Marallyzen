@@ -5,6 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 
 public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implements CustomPacketPayload {
 
@@ -41,7 +42,7 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
                 return;
             }
 
-            var level = player.serverLevel();
+            var level = player.level();
             BlockPos pos = packet.blockPos();
             if (!level.isLoaded(pos)) {
                 return;
@@ -59,18 +60,25 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
                 ? net.minecraft.world.InteractionHand.MAIN_HAND
                 : net.minecraft.world.InteractionHand.OFF_HAND;
             var stack = player.getItemInHand(hand);
-            if (!(stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem)) {
+            boolean isWritten = stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem;
+            boolean isWritable = stack.getItem() instanceof net.minecraft.world.item.WritableBookItem;
+            if (!isWritten && !isWritable) {
                 return;
             }
 
-            var bookContent = stack.get(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT);
-            if (bookContent == null || bookContent.title() == null) {
+            var writtenContent = isWritten
+                ? stack.get(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT)
+                : null;
+            var writableContent = isWritable
+                ? stack.get(net.minecraft.core.component.DataComponents.WRITABLE_BOOK_CONTENT)
+                : null;
+            if (writtenContent == null && writableContent == null) {
                 return;
             }
 
-            var titleFilterable = bookContent.title();
-            if (titleFilterable == null || titleFilterable.raw() == null) {
-                return;
+            String title = "";
+            if (writtenContent != null && writtenContent.title() != null && writtenContent.title().raw() != null) {
+                title = writtenContent.title().raw();
             }
 
             net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
@@ -82,26 +90,32 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
             }
 
             if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
-                if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                if (posterBe.isProtectedByOp() && !PermissionHelper.isOp(player)) {
                     return;
                 }
-                String title = titleFilterable.raw();
                 java.util.List<String> pageTexts = new java.util.ArrayList<>();
-                var bookPages = bookContent.pages();
+                var bookPages = writtenContent != null ? writtenContent.pages() : writableContent.pages();
                 if (bookPages != null && !bookPages.isEmpty()) {
                     for (var page : bookPages) {
-                        if (page != null && page.raw() != null) {
-                            String pageText = page.raw().getString();
-                            if (pageText != null && !pageText.isEmpty()) {
-                                pageTexts.add(pageText);
-                            }
+                        if (page == null) {
+                            continue;
+                        }
+                        Object raw = page.raw();
+                        if (raw == null) {
+                            continue;
+                        }
+                        String pageText = raw instanceof net.minecraft.network.chat.Component component
+                            ? component.getString()
+                            : raw.toString();
+                        if (pageText != null && !pageText.isEmpty()) {
+                            pageTexts.add(pageText);
                         }
                     }
                 }
                 String frontText = pageTexts.isEmpty() ? "" : pageTexts.get(0).trim();
                 String backText = pageTexts.size() > 1 ? pageTexts.get(1).trim() : "";
 
-                if (player.hasPermissions(2)) {
+                if (PermissionHelper.isOp(player)) {
                     posterBe.setProtectedByOp(true);
                 }
 
@@ -116,8 +130,8 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
                     posterBe.setPosterBackText("");
                 }
 
-                if (posterBlock.getPosterNumber() == 11) {
-                    String bookTitle = titleFilterable.raw().toLowerCase().trim();
+                if (posterBlock.getPosterNumber() == 11 && !title.isBlank()) {
+                    String bookTitle = title.toLowerCase().trim();
                     String variant = null;
                     if (bookTitle.equals("dead")) {
                         variant = "dead";
@@ -129,11 +143,14 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
 
                     if (variant != null) {
                         java.util.List<String> playerNames = new java.util.ArrayList<>();
-                        var pages = bookContent.pages();
+                        var pages = writtenContent != null ? writtenContent.pages() : writableContent.pages();
                         if (pages != null && !pages.isEmpty()) {
                             var firstPage = pages.get(0);
                             if (firstPage != null && firstPage.raw() != null) {
-                                String firstPageText = firstPage.raw().getString();
+                                Object rawPage = firstPage.raw();
+                                String firstPageText = rawPage instanceof net.minecraft.network.chat.Component component
+                                    ? component.getString()
+                                    : rawPage.toString();
                                 if (firstPageText != null && !firstPageText.isEmpty()) {
                                     String[] lines = firstPageText.split("\\n");
                                     if (variant.equals("band")) {
@@ -166,8 +183,9 @@ public record PosterBookBindPacket(BlockPos blockPos, boolean mainHand) implemen
 
                 posterBe.setChanged();
                 level.sendBlockUpdated(pos, level.getBlockState(pos), level.getBlockState(pos), 3);
-                level.getChunkAt(pos).setUnsaved(true);
+                level.getChunkAt(pos).markUnsaved();
             }
         });
     }
 }
+

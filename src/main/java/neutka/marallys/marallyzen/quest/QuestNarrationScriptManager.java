@@ -65,7 +65,7 @@ public final class QuestNarrationScriptManager {
             narrator = DEFAULT_NARRATOR;
         }
 
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         if (!audioList.isEmpty() && messages != null && messages.size() == audioList.size()) {
             scheduleNarrationWithAudio(level, player, narrator, messages, audioList, startDelayMs, gapMs);
             return;

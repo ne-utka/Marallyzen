@@ -125,7 +125,7 @@ public final class PosterNarrationService {
         }
         Vec3 posterPos = posterEntity.position();
         Vec3 toPlayer = player.getEyePosition().subtract(posterPos);
-        Vec3 frontNormal = Vec3.atLowerCornerOf(facing.getNormal()).normalize();
+        Vec3 frontNormal = Vec3.atLowerCornerOf(facing.getUnitVec3i()).normalize();
         boolean playerInFront = frontNormal.dot(toPlayer) >= 0.0;
         return playerInFront ^ posterEntity.isFlipped();
     }

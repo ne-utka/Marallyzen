@@ -1,6 +1,5 @@
 package neutka.marallys.marallyzen.api;
 
-import neutka.marallys.marallyzen.Marallyzen;
 
 /**
  * Public API implementation for Marallyzen.
@@ -19,13 +18,11 @@ public class MarallyzenAPI implements IMarallyzenAPI {
 
     private final NpcManagerImpl npcManager;
     private final DialogManagerImpl dialogManager;
-    private final CutsceneManagerImpl cutsceneManager;
     private final ScriptManagerImpl scriptManager;
 
     private MarallyzenAPI() {
         this.npcManager = new NpcManagerImpl();
         this.dialogManager = new DialogManagerImpl();
-        this.cutsceneManager = new CutsceneManagerImpl();
         this.scriptManager = new ScriptManagerImpl();
     }
 
@@ -51,10 +48,7 @@ public class MarallyzenAPI implements IMarallyzenAPI {
         return dialogManager;
     }
 
-    @Override
-    public ICutsceneManager getCutsceneManager() {
-        return cutsceneManager;
-    }
+    // Cutscene API removed.
 
     @Override
     public IScriptManager getScriptManager() {

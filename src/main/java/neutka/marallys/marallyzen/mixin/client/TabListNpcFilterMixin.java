@@ -35,7 +35,7 @@ public class TabListNpcFilterMixin {
         if (info == null || info.getProfile() == null) {
             return false;
         }
-        UUID uuid = info.getProfile().getId();
+        UUID uuid = info.getProfile().id();
         if (uuid == null) {
             return false;
         }
@@ -43,7 +43,7 @@ public class TabListNpcFilterMixin {
         if (player != null && player.getTags().contains("marallyzen_npc")) {
             return true;
         }
-        String name = info.getProfile().getName();
+        String name = info.getProfile().name();
         var scoreboard = mc.level.getScoreboard();
         if (name != null && !name.isEmpty()) {
             var team = scoreboard.getPlayersTeam(name);

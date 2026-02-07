@@ -7,7 +7,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.DeferredItem;
 import neutka.marallys.marallyzen.Marallyzen;
-import neutka.marallys.marallyzen.items.InteractiveChainItem;
 
 import java.util.function.Supplier;
 
@@ -23,7 +22,7 @@ public class MarallyzenItems {
     public static final DeferredItem<Item> CORD = ITEMS.registerSimpleItem("cord");
     public static final DeferredItem<Item> LOCATOR = ITEMS.registerSimpleItem("locator");
     public static final DeferredItem<Item> MAGNIFYING_GLASS = ITEMS.registerSimpleItem("magnifying_glass");
-    public static final DeferredItem<Item> FLASHLIGHT = ITEMS.register("flashlight", () -> new FlashlightItem(new Item.Properties()));
+    public static final DeferredItem<Item> FLASHLIGHT = ITEMS.registerItem("flashlight", FlashlightItem::new);
     public static final DeferredItem<Item> CROWBAR = ITEMS.registerSimpleItem("crowbar");
     public static final DeferredItem<Item> CUTTERS = ITEMS.registerSimpleItem("cutters");
     public static final DeferredItem<Item> PIPE_WRENCH = ITEMS.registerSimpleItem("pipe_wrench");
@@ -101,6 +100,9 @@ public class MarallyzenItems {
     @SuppressWarnings("unchecked")
     public static final DeferredItem<Item> INTERACTIVE_LEVER = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_LEVER);
+    @SuppressWarnings("unchecked")
+    public static final DeferredItem<Item> INTERACTIVE_VALVE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
+        neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_VALVE);
 
     public static final DeferredItem<Item> BANK_SIGN = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN);
@@ -184,10 +186,6 @@ public class MarallyzenItems {
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_STOOL);
     public static final DeferredItem<Item> TAVERN_TABLE = (DeferredItem<Item>) (Object) ITEMS.registerSimpleBlockItem(
         neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_TABLE);
-    public static final DeferredItem<Item> INTERACTIVE_CHAIN = ITEMS.register(
-        "interactive_chain",
-        () -> new InteractiveChainItem(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), new Item.Properties())
-    );
 
     // Creative Mode Tab for DMC items
     public static final Supplier<CreativeModeTab> MARALLYZEN_TAB = CREATIVE_MODE_TABS.register(
@@ -239,7 +237,7 @@ public class MarallyzenItems {
                 output.accept(VIDEO_CAMERA.get());
                 output.accept(DICTAPHONE_SIMPLE.get());
                 output.accept(INTERACTIVE_LEVER.get());
-                output.accept(INTERACTIVE_CHAIN.get());
+                output.accept(INTERACTIVE_VALVE.get());
             })
             .build()
     );
@@ -288,6 +286,7 @@ public class MarallyzenItems {
                 output.accept(TAVERN_STOOL.get());
                 output.accept(TAVERN_TABLE.get());
                 output.accept(INTERACTIVE_LEVER.get());
+                output.accept(INTERACTIVE_VALVE.get());
             })
             .build()
     );

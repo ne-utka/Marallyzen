@@ -1,0 +1,165 @@
+{
+    "name": {
+        "translate": "spemotes.emote.name.SPE_Holding_hands1",
+        "fallback": "Держаться за руки §8(Правая рука) §8(§7Парная эмоция§8)"
+    },
+    "author": "SPEmotes",
+    "description": {
+        "translate": "spemotes.emote.description.SPE_Holding_hands1",
+        "fallback": "Я полностью с тобой согласен!"
+    },
+    "emote": {
+        "isLoop": "true",
+        "returnTick": 10,
+        "beginTick": 0,
+        "endTick": 60,
+        "stopTick": 61,
+        "degrees": false,
+        "moves": [
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "yaw": -0.0
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "yaw": -0.0
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "yaw": -0.0
+                }
+            },
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "roll": 0.36599481105804443
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "roll": 0.4170113205909729
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "roll": 0.36599481105804443
+                }
+            },
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "y": 2.0
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "y": 2.0
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "y": 2.0
+                }
+            },
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "z": -0.0
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "z": -0.0
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "z": -0.0
+                }
+            },
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "x": -5.0
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "x": -5.0
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "x": -5.0
+                }
+            },
+            {
+                "tick": 10,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "pitch": 0.0
+                }
+            },
+            {
+                "tick": 35,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "pitch": -0.0
+                }
+            },
+            {
+                "tick": 60,
+                "easing": "EASEINOUTQUAD",
+                "turn": 0,
+                "rightArm": {
+                    "pitch": 0.0
+                }
+            }
+        ]
+    }
+}

@@ -1,10 +1,8 @@
 package neutka.marallys.marallyzen.client.quest;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -20,7 +18,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
-import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.instance.InstanceClientState;
 import neutka.marallys.marallyzen.quest.QuestDefinition;
@@ -88,13 +85,6 @@ public class QuestZonePromptHud {
         if (mc.player == null || mc.level == null) {
             return;
         }
-        if (neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().isActive()) {
-            return;
-        }
-        if (neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance().isActive()) {
-            return;
-        }
-
         float interpolatedFadeIn = Mth.lerp(partialTick, previousFadeInProgress, fadeInProgress);
         float interpolatedFadeOut = Mth.lerp(partialTick, previousFadeOutProgress, fadeOutProgress);
         boolean showing = targetVisible;
@@ -110,9 +100,9 @@ public class QuestZonePromptHud {
                 - PromptAnchorUtil.pxToWorld(20.0f, SCALE_BASE);
         double blockZ = magnetitePos.getZ() + 0.5;
 
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        double camX = camera.position().x;
+        double camY = camera.position().y;
+        double camZ = camera.position().z;
 
         double dx = blockX - camX;
         double dy = blockY - camY;
@@ -145,8 +135,8 @@ public class QuestZonePromptHud {
 
         poseStack.translate(offsetX, offsetY, offsetZ);
 
-        float cameraYaw = camera.getYRot();
-        float cameraPitch = camera.getXRot();
+        float cameraYaw = camera.yRot();
+        float cameraPitch = camera.xRot();
         poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(cameraPitch));
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f));
@@ -162,7 +152,7 @@ public class QuestZonePromptHud {
         poseStack.scale(scale, scale, scale);
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        MultiBufferSource textSource = new NoDepthTextBufferSource(bufferSource);
+        MultiBufferSource textSource = bufferSource;
         Font font = mc.font;
         Matrix4f matrix = poseStack.last().pose();
 
@@ -170,12 +160,8 @@ public class QuestZonePromptHud {
         int white = (alpha << 24) | 0xFFFFFF;
         int darkGray = (alpha << 24) | TEXT_DARK_GRAY;
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
         drawPrompt(font, bufferSource, textSource, matrix, promptLabel, white, darkGray, alpha);
         bufferSource.endBatch();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         poseStack.popPose();
     }
 
@@ -324,7 +310,7 @@ public class QuestZonePromptHud {
                           float x, float y, float width, float height, int color) {
         com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
                 NoDepthTextRenderType.textNoDepth(
-                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
                 )
         );
 
@@ -392,3 +378,8 @@ public class QuestZonePromptHud {
         );
     }
 }
+
+
+
+
+

@@ -4,8 +4,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.chat.Component;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
+import neutka.marallys.marallyzen.util.ComponentUtil;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
@@ -40,12 +39,12 @@ public record ProximityPacket(Component text, UUID npcUuid, float alpha) impleme
     
     public static final StreamCodec<RegistryFriendlyByteBuf, Component> COMPONENT_CODEC = StreamCodec.of(
             (buf, component) -> {
-                String json = Component.Serializer.toJson(component, buf.registryAccess());
+                String json = ComponentUtil.toJson(component, buf.registryAccess()).orElse("");
                 NetworkCodecs.STRING.encode(buf, json);
             },
             buf -> {
                 String json = NetworkCodecs.STRING.decode(buf);
-                return Component.Serializer.fromJson(json, buf.registryAccess());
+                return ComponentUtil.fromJson(json, buf.registryAccess()).orElse(Component.empty());
             }
     );
     
@@ -71,7 +70,7 @@ public record ProximityPacket(Component text, UUID npcUuid, float alpha) impleme
 
     public static void handle(ProximityPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.narration.NarrationManager manager = 
                         neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance();
                 

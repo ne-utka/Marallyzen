@@ -9,6 +9,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.client.lever.LeverQteClient;
+import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 import neutka.marallys.marallyzen.quest.QuestCategory;
 import neutka.marallys.marallyzen.quest.QuestCategoryColors;
 import neutka.marallys.marallyzen.quest.QuestDefinition;
@@ -18,7 +20,7 @@ import neutka.marallys.marallyzen.quest.QuestStep;
 import java.util.ArrayList;
 import java.util.List;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class QuestHudRenderer {
     private static final int COLOR_WHITE = 0xFFFFFF;
     private static final int COLOR_GRAY = 0x9AA0A6;
@@ -39,15 +41,11 @@ public class QuestHudRenderer {
         if (mc.player == null || mc.font == null) {
             return;
         }
-        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(false);
+        if (LeverQteClient.isHudVisible() || ValveQteClient.isHudVisible()) {
+            return;
+        }
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         boolean blockHud = mc.screen instanceof QuestJournalScreen;
-
-        if (neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().isActive()) {
-            return;
-        }
-        if (neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance().isActive()) {
-            return;
-        }
 
         QuestClientState state = QuestClientState.getInstance();
         boolean hudEnabled = state.isQuestHudEnabled();

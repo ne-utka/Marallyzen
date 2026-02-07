@@ -1,7 +1,6 @@
 package neutka.marallys.marallyzen.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -15,7 +14,7 @@ import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.RadioInteractPacket;
 
-@EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class RadioInteractionHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
@@ -37,7 +36,7 @@ public class RadioInteractionHandler {
             return;
         }
 
-        boolean shift = Screen.hasShiftDown();
+        boolean shift = mc.hasShiftDown();
         if (shift) {
             boolean nowPlaying = ClientRadioManager.toggle(blockHit.getBlockPos());
             String stationName = ClientRadioManager.getSelectedStationName();

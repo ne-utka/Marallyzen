@@ -37,3 +37,4 @@ public record FireEventPacket(String eventId, Map<String, String> data) implemen
         });
     }
 }
+

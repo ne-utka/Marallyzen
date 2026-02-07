@@ -64,21 +64,28 @@ public final class EmoteConfigUtil {
             }
             JsonObject obj = root.getAsJsonObject();
             JsonObject animations = obj.getAsJsonObject("animations");
-            if (animations == null || animations.isEmpty()) {
-                return 20;
+            if (animations != null && !animations.isEmpty()) {
+                JsonObject anim;
+                if (animations.has(emoteName)) {
+                    anim = animations.getAsJsonObject(emoteName);
+                } else {
+                    String firstKey = animations.keySet().iterator().next();
+                    anim = animations.getAsJsonObject(firstKey);
+                }
+                if (anim != null && anim.has("animation_length")) {
+                    double seconds = anim.get("animation_length").getAsDouble();
+                    return Math.max(1, (int) Math.round(seconds * 20.0));
+                }
             }
-            JsonObject anim = null;
-            if (animations.has(emoteName)) {
-                anim = animations.getAsJsonObject(emoteName);
-            } else {
-                String firstKey = animations.keySet().iterator().next();
-                anim = animations.getAsJsonObject(firstKey);
+            JsonObject emote = obj.getAsJsonObject("emote");
+            if (emote != null) {
+                int endTick = emote.has("endTick") ? emote.get("endTick").getAsInt() : 0;
+                int stopTick = emote.has("stopTick") ? emote.get("stopTick").getAsInt() : 0;
+                int returnTick = emote.has("returnTick") ? emote.get("returnTick").getAsInt() : 0;
+                int maxTick = Math.max(endTick, Math.max(stopTick, returnTick));
+                return Math.max(1, maxTick);
             }
-            if (anim == null || !anim.has("animation_length")) {
-                return 20;
-            }
-            double seconds = anim.get("animation_length").getAsDouble();
-            return Math.max(1, (int) Math.round(seconds * 20.0));
+            return 20;
         } catch (Exception e) {
             Marallyzen.LOGGER.warn("EmoteConfigUtil: failed to parse emote duration for {}: {}", emoteName, e.getMessage());
             return 20;

@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.audio;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -125,54 +125,6 @@ public class MarallyzenAudioService {
         }
     }
     
-    /**
-     * Plays cutscene audio (positional or global).
-     * 
-     * @param level Server level
-     * @param position Position for positional audio (can be null for global)
-     * @param audioFileName Audio file name (relative to audio base directory)
-     * @param radius Sound radius (for positional audio)
-     * @param positional Whether audio should be positional
-     * @param players List of players to play for (null = all players)
-     * @return Duration in milliseconds, or -1 if unknown/failed
-     */
-    public static long playCutsceneAudio(
-            ServerLevel level,
-            Vec3 position,
-            String audioFileName,
-            float radius,
-            boolean positional,
-            List<ServerPlayer> players
-    ) {
-        Path audioFile = AUDIO_BASE_DIR.resolve("cutscenes").resolve(audioFileName);
-        
-        if (!audioFile.toFile().exists()) {
-            Marallyzen.LOGGER.warn("Cutscene audio file not found: {}", audioFile);
-            return playFallbackSound(level, position, players, () -> SoundEvents.AMBIENT_CAVE.value());
-        }
-        
-        try {
-            long duration = playAudioViaPlasmoVoice(
-                    level,
-                    position,
-                    audioFile,
-                    radius,
-                    positional,
-                    players
-            );
-            
-            if (duration > 0) {
-                return duration;
-            }
-            
-            // Fallback to vanilla sound
-            return playFallbackSound(level, position, players, () -> SoundEvents.AMBIENT_CAVE.value());
-        } catch (Exception e) {
-            Marallyzen.LOGGER.error("Failed to play cutscene audio: {}", audioFileName, e);
-            return playFallbackSound(level, position, players, () -> SoundEvents.AMBIENT_CAVE.value());
-        }
-    }
-
     public static long playDictaphoneAudio(
             ServerLevel level,
             Vec3 position,
@@ -833,7 +785,7 @@ public class MarallyzenAudioService {
                         1.0f
                 );
             } else {
-                player.playNotifySound(sound, SoundSource.MASTER, 1.0f, 1.0f);
+                player.playSound(sound, 1.0f, 1.0f);
             }
         }
         
@@ -879,3 +831,5 @@ public class MarallyzenAudioService {
         return FMLPaths.CONFIGDIR.get().resolve("marallyzen").resolve("audio");
     }
 }
+
+

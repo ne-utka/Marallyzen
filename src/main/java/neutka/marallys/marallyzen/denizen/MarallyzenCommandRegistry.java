@@ -23,9 +23,6 @@ public class MarallyzenCommandRegistry {
         registerCommand(neutka.marallys.marallyzen.denizen.commands.AnnounceCommand.class);
         registerCommand(neutka.marallys.marallyzen.denizen.commands.ToastCommand.class);
         registerCommand(neutka.marallys.marallyzen.denizen.commands.DiscordMessageCommand.class);
-        registerCommand(CutsceneCommand.class);
-        registerCommand(ScreenFadeCommand.class);
-        registerCommand(EyesCutsceneCommand.class);
         Marallyzen.LOGGER.info("Registered Marallyzen Denizen commands");
     }
 

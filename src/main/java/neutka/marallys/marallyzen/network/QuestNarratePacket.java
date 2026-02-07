@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.chat.Component;
+import neutka.marallys.marallyzen.util.ComponentUtil;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -13,12 +14,12 @@ public record QuestNarratePacket(Component text, int fadeInTicks, int stayTicks,
 
     public static final StreamCodec<RegistryFriendlyByteBuf, Component> COMPONENT_CODEC = StreamCodec.of(
             (buf, component) -> {
-                String json = Component.Serializer.toJson(component, buf.registryAccess());
+                String json = ComponentUtil.toJson(component, buf.registryAccess()).orElse("");
                 NetworkCodecs.STRING.encode(buf, json);
             },
             buf -> {
                 String json = NetworkCodecs.STRING.decode(buf);
-                return Component.Serializer.fromJson(json, buf.registryAccess());
+                return ComponentUtil.fromJson(json, buf.registryAccess()).orElse(Component.empty());
             }
     );
 
@@ -49,10 +50,11 @@ public record QuestNarratePacket(Component text, int fadeInTicks, int stayTicks,
 
     public static void handle(QuestNarratePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance()
                         .startNarration(packet.text(), null, packet.fadeInTicks(), packet.stayTicks(), packet.fadeOutTicks(), false);
             }
         });
     }
 }
+

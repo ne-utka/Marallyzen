@@ -1,18 +1,21 @@
 package neutka.marallys.marallyzen.client.lever;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.emote.ClientEmoteHandler;
 import neutka.marallys.marallyzen.client.fpv.MarallyzenRenderContext;
+import neutka.marallys.marallyzen.network.LeverQteDownAckPacket;
+import neutka.marallys.marallyzen.network.NetworkHelper;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public final class LeverInteractionClient {
     private static boolean active;
     private static Vec3 targetPos = Vec3.ZERO;
@@ -21,29 +24,26 @@ public final class LeverInteractionClient {
     private static int grabTicks;
     private static int shakeTicks;
     private static int downTicks;
-    private static int tick;
-    private static boolean moveActive;
-    private static int moveTicks;
+    private static int downTicksRemaining;
     private static boolean prevHideGui;
     private static boolean hideGuiCaptured;
+    private static CameraType prevCameraType;
+    private static boolean cameraCaptured;
+    private static boolean downActive;
 
     private LeverInteractionClient() {
     }
 
     public static boolean isBlockingInput() {
-        return active || moveActive;
+        return active;
     }
 
-    public static boolean isMoveActive() {
-        return moveActive;
+    public static float getTargetYaw() {
+        return targetYaw;
     }
 
-    public static void startMove(Vec3 targetPos, float targetYaw, float targetPitch, int moveTicks) {
-        LeverInteractionClient.targetPos = targetPos;
-        LeverInteractionClient.targetYaw = targetYaw;
-        LeverInteractionClient.targetPitch = targetPitch;
-        LeverInteractionClient.moveTicks = Math.max(1, moveTicks);
-        LeverInteractionClient.moveActive = true;
+    public static float getTargetPitch() {
+        return targetPitch;
     }
 
     public static void start(Vec3 targetPos, float targetYaw, float targetPitch, int grabTicks, int shakeTicks, int downTicks) {
@@ -53,30 +53,67 @@ public final class LeverInteractionClient {
         LeverInteractionClient.grabTicks = Math.max(1, grabTicks);
         LeverInteractionClient.shakeTicks = Math.max(1, shakeTicks);
         LeverInteractionClient.downTicks = Math.max(1, downTicks);
-        LeverInteractionClient.tick = 0;
+        LeverInteractionClient.downTicksRemaining = 0;
+        LeverInteractionClient.downActive = false;
         LeverInteractionClient.active = true;
-        LeverInteractionClient.moveActive = false;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.player != null) {
             captureHideGui(mc);
+            captureCameraType(mc);
+            forceFirstPerson(mc);
             applyPlayerLock(mc.player);
             MarallyzenRenderContext.setFpvEmoteEnabled(true);
             MarallyzenRenderContext.setCurrentEmoteId(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("marallyzen", "lever_grab_shake")
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen", "lever_grab_shake")
             );
             ClientEmoteHandler.handle(mc.player.getUUID(), "lever_grab_shake", false);
         }
     }
 
-    @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
-        if (moveActive) {
-            moveTicks--;
-            if (moveTicks <= 0) {
-                moveActive = false;
-            }
+    public static void startDown(int downTicks) {
+        LeverInteractionClient.downTicks = Math.max(1, downTicks);
+        LeverInteractionClient.downTicksRemaining = LeverInteractionClient.downTicks;
+        LeverInteractionClient.downActive = true;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.player != null) {
+            MarallyzenRenderContext.setCurrentEmoteId(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen", "lever_down")
+            );
+            ClientEmoteHandler.handle(mc.player.getUUID(), "lever_down", false);
+            NetworkHelper.sendToServer(new LeverQteDownAckPacket(0));
         }
+    }
+
+    public static void startDownFail() {
+        if (downActive) {
+            return;
+        }
+        LeverInteractionClient.downTicks = Math.max(1, LeverInteractionClient.downTicks);
+        LeverInteractionClient.downTicksRemaining = LeverInteractionClient.downTicks;
+        LeverInteractionClient.downActive = true;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.player != null) {
+            MarallyzenRenderContext.setCurrentEmoteId(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen", "lever_down")
+            );
+            ClientEmoteHandler.handle(mc.player.getUUID(), "lever_down", false);
+        }
+    }
+
+    public static void cancel() {
+        active = false;
+        downActive = false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) {
+            MarallyzenRenderContext.setFpvEmoteEnabled(false);
+            restoreHideGui(mc);
+            restoreCameraType(mc);
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onClientTick(ClientTickEvent.Post event) {
         if (!active) {
             return;
         }
@@ -86,31 +123,34 @@ public final class LeverInteractionClient {
             restoreHideGui(mc);
             return;
         }
+        forceFirstPerson(mc);
         LocalPlayer player = mc.player;
         applyPlayerLock(player);
 
-        tick++;
-        if (tick == grabTicks + shakeTicks) {
-            MarallyzenRenderContext.setCurrentEmoteId(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("marallyzen", "lever_down")
-            );
-            ClientEmoteHandler.handle(player.getUUID(), "lever_down", false);
-        } else if (tick >= grabTicks + shakeTicks + downTicks) {
-            active = false;
-            MarallyzenRenderContext.setFpvEmoteEnabled(false);
-            restoreHideGui(mc);
+        if (downActive) {
+            downTicksRemaining--;
+            if (downTicksRemaining <= 0) {
+                downActive = false;
+                active = false;
+                MarallyzenRenderContext.setFpvEmoteEnabled(false);
+                restoreHideGui(mc);
+                restoreCameraType(mc);
+            }
         }
     }
 
     private static void applyPlayerLock(LocalPlayer player) {
         player.setDeltaMovement(Vec3.ZERO);
         player.setSprinting(false);
+        Minecraft mc = Minecraft.getInstance();
         player.setXRot(targetPitch);
         player.setYRot(targetYaw);
         player.xRotO = targetPitch;
         player.yRotO = targetYaw;
         player.setYHeadRot(targetYaw);
+        player.yHeadRotO = targetYaw;
         player.setYBodyRot(targetYaw);
+        player.yBodyRotO = targetYaw;
         player.setPos(targetPos.x, targetPos.y, targetPos.z);
     }
 
@@ -132,43 +172,30 @@ public final class LeverInteractionClient {
         hideGuiCaptured = false;
     }
 
-    @SubscribeEvent
-    public static void onMovementInputUpdate(MovementInputUpdateEvent event) {
-        if (!moveActive) {
+    private static void captureCameraType(Minecraft mc) {
+        if (mc == null || mc.options == null || cameraCaptured) {
             return;
         }
-        var input = event.getInput();
-        Minecraft mc = Minecraft.getInstance();
-        if (mc != null && mc.player != null) {
-            LocalPlayer player = mc.player;
-            Vec3 toTarget = targetPos.subtract(player.position());
-            Vec3 flat = new Vec3(toTarget.x, 0.0, toTarget.z);
-            double dist = flat.length();
-            if (dist <= 0.06) {
-                moveActive = false;
-                input.forwardImpulse = 0.0f;
-                input.leftImpulse = 0.0f;
-                input.up = false;
-                input.down = false;
-                input.left = false;
-                input.right = false;
-                return;
-            }
-            float yaw = (float) (Math.toDegrees(Math.atan2(flat.z, flat.x)) - 90.0f);
-            targetYaw = yaw;
-            player.setYRot(targetYaw);
-            player.setXRot(targetPitch);
-            player.yHeadRot = targetYaw;
-            player.yBodyRot = targetYaw;
-        }
-
-        input.forwardImpulse = 1.0f;
-        input.leftImpulse = 0.0f;
-        input.jumping = false;
-        input.shiftKeyDown = false;
-        input.up = true;
-        input.down = false;
-        input.left = false;
-        input.right = false;
+        prevCameraType = mc.options.getCameraType();
+        cameraCaptured = true;
     }
+
+    private static void forceFirstPerson(Minecraft mc) {
+        if (mc == null || mc.options == null) {
+            return;
+        }
+        mc.options.setCameraType(CameraType.FIRST_PERSON);
+    }
+
+    private static void restoreCameraType(Minecraft mc) {
+        if (!cameraCaptured || mc == null || mc.options == null) {
+            cameraCaptured = false;
+            return;
+        }
+        mc.options.setCameraType(prevCameraType);
+        cameraCaptured = false;
+    }
+
 }
+
+

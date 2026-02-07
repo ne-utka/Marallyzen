@@ -4,15 +4,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
 
-@OnlyIn(Dist.CLIENT)
 public final class OldTvSoundController {
     private OldTvSoundController() {
     }
@@ -78,10 +76,15 @@ public final class OldTvSoundController {
             return MarallyzenSounds.TV.get();
         }
         try {
-            ResourceLocation id = ResourceLocation.parse(soundId);
+            Identifier id = Identifier.tryParse(soundId);
+            if (id == null) {
+                return MarallyzenSounds.TV.get();
+            }
             return BuiltInRegistries.SOUND_EVENT.getOptional(id).orElse(MarallyzenSounds.TV.get());
         } catch (Exception e) {
             return MarallyzenSounds.TV.get();
         }
     }
 }
+
+

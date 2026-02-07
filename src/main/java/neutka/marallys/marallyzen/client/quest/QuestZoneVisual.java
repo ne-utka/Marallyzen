@@ -3,7 +3,7 @@ package neutka.marallys.marallyzen.client.quest;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -29,7 +29,7 @@ public record QuestZoneVisual(
         }
         ResourceKey<Level> dimension = ResourceKey.create(
                 Registries.DIMENSION,
-                ResourceLocation.parse(dimensionId)
+                Identifier.parse(dimensionId)
         );
         QuestCategory category = parseCategory(QuestJsonUtils.getString(obj, "category", null));
         boolean ignoreHeight = QuestJsonUtils.getBoolean(obj, "ignoreHeight", false);
@@ -96,3 +96,5 @@ public record QuestZoneVisual(
         }
     }
 }
+
+

@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import neutka.marallys.marallyzen.client.OldTvMediaManager;
 
@@ -30,7 +28,7 @@ public record OldTvBindModePacket(boolean enabled, String mediaName) implements 
 
     public static void handle(OldTvBindModePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) {
+            if (!ClientOnly.isClient(context)) {
                 return;
             }
             if (packet.enabled()) {
@@ -41,3 +39,4 @@ public record OldTvBindModePacket(boolean enabled, String mediaName) implements 
         });
     }
 }
+

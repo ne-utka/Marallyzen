@@ -2,13 +2,13 @@ package neutka.marallys.marallyzen.quest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.SharedConstants;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.network.chat.Component;
@@ -196,12 +196,12 @@ public class QuestManager {
             return;
         }
         if (runtimeData.lastDimension != null && !dimension.equals(runtimeData.lastDimension)) {
-            fireEvent(player, new QuestEvent("dimension", Map.of("dimension", dimension.location().toString()), currentPos));
+            fireEvent(player, new QuestEvent("dimension", Map.of("dimension", dimension.identifier().toString()), currentPos));
         }
         runtimeData.lastPos = currentPos;
         runtimeData.lastDimension = dimension;
 
-        var biomeKey = player.level().getBiome(currentPos).unwrapKey().map(key -> key.location().toString()).orElse("");
+        var biomeKey = player.level().getBiome(currentPos).unwrapKey().map(key -> key.identifier().toString()).orElse("");
         if (!biomeKey.isBlank() && !biomeKey.equals(runtimeData.lastBiomeId)) {
             runtimeData.lastBiomeId = biomeKey;
             fireEvent(player, new QuestEvent("biome", Map.of("biome", biomeKey), currentPos));
@@ -227,7 +227,7 @@ public class QuestManager {
         entered.removeAll(runtimeData.activeZones);
         runtimeData.activeZones = currentZones;
         for (String zoneId : entered) {
-            Marallyzen.LOGGER.info("QuestManager: zone_enter {} at {} for {}", zoneId, currentPos, player.getGameProfile().getName());
+            Marallyzen.LOGGER.info("QuestManager: zone_enter {} at {} for {}", zoneId, currentPos, player.getGameProfile().name());
             boolean instanceHandled = handleInstanceZoneEnter(player, zoneId);
             if (!instanceHandled) {
                 fireEvent(player, new QuestEvent("zone_enter", Map.of("zoneId", zoneId), currentPos));
@@ -242,7 +242,7 @@ public class QuestManager {
         if (instanceSessionManager.isInstanceZoneEnterBlocked(player)) {
             Marallyzen.LOGGER.info(
                     "QuestManager: teleport request blocked for {} in {}",
-                    player.getGameProfile().getName(),
+                    player.getGameProfile().name(),
                     zoneId
             );
             return;
@@ -257,11 +257,11 @@ public class QuestManager {
         if (!zone.contains(player.blockPosition())) {
             return;
         }
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         if (!hasMagnetiteInZone(level, zone, player.blockPosition())) {
             Marallyzen.LOGGER.info(
                     "QuestManager: teleport request ignored for {} in {} (no magnetite)",
-                    player.getGameProfile().getName(),
+                    player.getGameProfile().name(),
                     zoneId
             );
             return;
@@ -278,7 +278,7 @@ public class QuestManager {
         if (!started) {
             Marallyzen.LOGGER.info(
                     "QuestManager: teleport request ignored for {} in {} (no instance start)",
-                    player.getGameProfile().getName(),
+                    player.getGameProfile().name(),
                     zoneId
             );
         }
@@ -341,7 +341,7 @@ public class QuestManager {
         Marallyzen.LOGGER.info(
                 "QuestManager: quest '{}' completed by {}, rewards={}",
                 instance.questId(),
-                player != null ? player.getGameProfile().getName() : "null",
+                player != null ? player.getGameProfile().name() : "null",
                 rewardCount
         );
         rewardHandler.applyRewards(player, getOrCreatePlayerData(player.getUUID()), definition);
@@ -487,10 +487,10 @@ public class QuestManager {
                             return;
                         }
                         server.execute(() -> {
-                            ResourceLocation rootId = ResourceLocation.parse(Marallyzen.MODID + ":root");
+                            Identifier rootId = Identifier.parse(Marallyzen.MODID + ":root");
                             boolean rootLoaded = server.getAdvancements().get(rootId) != null;
                             boolean questLoaded = false;
-                            ResourceLocation sampleQuestId = findSampleQuestAdvancement();
+                            Identifier sampleQuestId = findSampleQuestAdvancement();
                             if (sampleQuestId != null) {
                                 questLoaded = server.getAdvancements().get(sampleQuestId) != null;
                             }
@@ -511,7 +511,7 @@ public class QuestManager {
         try {
             Files.createDirectories(packDir);
             Path meta = packDir.resolve("pack.mcmeta");
-            int packFormat = SharedConstants.getCurrentVersion().getPackVersion(PackType.SERVER_DATA);
+            int packFormat = PackFormat.lastPreMinorVersion(PackType.SERVER_DATA);
             String metaJson = "{\n"
                     + "  \"pack\": {\n"
                     + "    \"pack_format\": " + packFormat + ",\n"
@@ -539,7 +539,7 @@ public class QuestManager {
                     continue;
                 }
                 String resolvedId = id.contains(":") ? id : Marallyzen.MODID + ":" + id;
-                ResourceLocation location = safeParseLocation(resolvedId);
+                Identifier location = safeParseLocation(resolvedId);
                 if (location == null) {
                     continue;
                 }
@@ -578,9 +578,9 @@ public class QuestManager {
         }
     }
 
-    private ResourceLocation safeParseLocation(String id) {
+    private Identifier safeParseLocation(String id) {
         try {
-            return ResourceLocation.parse(id);
+            return Identifier.parse(id);
         } catch (Exception ignored) {
             return null;
         }
@@ -626,7 +626,7 @@ public class QuestManager {
                 + "}\n";
     }
 
-    private ResourceLocation findSampleQuestAdvancement() {
+    private Identifier findSampleQuestAdvancement() {
         for (QuestDefinition definition : definitions.values()) {
             if (definition.rewards() == null) {
                 continue;
@@ -640,7 +640,7 @@ public class QuestManager {
                     continue;
                 }
                 String resolvedId = id.contains(":") ? id : Marallyzen.MODID + ":" + id;
-                ResourceLocation location = safeParseLocation(resolvedId);
+                Identifier location = safeParseLocation(resolvedId);
                 if (location != null) {
                     return location;
                 }
@@ -649,10 +649,10 @@ public class QuestManager {
         return null;
     }
 
-    private void logQuestResourceState(MinecraftServer server, ResourceLocation sampleQuestId) {
+    private void logQuestResourceState(MinecraftServer server, Identifier sampleQuestId) {
         ResourceManager resources = server.getResourceManager();
-        ResourceLocation rootAdvancementsPath = ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "advancements/root.json");
-        ResourceLocation rootAdvancementPath = ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "advancement/root.json");
+        Identifier rootAdvancementsPath = Identifier.fromNamespaceAndPath(Marallyzen.MODID, "advancements/root.json");
+        Identifier rootAdvancementPath = Identifier.fromNamespaceAndPath(Marallyzen.MODID, "advancement/root.json");
         boolean rootAdvancementsResource = resources.getResource(rootAdvancementsPath).isPresent();
         boolean rootAdvancementResource = resources.getResource(rootAdvancementPath).isPresent();
         boolean sampleAdvancementsResource = false;
@@ -660,8 +660,8 @@ public class QuestManager {
         if (sampleQuestId != null) {
             String sampleAdvancementsPath = "advancements/" + sampleQuestId.getPath() + ".json";
             String sampleAdvancementPath = "advancement/" + sampleQuestId.getPath() + ".json";
-            ResourceLocation sampleAdvancementsResId = ResourceLocation.fromNamespaceAndPath(sampleQuestId.getNamespace(), sampleAdvancementsPath);
-            ResourceLocation sampleAdvancementResId = ResourceLocation.fromNamespaceAndPath(sampleQuestId.getNamespace(), sampleAdvancementPath);
+            Identifier sampleAdvancementsResId = Identifier.fromNamespaceAndPath(sampleQuestId.getNamespace(), sampleAdvancementsPath);
+            Identifier sampleAdvancementResId = Identifier.fromNamespaceAndPath(sampleQuestId.getNamespace(), sampleAdvancementPath);
             sampleAdvancementsResource = resources.getResource(sampleAdvancementsResId).isPresent();
             sampleAdvancementResource = resources.getResource(sampleAdvancementResId).isPresent();
         }
@@ -686,7 +686,7 @@ public class QuestManager {
         if (title == null || title.isBlank()) {
             return;
         }
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null) {
             return;
         }
@@ -694,7 +694,7 @@ public class QuestManager {
         if (category == QuestCategory.FARM) {
             return;
         }
-        String playerName = player.getGameProfile().getName();
+        String playerName = player.getGameProfile().name();
         TextColor prime = TextColor.fromRgb(0xD48E03);
         String prefix = getQuestMessagePrefix(category);
         MutableComponent message = Component.literal(playerName + " " + prefix)
@@ -706,7 +706,7 @@ public class QuestManager {
                 for (ServerPlayer online : server.getPlayerList().getPlayers()) {
                     online.sendSystemMessage(message);
                 }
-                player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
+                player.level().playSound(null, player.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
             }
             default -> {
             }
@@ -741,7 +741,7 @@ public class QuestManager {
     }
 
     private void notifyNearbyPlayers(ServerPlayer player, Component message) {
-        for (ServerPlayer online : player.getServer().getPlayerList().getPlayers()) {
+        for (ServerPlayer online : player.level().getServer().getPlayerList().getPlayers()) {
             if (!online.level().dimension().equals(player.level().dimension())) {
                 continue;
             }
@@ -854,7 +854,7 @@ public class QuestManager {
         if (instanceSessionManager.isInstanceZoneEnterBlocked(player)) {
             Marallyzen.LOGGER.info(
                     "QuestManager: instance zone_enter suppressed for {} in {} (blocked)",
-                    player.getGameProfile().getName(),
+                    player.getGameProfile().name(),
                     zoneId
             );
             return true;
@@ -927,8 +927,8 @@ public class QuestManager {
         }
 
         if (zone.ignoreHeight()) {
-            minY = level.getMinBuildHeight();
-            maxY = level.getMaxBuildHeight();
+            minY = level.getMinY();
+            maxY = level.getMaxY();
         }
 
         long volume = (long) (maxX - minX + 1) * (long) (maxY - minY + 1) * (long) (maxZ - minZ + 1);
@@ -1032,6 +1032,10 @@ public class QuestManager {
         }
     }
 }
+
+
+
+
 
 
 

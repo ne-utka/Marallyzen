@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,7 +26,12 @@ public class InteractiveLeverBlock extends LeverBlock implements EntityBlock {
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.ENTITYBLOCK_ANIMATED;
+        return RenderShape.INVISIBLE;
+    }
+
+    @Override
+    public @NotNull VoxelShape getVisualShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Shapes.empty();
     }
 
     @Override
@@ -35,7 +41,7 @@ public class InteractiveLeverBlock extends LeverBlock implements EntityBlock {
 
     @Override
     public @NotNull VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return shiftedShape(super.getCollisionShape(state, level, pos, context));
+        return Shapes.empty();
     }
 
     @Override
@@ -46,7 +52,7 @@ public class InteractiveLeverBlock extends LeverBlock implements EntityBlock {
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         BlockState result = super.playerWillDestroy(level, pos, state, player);
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             level.levelEvent(2001, pos, Block.getId(state));
         }
         return result;

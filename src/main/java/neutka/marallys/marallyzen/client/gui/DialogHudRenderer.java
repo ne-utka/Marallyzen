@@ -15,7 +15,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 /**
  * Handles rendering and input for the dialog HUD.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class DialogHudRenderer {
     
     @SubscribeEvent
@@ -24,21 +24,18 @@ public class DialogHudRenderer {
     }
     
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterParticles event) {
         // Render after particles so prompts are late in the world render order.
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null || mc.level == null) {
-                return;
-            }
-            
-            Camera camera = event.getCamera();
-            PoseStack poseStack = event.getPoseStack();
-            // Get partial tick from Minecraft timer
-            float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(false);
-            
-            DialogHud.getInstance().renderInWorld(poseStack, camera, partialTick);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            return;
         }
+        
+        PoseStack poseStack = event.getPoseStack();
+        Camera camera = mc.gameRenderer.getMainCamera();
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        
+        DialogHud.getInstance().renderInWorld(poseStack, camera, partialTick);
     }
     
     @SubscribeEvent

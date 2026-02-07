@@ -1,18 +1,18 @@
 package neutka.marallys.marallyzen.client.gui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
-import org.lwjgl.opengl.GL11;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.blocks.PosterBlock;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.ClientDictaphoneManager;
@@ -25,8 +25,12 @@ import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.blocks.OldTvBlock;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
-import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
 import neutka.marallys.marallyzen.client.DecoratedPotCarryClient;
+import neutka.marallys.marallyzen.client.lever.LeverInteractionClient;
+import neutka.marallys.marallyzen.client.valve.ValveInteractionClient;
+import neutka.marallys.marallyzen.client.lever.LeverQteClient;
+import neutka.marallys.marallyzen.client.valve.ValveQteClient;
+import net.minecraft.world.level.block.LeverBlock;
 
 public class SimpleBlockPromptHud {
     private static SimpleBlockPromptHud instance;
@@ -39,7 +43,12 @@ public class SimpleBlockPromptHud {
     private static final int TEXT_DARK_GRAY = 0x555555;
     private static final int NARRATION_BG_COLOR = 0x000000;
     private static final float BACKGROUND_PADDING_X = 3.42f;
-    private static final float BACKGROUND_PADDING_Y = 1.855f;
+    private static final float BACKGROUND_PADDING_Y = 2.855f;
+    private static final float BACKGROUND_CORNER_RADIUS = 2.0f;
+    private static final float ROUNDED_BG_TEX_SIZE = 64.0f;
+    private static final float ROUNDED_BG_CORNER_PX = 10.0f;
+    private static final Identifier ROUNDED_BG_TEXTURE =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
 
     private boolean targetVisible = false;
     private BlockPos targetPos;
@@ -82,6 +91,9 @@ public class SimpleBlockPromptHud {
         if (targetPos == null || promptLabel == null) {
             return;
         }
+        if (LeverQteClient.isHudVisible() || ValveQteClient.isHudVisible()) {
+            return;
+        }
         if (!targetVisible && fadeOutProgress <= 0.0f) {
             return;
         }
@@ -89,13 +101,6 @@ public class SimpleBlockPromptHud {
         if (mc.player == null || mc.level == null) {
             return;
         }
-        if (neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().isActive()) {
-            return;
-        }
-        if (neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance().isActive()) {
-            return;
-        }
-
         float interpolatedFadeIn = Mth.lerp(partialTick, previousFadeInProgress, fadeInProgress);
         float interpolatedFadeOut = Mth.lerp(partialTick, previousFadeOutProgress, fadeOutProgress);
         boolean showing = targetVisible;
@@ -110,10 +115,17 @@ public class SimpleBlockPromptHud {
         double blockY = PromptAnchorUtil.blockTopY(mc.level, targetPos, state)
             - PromptAnchorUtil.pxToWorld(20.0f, SCALE_BASE);
         double blockZ = targetPos.getZ() + 0.5;
+        if (state.getBlock() == MarallyzenBlocks.INTERACTIVE_LEVER.get()) {
+            blockY += PromptAnchorUtil.pxToWorld(11.0f, SCALE_BASE);
+        }
+        if (state.getBlock() == MarallyzenBlocks.DICTAPHONE.get()
+                || state.getBlock() == MarallyzenBlocks.DICTAPHONE_SIMPLE.get()) {
+            blockY += PromptAnchorUtil.pxToWorld(20.0f, SCALE_BASE);
+        }
 
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        double camX = camera.position().x;
+        double camY = camera.position().y;
+        double camZ = camera.position().z;
 
         double dx = blockX - camX;
         double dy = blockY - camY;
@@ -140,14 +152,18 @@ public class SimpleBlockPromptHud {
             dirZ /= dirDistance;
             double rightX = dirZ;
             double rightZ = -dirX;
+            if (state.getBlock() == MarallyzenBlocks.INTERACTIVE_LEVER.get()) {
+                offsetX -= rightX * PromptAnchorUtil.pxToWorld(16.0f, SCALE_BASE);
+                offsetZ -= rightZ * PromptAnchorUtil.pxToWorld(16.0f, SCALE_BASE);
+            }
             offsetX += rightX * OFFSET_RIGHT;
             offsetZ += rightZ * OFFSET_RIGHT;
         }
 
         poseStack.translate(offsetX, offsetY, offsetZ);
 
-        float cameraYaw = camera.getYRot();
-        float cameraPitch = camera.getXRot();
+        float cameraYaw = camera.yRot();
+        float cameraPitch = camera.xRot();
         poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(cameraPitch));
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f));
@@ -163,7 +179,7 @@ public class SimpleBlockPromptHud {
         poseStack.scale(scale, scale, scale);
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        MultiBufferSource textSource = new NoDepthTextBufferSource(bufferSource);
+        MultiBufferSource textSource = bufferSource;
         Font font = mc.font;
         Matrix4f matrix = poseStack.last().pose();
 
@@ -171,12 +187,8 @@ public class SimpleBlockPromptHud {
         int white = (alpha << 24) | 0xFFFFFF;
         int darkGray = (alpha << 24) | TEXT_DARK_GRAY;
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
         drawPrompt(font, bufferSource, textSource, matrix, promptLabel, white, darkGray, alpha);
         bufferSource.endBatch();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         poseStack.popPose();
     }
 
@@ -200,7 +212,7 @@ public class SimpleBlockPromptHud {
         float bgY = (textY + textHeight / 2.0f) - bgHeight / 2.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+        fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
 
         float cursorX = 0.0f;
         drawComponent(matrix, textSource, font, icon, cursorX, textY, white);
@@ -231,6 +243,10 @@ public class SimpleBlockPromptHud {
         BlockPos pos = blockHit.getBlockPos();
         BlockState state = mc.level.getBlockState(pos);
         Block block = state.getBlock();
+        if (LeverInteractionClient.isBlockingInput() || ValveInteractionClient.isBlockingInput()) {
+            targetVisible = false;
+            return;
+        }
         if (block instanceof PosterBlock) {
             targetVisible = true;
             targetPos = pos;
@@ -266,6 +282,18 @@ public class SimpleBlockPromptHud {
             targetVisible = true;
             targetPos = pos;
             promptLabel = "\u0412\u0437\u0430\u0438\u043c\u043e\u0434\u0435\u0439\u0441\u0442\u0432\u043e\u0432\u0430\u0442\u044c";
+        } else if (block == MarallyzenBlocks.INTERACTIVE_LEVER.get()) {
+            if (state.hasProperty(LeverBlock.POWERED) && state.getValue(LeverBlock.POWERED)) {
+                targetVisible = false;
+                return;
+            }
+            targetVisible = true;
+            targetPos = pos;
+            promptLabel = "\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c";
+        } else if (block == MarallyzenBlocks.INTERACTIVE_VALVE.get()) {
+            targetVisible = true;
+            targetPos = pos;
+            promptLabel = "\u041f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u044c";
         } else {
             targetVisible = false;
         }
@@ -320,7 +348,7 @@ public class SimpleBlockPromptHud {
                           float x, float y, float width, float height, int color) {
         com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
             NoDepthTextRenderType.textNoDepth(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
             )
         );
 
@@ -372,6 +400,95 @@ public class SimpleBlockPromptHud {
             .setNormal(normalX, normalY, normalZ);
     }
 
+    private void fillRoundedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                 float x, float y, float width, float height, float radius, int color) {
+        if (radius <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+        fillTexturedRect(matrix, bufferSource, x, y, width, height, color);
+    }
+
+    private void fillTexturedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                  float x, float y, float width, float height, int color) {
+        float corner = Math.min(Math.max(BACKGROUND_CORNER_RADIUS, 0.0f), Math.min(width, height) / 2.0f);
+        if (corner <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+
+        com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
+            NoDepthTextRenderType.textNoDepth(ROUNDED_BG_TEXTURE)
+        );
+
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+
+        int light = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
+        int overlay = net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY;
+        int lightU = light & 0xFFFF;
+        int lightV = (light >> 16) & 0xFFFF;
+        int overlayU = overlay & 0xFFFF;
+        int overlayV = (overlay >> 16) & 0xFFFF;
+
+        float z = 0.01f;
+        float uCorner = ROUNDED_BG_CORNER_PX / ROUNDED_BG_TEX_SIZE;
+
+        float x0 = x;
+        float x1 = x + corner;
+        float x2 = x + width - corner;
+        float x3 = x + width;
+        float y0 = y;
+        float y1 = y + corner;
+        float y2 = y + height - corner;
+        float y3 = y + height;
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y0, x1, y1, 0.0f, 0.0f, uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y0, x2, y1, uCorner, 0.0f, 1.0f - uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y0, x3, y1, 1.0f - uCorner, 0.0f, 1.0f, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y1, x1, y2, 0.0f, uCorner, uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y1, x2, y2, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y1, x3, y2, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y2, x1, y3, 0.0f, 1.0f - uCorner, uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y2, x2, y3, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y2, x3, y3, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+    }
+
+    private void drawTexturedQuad(com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer, Matrix4f matrix,
+                                  float left, float top, float right, float bottom,
+                                  float u0, float v0, float u1, float v1,
+                                  int r, int g, int b, int a, float z,
+                                  int overlayU, int overlayV, int lightU, int lightV) {
+        vertexConsumer.addVertex(matrix, left, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, left, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+    }
+
     private void drawText(Matrix4f matrix, MultiBufferSource bufferSource, Font font,
                           String text, float x, float y, int color) {
         font.drawInBatch(
@@ -388,3 +505,8 @@ public class SimpleBlockPromptHud {
         );
     }
 }
+
+
+
+
+

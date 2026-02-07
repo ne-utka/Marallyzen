@@ -159,15 +159,15 @@ public final class DecoratedPotCarryManager {
         int maxX = minX + 15;
         int maxZ = minZ + 15;
         var box = new net.minecraft.world.phys.AABB(
-            minX, level.getMinBuildHeight(), minZ,
-            maxX + 1, level.getMaxBuildHeight(), maxZ + 1
+            minX, level.getMinY(), minZ,
+            maxX + 1, level.getMaxY(), maxZ + 1
         );
         return level.getEntitiesOfClass(DecoratedPotCarryEntity.class, box, e -> !e.isRemoved()).size() >= MAX_PER_CHUNK;
     }
 
     private static float resolveYaw(BlockState state, BlockEntity blockEntity, ServerPlayer player) {
         if (blockEntity != null && blockEntity.getPersistentData().contains(DecoratedPotCarryEntity.ROTATION_TAG)) {
-            return blockEntity.getPersistentData().getFloat(DecoratedPotCarryEntity.ROTATION_TAG);
+            return blockEntity.getPersistentData().getFloat(DecoratedPotCarryEntity.ROTATION_TAG).orElse(0.0f);
         }
         if (state.hasProperty(HorizontalDirectionalBlock.FACING)) {
             return state.getValue(HorizontalDirectionalBlock.FACING).toYRot();

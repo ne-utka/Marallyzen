@@ -7,11 +7,9 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.LevelStem;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.instance.InstanceWorldManager;
@@ -35,7 +33,7 @@ public record InstanceRegistryPacket(String worldName) implements CustomPacketPa
 
     public static void handle(InstanceRegistryPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) {
+            if (!ClientOnly.isClient(context)) {
                 return;
             }
             registerClientStem(packet.worldName());
@@ -43,7 +41,7 @@ public record InstanceRegistryPacket(String worldName) implements CustomPacketPa
     }
 
     public static void registerClientStem(String worldName) {
-        if (FMLEnvironment.dist != Dist.CLIENT) {
+        if (!ClientOnly.isClient()) {
             return;
         }
         if (worldName == null || worldName.isBlank()) {
@@ -55,18 +53,20 @@ public record InstanceRegistryPacket(String worldName) implements CustomPacketPa
         if (access == null) {
             return;
         }
-        Registry<LevelStem> stemRegistry = access.registry(Registries.LEVEL_STEM).orElse(null);
+        Registry<LevelStem> stemRegistry = access.lookup(Registries.LEVEL_STEM).orElse(null);
         if (stemRegistry == null) {
             return;
         }
         ResourceKey<Level> levelKey = InstanceWorldManager.buildInstanceKeyFromWorldName(worldName);
-        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.location());
+        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.identifier());
         if (stemRegistry.get(stemKey) != null) {
             return;
         }
-        ResourceLocation overworldId = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
+        Identifier overworldId = Identifier.fromNamespaceAndPath("minecraft", "overworld");
         ResourceKey<LevelStem> overworldKey = ResourceKey.create(Registries.LEVEL_STEM, overworldId);
-        LevelStem overworldStem = stemRegistry.get(overworldKey);
+        LevelStem overworldStem = stemRegistry.get(overworldKey.identifier())
+            .map(net.minecraft.core.Holder.Reference::value)
+            .orElse(null);
         if (overworldStem == null) {
             return;
         }
@@ -75,13 +75,13 @@ public record InstanceRegistryPacket(String worldName) implements CustomPacketPa
                 return;
             }
             try {
-                Registry.register(stemRegistry, stemKey.location(), overworldStem);
-                Marallyzen.LOGGER.info("InstanceRegistryPacket: registered client level stem {}", stemKey.location());
+                Registry.register(stemRegistry, stemKey.identifier(), overworldStem);
+                Marallyzen.LOGGER.info("InstanceRegistryPacket: registered client level stem {}", stemKey.identifier());
             } finally {
                 setRegistryFrozen(stemRegistry, true);
             }
         } catch (Exception e) {
-            Marallyzen.LOGGER.warn("InstanceRegistryPacket: failed to register client level stem {}", stemKey.location(), e);
+            Marallyzen.LOGGER.warn("InstanceRegistryPacket: failed to register client level stem {}", stemKey.identifier(), e);
         }
     }
 
@@ -132,3 +132,8 @@ public record InstanceRegistryPacket(String worldName) implements CustomPacketPa
         return null;
     }
 }
+
+
+
+
+

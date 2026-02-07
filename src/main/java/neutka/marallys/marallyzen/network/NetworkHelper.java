@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * Utility class for sending network packets.
@@ -46,7 +47,8 @@ public class NetworkHelper {
      * Sends a packet from client to server.
      */
     public static void sendToServer(CustomPacketPayload packet) {
-        PacketDistributor.sendToServer(packet);
+        ClientPacketDistributor.sendToServer(packet);
     }
 }
+
 

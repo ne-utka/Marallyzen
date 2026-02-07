@@ -14,7 +14,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.network.InstanceLeaveRequestPacket;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class InstancePauseMenuButton {
     private static final int BUTTON_WIDTH = 200;
     private static final int BUTTON_HEIGHT = 20;
@@ -69,7 +69,10 @@ public class InstancePauseMenuButton {
         if (mc == null || mc.level == null) {
             return false;
         }
-        var key = mc.level.dimension().location();
+        var key = mc.level.dimension().identifier();
         return Marallyzen.MODID.equals(key.getNamespace()) && key.getPath().startsWith("instance/");
     }
 }
+
+
+

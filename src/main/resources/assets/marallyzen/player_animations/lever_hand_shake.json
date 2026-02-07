@@ -1,0 +1,51 @@
+{
+  "name": "lever_hand_shake",
+  "author": "Converted from GeckoLib",
+  "description": "Converted lever shake animation",
+  "emote": {
+    "isLoop": false,
+    "degrees": true,
+    "beginTick": 0,
+    "endTick": 30,
+    "stopTick": 31,
+    "returnTick": 30,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "LINEAR",
+        "rightArm": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        }
+      },
+      {
+        "tick": 10,
+        "easing": "OUTQUAD",
+        "rightArm": {
+          "pitch": -30,
+          "yaw": 5,
+          "roll": 0
+        }
+      },
+      {
+        "tick": 20,
+        "easing": "INOUTQUAD",
+        "rightArm": {
+          "pitch": -70,
+          "yaw": 10,
+          "roll": 0
+        }
+      },
+      {
+        "tick": 30,
+        "easing": "INQUAD",
+        "rightArm": {
+          "pitch": -40,
+          "yaw": 6,
+          "roll": 0
+        }
+      }
+    ]
+  }
+}

@@ -2,11 +2,11 @@ package neutka.marallys.marallyzen.items;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -16,7 +16,6 @@ import net.minecraft.sounds.SoundSource;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
@@ -25,7 +24,7 @@ import neutka.marallys.marallyzen.client.narration.NarrationManager;
 import neutka.marallys.marallyzen.client.narration.NarrationOverlay;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class FlashlightItem extends Item {
     private static final String ON_KEY = "flashlight_on";
     private static ItemStack lastSelectedStack = ItemStack.EMPTY;
@@ -36,10 +35,10 @@ public class FlashlightItem extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (!level.isClientSide && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+        if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             boolean isOn = isOn(stack);
             boolean newState = !isOn;
             setOn(stack, newState);
@@ -52,7 +51,7 @@ public class FlashlightItem extends Item {
                 SoundSource.PLAYERS, 1.0f, 1.0f);
         }
 
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     @SubscribeEvent
@@ -151,7 +150,7 @@ public class FlashlightItem extends Item {
         if (data == null) {
             return false;
         }
-        return data.copyTag().getBoolean(ON_KEY);
+        return data.copyTag().getBoolean(ON_KEY).orElse(false);
     }
 
     public static void setOn(ItemStack stack, boolean on) {
@@ -161,14 +160,7 @@ public class FlashlightItem extends Item {
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            net.minecraft.client.renderer.item.ItemProperties.register(
-                MarallyzenItems.FLASHLIGHT.get(),
-                ResourceLocation.fromNamespaceAndPath("marallyzen", "flashlight_on"),
-                (stack, level, entity, seed) -> isOn(stack) ? 1.0f : 0.0f
-            );
-        });
-    }
+    // Item model predicates moved in 1.21.11; no client setup registration needed here.
 }
+
+

@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import neutka.marallys.marallyzen.client.gui.DialogState;
 
@@ -34,7 +32,7 @@ public record DialogStateChangedPacket(DialogState state) implements CustomPacke
 
     public static void handle(DialogStateChangedPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("DialogStateChangedPacket: Received state change to {} on client", packet.state());
                 // Update client-side state machine
                 neutka.marallys.marallyzen.client.gui.DialogStateMachine.getInstance()
@@ -43,4 +41,5 @@ public record DialogStateChangedPacket(DialogState state) implements CustomPacke
         });
     }
 }
+
 

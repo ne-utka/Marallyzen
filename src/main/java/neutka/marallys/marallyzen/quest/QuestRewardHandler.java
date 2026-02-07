@@ -3,7 +3,7 @@ package neutka.marallys.marallyzen.quest;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import neutka.marallys.marallyzen.Marallyzen;
@@ -51,7 +51,9 @@ public class QuestRewardHandler {
         if (itemId.isBlank() || count <= 0) {
             return;
         }
-        var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        var item = BuiltInRegistries.ITEM.get(Identifier.parse(itemId))
+                .map(net.minecraft.core.Holder.Reference::value)
+                .orElse(null);
         if (item == null) {
             Marallyzen.LOGGER.warn("QuestRewardHandler: item not found {}", itemId);
             return;
@@ -71,11 +73,12 @@ public class QuestRewardHandler {
 
     private void runCommand(ServerPlayer player, JsonObject obj) {
         String command = QuestJsonUtils.getString(obj, "command", "");
-        if (command.isBlank() || player.getServer() == null) {
+        if (command.isBlank() || player.level().getServer() == null) {
             return;
         }
         String finalCommand = command.replace("{player}", player.getName().getString());
-        player.getServer().getCommands().performPrefixedCommand(player.getServer().createCommandSourceStack(), finalCommand);
+        var server = player.level().getServer();
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), finalCommand);
     }
 
     private void sendMessage(ServerPlayer player, JsonObject obj) {
@@ -94,7 +97,7 @@ public class QuestRewardHandler {
 
     private void grantAdvancement(ServerPlayer player, JsonObject obj, boolean triedReload) {
         String id = QuestJsonUtils.getString(obj, "id", "");
-        if (id.isBlank() || player.getServer() == null) {
+        if (id.isBlank() || player.level().getServer() == null) {
             return;
         }
         String resolvedId = id.contains(":") ? id : Marallyzen.MODID + ":" + id;
@@ -102,7 +105,7 @@ public class QuestRewardHandler {
         var advancement = findAdvancement(player, resolvedId);
         if (advancement == null) {
             if (!triedReload && RELOAD_IN_PROGRESS.compareAndSet(false, true)) {
-                var server = player.getServer();
+                var server = player.level().getServer();
                 Marallyzen.LOGGER.warn("QuestRewardHandler: advancement not found {}, reloading resources", resolvedId);
                 server.reloadResources(server.getPackRepository().getSelectedIds())
                         .whenComplete((ignored, error) -> {
@@ -164,7 +167,7 @@ public class QuestRewardHandler {
         for (String criterion : progress.getRemainingCriteria()) {
             player.getAdvancements().award(root, criterion);
         }
-        Marallyzen.LOGGER.info("QuestRewardHandler: root advancement granted for {}", player.getGameProfile().getName());
+        Marallyzen.LOGGER.info("QuestRewardHandler: root advancement granted for {}", player.getGameProfile().name());
     }
 
     private net.minecraft.advancements.AdvancementHolder findAdvancement(ServerPlayer player, String resolvedId) {
@@ -181,16 +184,16 @@ public class QuestRewardHandler {
             candidates.add(Marallyzen.MODID + ":quest/" + resolvedId);
         }
 
-        List<ResourceLocation> locations = new ArrayList<>();
+        List<Identifier> locations = new ArrayList<>();
         for (String candidate : candidates) {
-            ResourceLocation location = safeParseLocation(candidate);
+            Identifier location = safeParseLocation(candidate);
             if (location != null) {
                 locations.add(location);
             }
         }
 
-        var server = player.getServer();
-        for (ResourceLocation location : locations) {
+        var server = player.level().getServer();
+        for (Identifier location : locations) {
             var advancement = server.getAdvancements().get(location);
             if (advancement != null) {
                 return advancement;
@@ -199,11 +202,13 @@ public class QuestRewardHandler {
         return null;
     }
 
-    private ResourceLocation safeParseLocation(String id) {
+    private Identifier safeParseLocation(String id) {
         try {
-            return ResourceLocation.parse(id);
+            return Identifier.parse(id);
         } catch (Exception ignored) {
             return null;
         }
     }
 }
+
+

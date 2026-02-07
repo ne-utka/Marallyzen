@@ -5,10 +5,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import neutka.marallys.marallyzen.blocks.InteractiveBlockNarrations;
+import neutka.marallys.marallyzen.util.ComponentUtil;
 
 import java.util.UUID;
 
@@ -43,12 +42,12 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
     
     public static final StreamCodec<RegistryFriendlyByteBuf, Component> COMPONENT_CODEC = StreamCodec.of(
             (buf, component) -> {
-                String json = Component.Serializer.toJson(component, buf.registryAccess());
+                String json = ComponentUtil.toJson(component, buf.registryAccess()).orElse("");
                 NetworkCodecs.STRING.encode(buf, json);
             },
             buf -> {
                 String json = NetworkCodecs.STRING.decode(buf);
-                return Component.Serializer.fromJson(json, buf.registryAccess());
+                return ComponentUtil.fromJson(json, buf.registryAccess()).orElse(Component.empty());
             }
     );
     
@@ -78,7 +77,7 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
 
     public static void handle(NarratePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 String textStr = packet.text() != null ? packet.text().getString() : "null";
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("[NarratePacket] CLIENT: Starting narration - text='{}', npcUuid={}, fadeIn={}, stay={}, fadeOut={}", 
                         textStr, packet.npcUuid(), packet.fadeInTicks(), packet.stayTicks(), packet.fadeOutTicks());
@@ -125,3 +124,4 @@ public record NarratePacket(Component text, UUID npcUuid, int fadeInTicks, int s
         return message.equals(posterMessage);
     }
 }
+

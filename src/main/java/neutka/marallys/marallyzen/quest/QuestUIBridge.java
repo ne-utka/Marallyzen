@@ -55,9 +55,9 @@ public final class QuestUIBridge {
         }
         QuestZoneDefinition zone = context.zone;
         QuestCategory category = context.category != null ? context.category : QuestCategory.SIDE;
-        var level = player.getServer() != null ? player.getServer().getLevel(zone.dimension()) : null;
+        var level = player.level().getServer() != null ? player.level().getServer().getLevel(zone.dimension()) : null;
         if (level == null) {
-            level = player.serverLevel();
+            level = player.level();
         }
         double minX;
         double minY;
@@ -91,8 +91,8 @@ public final class QuestUIBridge {
         }
 
         if (zone.ignoreHeight()) {
-            minY = level.getMinBuildHeight();
-            maxY = level.getMaxBuildHeight();
+            minY = level.getMinY();
+            maxY = level.getMaxY();
             if (zone.shape() == QuestZoneDefinition.Shape.SPHERE) {
                 centerY = (minY + maxY) * 0.5;
             }
@@ -105,14 +105,14 @@ public final class QuestUIBridge {
             maxY = zone.max().getY() + 1.0;
             centerY = (minY + maxY) * 0.5;
         } else {
-            minY = level.getMinBuildHeight();
-            maxY = level.getMaxBuildHeight();
+            minY = level.getMinY();
+            maxY = level.getMaxY();
             centerY = (minY + maxY) * 0.5;
         }
 
         JsonObject zoneJson = new JsonObject();
         zoneJson.addProperty("id", zone.id());
-        zoneJson.addProperty("dimension", zone.dimension().location().toString());
+        zoneJson.addProperty("dimension", zone.dimension().identifier().toString());
         zoneJson.addProperty("category", category.name().toLowerCase());
         zoneJson.addProperty("ignoreHeight", zone.ignoreHeight());
         zoneJson.add("min", vec3Json(minX, minY, minZ));
@@ -191,3 +191,6 @@ public final class QuestUIBridge {
 
     private record QuestZoneContext(QuestZoneDefinition zone, QuestCategory category) {}
 }
+
+
+

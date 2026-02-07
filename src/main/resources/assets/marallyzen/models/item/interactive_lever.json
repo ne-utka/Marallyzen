@@ -1,6 +1,8 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:block/lever",
   "textures": {
-    "layer0": "marallyzen:block/lever"
+    "particle": "marallyzen:block/lever",
+    "base": "marallyzen:block/lever",
+    "lever": "marallyzen:block/lever"
   }
 }

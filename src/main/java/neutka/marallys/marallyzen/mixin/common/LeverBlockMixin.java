@@ -22,21 +22,25 @@ public class LeverBlockMixin {
                                           Player player,
                                           BlockHitResult hit,
                                           CallbackInfoReturnable<InteractionResult> cir) {
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return;
         }
-        if (state.getBlock() != neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_LEVER.get()) {
+        boolean isLever = state.getBlock() == neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_LEVER.get();
+        boolean isValve = state.getBlock() == neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_VALVE.get();
+        if (!isLever && !isValve) {
             return;
         }
         neutka.marallys.marallyzen.Marallyzen.LOGGER.info(
             "[LeverInteract] useWithoutItem player={} pos={} state={} face={}",
-            player.getGameProfile().getName(),
+            player.getGameProfile().name(),
             pos,
             state.getBlock().getName().getString(),
             state.getValue(net.minecraft.world.level.block.LeverBlock.FACE)
         );
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-            boolean started = LeverInteractionHandler.start(serverPlayer, pos, state, hit != null ? hit.getLocation() : null);
+            boolean started = isLever
+                ? LeverInteractionHandler.start(serverPlayer, pos, state, hit != null ? hit.getLocation() : null)
+                : neutka.marallys.marallyzen.blocks.ValveInteractionHandler.start(serverPlayer, pos, state, hit != null ? hit.getLocation() : null);
             if (started) {
                 cir.setReturnValue(InteractionResult.CONSUME);
                 cir.cancel();

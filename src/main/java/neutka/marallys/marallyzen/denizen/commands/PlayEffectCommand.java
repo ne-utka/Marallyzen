@@ -91,7 +91,7 @@ public class PlayEffectCommand extends AbstractCommand {
             if (player.level() != level) {
                 continue;
             }
-            player.serverLevel().sendParticles(player, particle, true,
+            player.level().sendParticles(player, particle, true, false,
                     location.getX(), location.getY(), location.getZ(),
                     quantity, offset, offset, offset, data);
         }
@@ -125,7 +125,8 @@ public class PlayEffectCommand extends AbstractCommand {
             float r = ((rgb >> 16) & 0xFF) / 255.0f;
             float g = ((rgb >> 8) & 0xFF) / 255.0f;
             float b = (rgb & 0xFF) / 255.0f;
-            return new DustParticleOptions(new Vector3f(r, g, b), size);
+            int color = ((int) (r * 255.0f) << 16) | ((int) (g * 255.0f) << 8) | (int) (b * 255.0f);
+            return new DustParticleOptions(color, size);
         }
         if ("heart".equals(lower)) {
             return ParticleTypes.HEART;

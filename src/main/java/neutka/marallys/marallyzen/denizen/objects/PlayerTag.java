@@ -116,7 +116,7 @@ public class PlayerTag implements ObjectTag, FlaggableObject {
         });
 
         tagProcessor.registerTag(ElementTag.class, "is_op", (attribute, object) -> {
-            return new ElementTag(object.player.hasPermissions(2));
+            return new ElementTag(PermissionHelper.isOp(object.player));
         });
 
         tagProcessor.registerTag(ElementTag.class, ElementTag.class, "has_permission", (attribute, object, permission) -> {

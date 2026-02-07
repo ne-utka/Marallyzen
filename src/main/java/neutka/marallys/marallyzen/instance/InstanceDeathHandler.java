@@ -6,7 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class InstanceDeathHandler {
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
@@ -16,7 +16,7 @@ public class InstanceDeathHandler {
         InstanceSessionManager.getInstance().markInstanceDeath(player);
         Marallyzen.LOGGER.info(
                 "[InstanceDeath] vanilla respawn suppressed flag set player={}",
-                player.getGameProfile().getName()
+                player.getGameProfile().name()
         );
     }
 }

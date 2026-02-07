@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.extensions.common.IClientBlockExtensions;
 
 import java.util.function.Consumer;
@@ -42,8 +41,6 @@ public class DirectionalDmcBlock extends HorizontalDirectionalBlock {
         return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
-    @Override
-    @OnlyIn(Dist.CLIENT)
     public void initializeClient(Consumer<IClientBlockExtensions> consumer) {
         consumer.accept(new IClientBlockExtensions() {
             @Override

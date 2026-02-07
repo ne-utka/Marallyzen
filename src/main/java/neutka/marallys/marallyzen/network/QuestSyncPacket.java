@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record QuestSyncPacket(String payloadJson) implements CustomPacketPayload {
@@ -24,9 +22,10 @@ public record QuestSyncPacket(String payloadJson) implements CustomPacketPayload
 
     public static void handle(QuestSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.quest.QuestClientState.getInstance().applySync(packet.payloadJson());
             }
         });
     }
 }
+

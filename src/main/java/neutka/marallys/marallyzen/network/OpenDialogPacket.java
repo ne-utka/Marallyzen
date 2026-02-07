@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Map;
@@ -45,7 +43,7 @@ public record OpenDialogPacket(String dialogId, String title, Map<String, String
 
     public static void handle(OpenDialogPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.gui.NpcPromptHud.getInstance().suppressDialogPrompt();
                 // Open dialog HUD on client
                 neutka.marallys.marallyzen.MarallyzenClient.openDialog(
@@ -58,3 +56,4 @@ public record OpenDialogPacket(String dialogId, String title, Map<String, String
         });
     }
 }
+

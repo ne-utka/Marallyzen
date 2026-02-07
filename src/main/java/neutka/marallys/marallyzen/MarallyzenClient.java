@@ -7,47 +7,38 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import java.util.Map;
 
 import neutka.marallys.marallyzen.client.gui.DialogScreen;
-import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorKeyBindings;
-import neutka.marallys.marallyzen.client.director.DirectorReplayOverlayBridge;
-import neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
 import neutka.marallys.marallyzen.client.renderer.DecoratedPotCarryEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
-import neutka.marallys.marallyzen.client.renderer.InteractiveChainBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveLeverBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
-import neutka.marallys.marallyzen.replay.ReplayCompat;
-import neutka.marallys.marallyzen.replay.ReplayReturnManager;
-import neutka.marallys.marallyzen.replay.ReplayStartQueue;
-import neutka.marallys.marallyzen.replay.client.ReplayEmoteVisualChannel;
-import neutka.marallys.marallyzen.replay.client.ReplayVisualChannelRegistry;
 
 @Mod(value = Marallyzen.MODID, dist = Dist.CLIENT)
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class MarallyzenClient {
     private static String lastBlurScreenLogged = "";
-    private static boolean lastReplayActive = false;
 
     public MarallyzenClient(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        container.registerConfig(ModConfig.Type.CLIENT, MarallyzenClientConfig.SPEC);
     }
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             Marallyzen.LOGGER.info("Marallyzen client setup; player={}", Minecraft.getInstance().getUser().getName());
-            disableBlurForDirectorUi();
 
             // Check if Emotecraft is available (NeoForge version uses io.github.kosmx.* packages)
             try {
@@ -60,124 +51,65 @@ public class MarallyzenClient {
                 Marallyzen.LOGGER.error("✘ Emotecraft API check failed", t);
             }
 
-            // Load cutscenes
-            neutka.marallys.marallyzen.client.camera.SceneLoader.loadScenes();
-            Marallyzen.LOGGER.info("Loaded {} cutscenes", neutka.marallys.marallyzen.client.camera.SceneLoader.getAllScenes().size());
-
-            // Load replay camera tracks
-            neutka.marallys.marallyzen.replay.camera.ReplayCameraTrackLoader.loadTracks();
-            Marallyzen.LOGGER.info("Loaded {} replay camera tracks", neutka.marallys.marallyzen.replay.camera.ReplayCameraTrackLoader.getAllTracks().size());
-
-            // Load replay timelines
-            neutka.marallys.marallyzen.replay.timeline.TimelineLoader.loadTracks();
-            neutka.marallys.marallyzen.replay.timeline.TimelineActionRegistry.registerDefaults();
-            Marallyzen.LOGGER.info("Loaded {} replay timelines", neutka.marallys.marallyzen.replay.timeline.TimelineLoader.getAllTracks().size());
-
-            ReplayVisualChannelRegistry.register(new ReplayEmoteVisualChannel());
-
             // Poster blocks use masked transparency (holes). Force CUTOUT render layer to avoid translucent blending artifacts.
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_1.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_2.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_3.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_4.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_5.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_6.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_7.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_8.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_9.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_10.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.OLD_POSTER.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_1.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_2.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.INTERACTIVE_CHAIN.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BAR_SIGN.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL_PILE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.COACH.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LARGE_CACTUS_POT.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MEDIUM_CACTUS_POT.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MINI_CACTUS_POT.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_TABLE_BAR.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_CHAIR_BAR.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DRYING_FISH_RACK.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_NET_WALL_DECORATION.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD_RACK.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX_EMPTY.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PILE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BENCH.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG2.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_TABLE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG2.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT_DOUBLE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MULTIPLE_BOTTLES.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MURAL_SHELF.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_PILE_BOTTLES.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_RED_BOTTLE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_SMALL_GREEN_BOTTLE.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_STOOL.get(), RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_TABLE.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_1.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_2.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_3.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_4.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_5.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_6.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_7.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_8.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_9.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.POSTER_10.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.OLD_POSTER.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_1.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.PAPER_POSTER_2.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BANK_SIGN.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BAR_SIGN.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.BARREL_FULL_PILE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.COACH.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LARGE_CACTUS_POT.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MEDIUM_CACTUS_POT.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.MINI_CACTUS_POT.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_TABLE_BAR.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WEST_CHAIR_BAR.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.WOODEN_BUCKET.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.DRYING_FISH_RACK.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_NET_WALL_DECORATION.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISHING_ROD_RACK.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_BOX_EMPTY.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PILE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.FISH_PRIZE_WALL_DECORATION.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.LEANING_FISHING_ROD.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BENCH.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_KEG2.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_BIG_TABLE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG2.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_KEG_SUPPORT_DOUBLE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MULTIPLE_BOTTLES.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_MURAL_SHELF.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_PILE_BOTTLES.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_RED_BOTTLE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_SMALL_GREEN_BOTTLE.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_STOOL.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(neutka.marallys.marallyzen.blocks.MarallyzenBlocks.TAVERN_TABLE.get(), ChunkSectionLayer.CUTOUT);
         });
     }
 
     private static void disableBlurForDirectorUi() {
-        try {
-            Class<?> configClass = Class.forName("eu.midnightdust.blur.config.BlurConfig");
-            var field = configClass.getField("forceDisabledScreens");
-            Object value = field.get(null);
-            if (value instanceof java.util.List<?> list) {
-                String screenName = "neutka.marallys.marallyzen.client.director.DirectorReplayBrowserScreen";
-                if (!list.contains(screenName)) {
-                    @SuppressWarnings("unchecked")
-                    java.util.List<String> mutable = (java.util.List<String>) list;
-                    mutable.add(screenName);
-                    Marallyzen.LOGGER.info("Blur disabled for director UI.");
-                }
-            }
-        } catch (ClassNotFoundException e) {
-            // Blur is not installed.
-        } catch (Exception e) {
-            Marallyzen.LOGGER.warn("Failed to disable blur for director UI.", e);
-        }
+        // Replay UI removed.
     }
 
     private static void updateBlurDisableForCurrentScreen(Minecraft mc) {
-        if (mc.screen == null) {
-            return;
-        }
-        boolean shouldDisable = mc.screen instanceof DirectorReplayBrowserScreen || ReplayCompat.isReplayActive();
-        if (!shouldDisable) {
-            return;
-        }
-        try {
-            Class<?> configClass = Class.forName("eu.midnightdust.blur.config.BlurConfig");
-            var field = configClass.getField("forceDisabledScreens");
-            Object value = field.get(null);
-            if (value instanceof java.util.List<?> list) {
-                @SuppressWarnings("unchecked")
-                java.util.List<String> mutable = (java.util.List<String>) list;
-                String name = mc.screen.getClass().getCanonicalName();
-                if (name != null && !name.equals(lastBlurScreenLogged)) {
-                    Marallyzen.LOGGER.info("Replay UI screen detected: {}", name);
-                    lastBlurScreenLogged = name;
-                }
-                addScreenAndParentsToBlurList(mutable, mc.screen.getClass());
-            }
-            forceDisableBlurAnimations();
-        } catch (ClassNotFoundException e) {
-            // Blur is not installed.
-        } catch (Exception e) {
-            Marallyzen.LOGGER.warn("Failed to disable blur for current screen.", e);
-        }
+        // Replay UI removed.
     }
 
     private static void addScreenAndParentsToBlurList(java.util.List<String> list, Class<?> type) {
@@ -229,50 +161,10 @@ public class MarallyzenClient {
         // Tick poster narration hints (block vs active entity)
         neutka.marallys.marallyzen.client.PosterNarrationService.tick();
         
-        // Tick screen fade manager
-        neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().tick();
-        
-        // Tick eyes close manager
-        neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance().tick();
-
         // Tick dictaphone client visibility + despawn logic
         neutka.marallys.marallyzen.client.ClientDictaphoneManager.clientTick();
         
-        // Tick cutscene editor if open
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-        updateBlurDisableForCurrentScreen(mc);
-        ReplayCompat.tryOverrideReplayViewerLoadButton(mc.screen);
-        if (ReplayCompat.isReplayAvailable()) {
-            ReplayCompat.runReplayModTasks();
-        }
-        ReplayStartQueue.tick();
-        boolean replayActive = ReplayCompat.isReplayActive();
-        DirectorReplayOverlayBridge.updateReplayState(lastReplayActive, replayActive);
-        neutka.marallys.marallyzen.client.director.DirectorOverlayHud.tick();
-        var directorTimeSource = neutka.marallys.marallyzen.director.ReplayTimeSourceHolder.get();
-        if (directorTimeSource != null && neutka.marallys.marallyzen.director.DirectorRuntime.isPreviewing()) {
-            neutka.marallys.marallyzen.director.DirectorRuntime.tick(directorTimeSource.getTimestamp());
-        }
-        ReplayReturnManager.getInstance().onReplayStateChanged(lastReplayActive, replayActive);
-        ReplayReturnManager.getInstance().tick(mc, replayActive);
-        lastReplayActive = replayActive;
-        if (neutka.marallys.marallyzen.replay.LegacyReplayGate.isLegacyReplayEnabled()) {
-            if (mc.screen instanceof neutka.marallys.marallyzen.client.cutscene.editor.CutsceneEditorScreen editorScreen) {
-                editorScreen.tick();
-            } else {
-                // Keep recording even when the editor screen is closed.
-                var recorder = neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder.getInstance();
-                if (recorder.isRecording()) {
-                    recorder.tick();
-                }
-            }
-        }
-
-        // Tick replay camera director (ReplayMod-backed)
-        neutka.marallys.marallyzen.replay.camera.ReplayCameraDirector.getInstance().tick();
-
-        // Tick replay timeline scheduler (ReplayMod-backed)
-        neutka.marallys.marallyzen.replay.timeline.TimelineScheduler.getInstance().tick();
     }
 
 
@@ -296,16 +188,16 @@ public class MarallyzenClient {
         event.registerEntityRenderer(Marallyzen.DICTAPHONE_ENTITY.get(), neutka.marallys.marallyzen.client.renderer.DictaphoneEntityRenderer::new);
         event.registerEntityRenderer(Marallyzen.DECORATED_POT_ENTITY.get(), DecoratedPotCarryEntityRenderer::new);
         event.registerBlockEntityRenderer(
-                MarallyzenBlockEntities.INTERACTIVE_CHAIN_BE.get(),
-                InteractiveChainBlockEntityRenderer::new
-        );
-        event.registerBlockEntityRenderer(
                 MarallyzenBlockEntities.OLD_TV_BE.get(),
                 OldTvBlockEntityRenderer::new
         );
         event.registerBlockEntityRenderer(
                 MarallyzenBlockEntities.INTERACTIVE_LEVER_BE.get(),
                 InteractiveLeverBlockEntityRenderer::new
+        );
+        event.registerBlockEntityRenderer(
+                MarallyzenBlockEntities.INTERACTIVE_VALVE_BE.get(),
+                neutka.marallys.marallyzen.client.renderer.InteractiveValveBlockEntityRenderer::new
         );
     }
 

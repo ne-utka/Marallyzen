@@ -5,6 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 
 public record OldTvBookBindPacket(BlockPos blockPos, boolean mainHand) implements CustomPacketPayload {
 
@@ -41,7 +42,7 @@ public record OldTvBookBindPacket(BlockPos blockPos, boolean mainHand) implement
                 return;
             }
 
-            var level = player.serverLevel();
+            var level = player.level();
             BlockPos pos = packet.blockPos();
             if (!level.isLoaded(pos)) {
                 return;
@@ -63,7 +64,7 @@ public record OldTvBookBindPacket(BlockPos blockPos, boolean mainHand) implement
                 return;
             }
 
-            if (!player.hasPermissions(2)) {
+            if (!PermissionHelper.isOp(player)) {
                 return;
             }
 
@@ -72,8 +73,9 @@ public record OldTvBookBindPacket(BlockPos blockPos, boolean mainHand) implement
                 tvEntity.setProtectedByOp(true);
                 tvEntity.setChanged();
                 level.sendBlockUpdated(pos, level.getBlockState(pos), level.getBlockState(pos), 3);
-                level.getChunkAt(pos).setUnsaved(true);
+                level.getChunkAt(pos).markUnsaved();
             }
         });
     }
 }
+

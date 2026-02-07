@@ -1,9 +1,7 @@
 package neutka.marallys.marallyzen.client.renderer;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
@@ -15,19 +13,19 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.neoforged.neoforge.client.model.data.ModelData;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
@@ -68,7 +66,7 @@ import java.util.Map;
 /**
  * Unified texture outline renderer for interactive blocks.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class InteractiveBlockOutlineRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger(InteractiveBlockOutlineRenderer.class);
 
@@ -79,7 +77,34 @@ public class InteractiveBlockOutlineRenderer {
     private static final int OUTLINE_A = 128;
 
     private static final float OUTLINE_THICKNESS = 0.03125f;
+    private static final float LINE_WIDTH = 1.0f;
     private static final int ALPHA_THRESHOLD = 128;
+
+    private static int lineR = OUTLINE_R;
+    private static int lineG = OUTLINE_G;
+    private static int lineB = OUTLINE_B;
+    private static int lineA = OUTLINE_A;
+
+    private record LineStyle(int r, int g, int b, int a, float width, float scale) {}
+
+    private static final LineStyle[] GLOW_STYLES = new LineStyle[] {
+        new LineStyle(212, 142, 3, 220, 1.1f, 1.000f),
+        new LineStyle(208, 136, 3, 205, 1.3f, 1.0006f),
+        new LineStyle(202, 128, 3, 190, 1.5f, 1.0012f),
+        new LineStyle(194, 118, 3, 175, 1.7f, 1.0018f),
+        new LineStyle(186, 108, 3, 160, 1.9f, 1.0024f),
+        new LineStyle(176, 98, 3, 145, 2.1f, 1.0030f),
+        new LineStyle(166, 88, 3, 130, 2.3f, 1.0036f),
+        new LineStyle(156, 78, 3, 115, 2.5f, 1.0042f),
+        new LineStyle(146, 70, 3, 100, 2.7f, 1.0048f),
+        new LineStyle(136, 62, 3, 90, 2.9f, 1.0054f),
+        new LineStyle(126, 56, 3, 80, 3.1f, 1.0060f),
+        new LineStyle(118, 50, 3, 72, 3.3f, 1.0066f),
+        new LineStyle(110, 46, 3, 64, 3.5f, 1.0072f),
+        new LineStyle(102, 42, 3, 56, 3.7f, 1.0078f),
+        new LineStyle(94, 38, 3, 50, 3.9f, 1.0084f),
+        new LineStyle(88, 34, 3, 44, 4.1f, 1.0090f)
+    };
 
     private static final int QUEST_SCAN_INTERVAL = 6;
     private static final double QUEST_SCAN_RADIUS = 15.0;
@@ -92,20 +117,20 @@ public class InteractiveBlockOutlineRenderer {
     private static final int QUEST_BASE_ALPHA = 18;
     private static final int QUEST_WAVE_ALPHA = 80;
 
-    private static final ResourceLocation OLD_LAPTOP_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_laptop.png");
-    private static final ResourceLocation RADIO_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/radio.png");
-    private static final ResourceLocation OLD_TV_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_tv.png");
-    private static final ResourceLocation MIRROR_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/mirror.png");
-    private static final ResourceLocation DICTAPHONE_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone.png");
-    private static final ResourceLocation DICTAPHONE_SIMPLE_TEX =
-        ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone_simple.png");
+    private static final Identifier OLD_LAPTOP_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_laptop.png");
+    private static final Identifier RADIO_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/radio.png");
+    private static final Identifier OLD_TV_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/old_tv.png");
+    private static final Identifier MIRROR_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/mirror.png");
+    private static final Identifier DICTAPHONE_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone.png");
+    private static final Identifier DICTAPHONE_SIMPLE_TEX =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone_simple.png");
 
-    private static final Map<ResourceLocation, List<EdgeSegment>> OUTLINE_CACHE = new HashMap<>();
+    private static final Map<Identifier, List<EdgeSegment>> OUTLINE_CACHE = new HashMap<>();
     private static Target lastTarget = null;
     private static long lastQuestScanTick = -1;
     private static final List<AABB> cachedQuestAreas = new ArrayList<>();
@@ -136,8 +161,8 @@ public class InteractiveBlockOutlineRenderer {
 
     private record Bounds(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {}
 
-    private record OutlineSpec(ResourceLocation texture, float width, float height, float offsetX, float offsetY,
-                               OutlineKind kind, Bounds bounds, ResourceLocation model) {}
+    private record OutlineSpec(Identifier texture, float width, float height, float offsetX, float offsetY,
+                               OutlineKind kind, Bounds bounds, Identifier model) {}
 
     private enum OutlineMode {
         POSTER,
@@ -146,19 +171,18 @@ public class InteractiveBlockOutlineRenderer {
         RADIO,
         OLD_TV,
         VIDEO_CAMERA,
-        CHAIN,
         DICTAPHONE,
-        DICTAPHONE_SIMPLE
+        DICTAPHONE_SIMPLE,
+        DECORATED_POT
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
-            return;
-        }
-
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterEntities event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
+            return;
+        }
+        if (!neutka.marallys.marallyzen.MarallyzenClientConfig.INTERACTIVE_BLOCK_OUTLINE.get()) {
             return;
         }
 
@@ -171,7 +195,7 @@ public class InteractiveBlockOutlineRenderer {
             return;
         }
 
-        Camera camera = event.getCamera();
+        Camera camera = mc.gameRenderer.getMainCamera();
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
@@ -180,11 +204,7 @@ public class InteractiveBlockOutlineRenderer {
         //     renderQuestAreas(poseStack, bufferSource, camera, questAreas);
         // }
         if (target != null) {
-            if (target.mode == OutlineMode.CHAIN) {
-                renderChainOutline(poseStack, bufferSource, camera, target.pos, target.spec);
-            } else {
-                renderBlockOutline(poseStack, bufferSource, camera, target.pos, target.spec, target.mode, target.state);
-            }
+            renderBlockOutline(poseStack, bufferSource, camera, target.pos, target.spec, target.mode, target.state);
         }
 
         bufferSource.endBatch();
@@ -398,21 +418,14 @@ public class InteractiveBlockOutlineRenderer {
             return;
         }
         poseStack.pushPose();
-        Vec3 camPos = camera.getPosition();
+        Vec3 camPos = camera.position();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableCull();
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Matrix4f matrix = poseStack.last().pose();
         int r = (cachedQuestColor >> 16) & 0xFF;
         int g = (cachedQuestColor >> 8) & 0xFF;
         int b = cachedQuestColor & 0xFF;
-        float time = (float) (net.minecraft.Util.getMillis() / 1000.0);
+        float time = (float) (net.minecraft.util.Util.getMillis() / 1000.0);
 
         for (AABB area : areas) {
             double minX = area.minX;
@@ -437,10 +450,7 @@ public class InteractiveBlockOutlineRenderer {
         }
 
         poseStack.popPose();
-        RenderSystem.disableBlend();
-        RenderSystem.depthMask(true);
-        RenderSystem.disableDepthTest();
-        RenderSystem.enableCull();
+        // Render state handled by render types.
     }
 
     private static double questSurfaceY(Minecraft mc, BlockPos pos) {
@@ -450,7 +460,7 @@ public class InteractiveBlockOutlineRenderer {
         if (!mc.level.hasChunkAt(pos)) {
             return pos.getY();
         }
-        int minY = mc.level.getMinBuildHeight();
+        int minY = mc.level.getMinY();
         int startY = pos.getY() - 1;
         int endY = Math.max(minY, pos.getY() - 12);
         BlockPos.MutableBlockPos scan = new BlockPos.MutableBlockPos();
@@ -502,35 +512,45 @@ public class InteractiveBlockOutlineRenderer {
     private static void renderQuestStripX(Matrix4f matrix, double minX, double maxX, double z,
                                           double baseY, double topY,
                                           int r, int g, int b, float time, double segment) {
-        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         double x = minX;
         while (x < maxX) {
-            int a = questWaveAlpha(x, z, time);
-            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, questFadeAlpha(a, baseY, topY));
-            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, questFadeAlpha(a, topY, topY));
-            x += segment;
+            double xNext = Math.min(x + segment, maxX);
+            int a0 = questWaveAlpha(x, z, time);
+            int a1 = questWaveAlpha(xNext, z, time);
+            int baseA0 = questFadeAlpha(a0, baseY, topY);
+            int baseA1 = questFadeAlpha(a1, baseY, topY);
+            int topA0 = questFadeAlpha(a0, topY, topY);
+            int topA1 = questFadeAlpha(a1, topY, topY);
+            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, baseA0);
+            addQuestStripVertex(buffer, matrix, xNext, baseY, z, r, g, b, baseA1);
+            addQuestStripVertex(buffer, matrix, xNext, topY, z, r, g, b, topA1);
+            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, topA0);
+            x = xNext;
         }
-        int aEnd = questWaveAlpha(maxX, z, time);
-        addQuestStripVertex(buffer, matrix, maxX, baseY, z, r, g, b, questFadeAlpha(aEnd, baseY, topY));
-        addQuestStripVertex(buffer, matrix, maxX, topY, z, r, g, b, questFadeAlpha(aEnd, topY, topY));
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
+        drawMesh(RenderTypes.debugQuads(), buffer);
     }
 
     private static void renderQuestStripZ(Matrix4f matrix, double minZ, double maxZ, double x,
                                           double baseY, double topY,
                                           int r, int g, int b, float time, double segment) {
-        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         double z = minZ;
         while (z < maxZ) {
-            int a = questWaveAlpha(x, z, time);
-            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, questFadeAlpha(a, baseY, topY));
-            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, questFadeAlpha(a, topY, topY));
-            z += segment;
+            double zNext = Math.min(z + segment, maxZ);
+            int a0 = questWaveAlpha(x, z, time);
+            int a1 = questWaveAlpha(x, zNext, time);
+            int baseA0 = questFadeAlpha(a0, baseY, topY);
+            int baseA1 = questFadeAlpha(a1, baseY, topY);
+            int topA0 = questFadeAlpha(a0, topY, topY);
+            int topA1 = questFadeAlpha(a1, topY, topY);
+            addQuestStripVertex(buffer, matrix, x, baseY, z, r, g, b, baseA0);
+            addQuestStripVertex(buffer, matrix, x, baseY, zNext, r, g, b, baseA1);
+            addQuestStripVertex(buffer, matrix, x, topY, zNext, r, g, b, topA1);
+            addQuestStripVertex(buffer, matrix, x, topY, z, r, g, b, topA0);
+            z = zNext;
         }
-        int aEnd = questWaveAlpha(x, maxZ, time);
-        addQuestStripVertex(buffer, matrix, x, baseY, maxZ, r, g, b, questFadeAlpha(aEnd, baseY, topY));
-        addQuestStripVertex(buffer, matrix, x, topY, maxZ, r, g, b, questFadeAlpha(aEnd, topY, topY));
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
+        drawMesh(RenderTypes.debugQuads(), buffer);
     }
 
     private static void addQuestCorner(Matrix4f matrix,
@@ -569,7 +589,11 @@ public class InteractiveBlockOutlineRenderer {
         buffer.addVertex(matrix, (float) x2, (float) y2, (float) z2).setColor(r, g, b, a2);
         buffer.addVertex(matrix, (float) x3, (float) y3, (float) z3).setColor(r, g, b, a3);
         buffer.addVertex(matrix, (float) x4, (float) y4, (float) z4).setColor(r, g, b, a4);
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
+        drawMesh(RenderTypes.debugQuads(), buffer);
+    }
+
+    private static void drawMesh(RenderType renderType, BufferBuilder buffer) {
+        renderType.draw(buffer.buildOrThrow());
     }
 
     private static int questWaveAlpha(double coord, double other, float time) {
@@ -609,9 +633,9 @@ public class InteractiveBlockOutlineRenderer {
             case RADIO -> OutlineMode.RADIO;
             case OLD_TV -> OutlineMode.OLD_TV;
             case VIDEO_CAMERA -> null;
-            case CHAIN -> OutlineMode.CHAIN;
             case DICTAPHONE -> OutlineMode.DICTAPHONE;
             case DICTAPHONE_SIMPLE -> OutlineMode.DICTAPHONE_SIMPLE;
+            case DECORATED_POT -> OutlineMode.DECORATED_POT;
             case NONE -> null;
         };
     }
@@ -622,45 +646,37 @@ public class InteractiveBlockOutlineRenderer {
         Block block = state.getBlock();
         if (mode == OutlineMode.POSTER && block instanceof PosterBlock posterBlock) {
             int posterNumber = posterBlock.getPosterNumber();
-            ResourceLocation tex = PosterTextures.getSmallTexture(posterNumber);
+            Identifier tex = PosterTextures.getSmallTexture(posterNumber);
             return new OutlineSpec(tex, 10.0f / 16.0f, 15.0f / 16.0f, 3.0f / 16.0f, 0.0f,
                 OutlineKind.TEXTURE_ALPHA, null, null);
         }
         if (mode == OutlineMode.MIRROR && block == MarallyzenBlocks.MIRROR.get()) {
             return new OutlineSpec(MIRROR_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/mirror.json"));
+                OutlineKind.MODEL, null, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/mirror.json"));
         }
         if (mode == OutlineMode.OLD_LAPTOP && block == MarallyzenBlocks.OLD_LAPTOP.get()) {
             return new OutlineSpec(OLD_LAPTOP_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/old_laptop.json"));
+                OutlineKind.MODEL, null, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/old_laptop.json"));
         }
         if (mode == OutlineMode.RADIO && block == MarallyzenBlocks.RADIO.get()) {
             return new OutlineSpec(RADIO_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/radio.json"));
+                OutlineKind.MODEL, null, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/radio.json"));
         }
         if (mode == OutlineMode.OLD_TV && block == MarallyzenBlocks.OLD_TV.get()) {
             return new OutlineSpec(OLD_TV_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/old_tv.json"));
-        }
-        if (mode == OutlineMode.CHAIN && block == MarallyzenBlocks.INTERACTIVE_CHAIN.get()) {
-            return new OutlineSpec(
-                ResourceLocation.fromNamespaceAndPath("minecraft", "textures/block/chain.png"),
-                1.0f, 1.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL_AND_TEXTURE,
-                null,
-                ResourceLocation.fromNamespaceAndPath("minecraft", "models/block/chain.json"));
+                OutlineKind.MODEL, null, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/old_tv.json"));
         }
         if (mode == OutlineMode.DICTAPHONE && block == MarallyzenBlocks.DICTAPHONE.get()) {
             return new OutlineSpec(DICTAPHONE_TEX, 0.0f, 0.0f, 0.0f, 0.0f,
-                OutlineKind.MODEL, null, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone.json"));
+                OutlineKind.MODEL, null, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone.json"));
         }
         if (mode == OutlineMode.DICTAPHONE_SIMPLE && block == MarallyzenBlocks.DICTAPHONE_SIMPLE.get()) {
             boolean showFull = state.hasProperty(DictaphoneSimpleBlock.SHOW)
                 && state.getValue(DictaphoneSimpleBlock.SHOW);
-            ResourceLocation model = showFull
-                ? ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone.json")
-                : ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone_simple.json");
-            ResourceLocation texture = showFull ? DICTAPHONE_TEX : DICTAPHONE_SIMPLE_TEX;
+            Identifier model = showFull
+                ? Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone.json")
+                : Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/dictaphone_simple.json");
+            Identifier texture = showFull ? DICTAPHONE_TEX : DICTAPHONE_SIMPLE_TEX;
             return new OutlineSpec(texture, 0.0f, 0.0f, 0.0f, 0.0f, OutlineKind.MODEL, null, model);
         }
         return null;
@@ -670,38 +686,52 @@ public class InteractiveBlockOutlineRenderer {
                                            Camera camera, BlockPos pos, OutlineSpec spec, OutlineMode mode, BlockState state) {
         poseStack.pushPose();
 
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        double camX = camera.position().x;
+        double camY = camera.position().y;
+        double camZ = camera.position().z;
         poseStack.translate(pos.getX() - camX, pos.getY() - camY, pos.getZ() - camZ);
 
-        Matrix4f matrix = poseStack.last().pose();
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.lines());
+        boolean chainTopCap = true;
+        boolean chainBottomCap = true;
 
-        boolean chainTopCap = false;
-        boolean chainBottomCap = false;
-        if (mode == OutlineMode.CHAIN) {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.level != null) {
-                chainTopCap = mc.level.getBlockState(pos.above()).getBlock() != MarallyzenBlocks.INTERACTIVE_CHAIN.get();
-                chainBottomCap = mc.level.getBlockState(pos.below()).getBlock() != MarallyzenBlocks.INTERACTIVE_CHAIN.get();
+        Matrix4f baseMatrix = poseStack.last().pose();
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderTypes.lines());
+        int prevR = lineR;
+        int prevG = lineG;
+        int prevB = lineB;
+        int prevA = lineA;
+        for (LineStyle style : GLOW_STYLES) {
+            setLineColor(style.r, style.g, style.b, style.a);
+            if (Math.abs(style.scale - 1.0f) > 1.0e-4f) {
+                poseStack.pushPose();
+                poseStack.translate(0.5, 0.5, 0.5);
+                poseStack.scale(style.scale, style.scale, style.scale);
+                poseStack.translate(-0.5, -0.5, -0.5);
+                Matrix4f scaledMatrix = poseStack.last().pose();
+                renderBlockOutlinePass(vertexConsumer, scaledMatrix, camera, pos, spec, mode, state, chainTopCap, chainBottomCap);
+                poseStack.popPose();
+            } else {
+                renderBlockOutlinePass(vertexConsumer, baseMatrix, camera, pos, spec, mode, state, chainTopCap, chainBottomCap);
             }
         }
+        setLineColor(prevR, prevG, prevB, prevA);
 
+        poseStack.popPose();
+    }
+
+    private static void renderBlockOutlinePass(VertexConsumer vertexConsumer, Matrix4f matrix, Camera camera,
+                                               BlockPos pos, OutlineSpec spec, OutlineMode mode, BlockState state,
+                                               boolean chainTopCap, boolean chainBottomCap) {
         if (spec.kind == OutlineKind.BOUNDS && spec.bounds != null) {
             renderBoundsOutline(vertexConsumer, matrix, spec.bounds);
         } else if ((spec.kind == OutlineKind.MODEL || spec.kind == OutlineKind.MODEL_AND_TEXTURE) && spec.model != null) {
-            if (mode == OutlineMode.DICTAPHONE_SIMPLE) {
-                renderModelOutlineFromQuads(state, vertexConsumer, matrix);
-            } else {
+            int drawn = renderModelOutlineFromQuads(state, vertexConsumer, matrix, camera.position(), pos, mode);
+            if (drawn == 0) {
                 List<EdgeSegment3D> modelEdges = getOrBuildModelOutline(spec.model);
                 if (!modelEdges.isEmpty()) {
                     Direction[] facings = getRenderFacings(mode, state);
                     for (Direction facing : facings) {
                         for (EdgeSegment3D edge : modelEdges) {
-                            if (mode == OutlineMode.CHAIN) {
-                                continue;
-                            }
                             if (shouldSkipChainBoundary(edge, chainTopCap, chainBottomCap)) {
                                 continue;
                             }
@@ -717,13 +747,6 @@ public class InteractiveBlockOutlineRenderer {
         if (spec.kind == OutlineKind.TEXTURE_ALPHA || spec.kind == OutlineKind.MODEL_AND_TEXTURE) {
             List<EdgeSegment> outline = getOrBuildOutline(spec.texture);
             if (outline.isEmpty()) {
-                poseStack.popPose();
-                return;
-            }
-
-            if (mode == OutlineMode.CHAIN) {
-                renderTextureOutlineOnModelQuads(state, outline, vertexConsumer, matrix, chainTopCap, chainBottomCap);
-                poseStack.popPose();
                 return;
             }
 
@@ -766,35 +789,8 @@ public class InteractiveBlockOutlineRenderer {
                 }
             }
         }
-
-        poseStack.popPose();
     }
 
-    private static void renderChainOutline(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource,
-                                           Camera camera, BlockPos pos, OutlineSpec spec) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) {
-            return;
-        }
-
-        BlockPos root = pos;
-        while (mc.level.getBlockState(root.above()).getBlock() == MarallyzenBlocks.INTERACTIVE_CHAIN.get()) {
-            root = root.above();
-        }
-
-        List<EdgeSegment> outline = getOrBuildOutline(spec.texture);
-        List<EdgeSegment3D> modelEdges = getOrBuildModelOutline(spec.model);
-        if (outline.isEmpty() && modelEdges.isEmpty()) {
-            return;
-        }
-
-        BlockPos current = root;
-        while (mc.level.getBlockState(current).getBlock() == MarallyzenBlocks.INTERACTIVE_CHAIN.get()) {
-            BlockState state = mc.level.getBlockState(current);
-            renderBlockOutline(poseStack, bufferSource, camera, current, spec, OutlineMode.CHAIN, state);
-            current = current.below();
-        }
-    }
 
     private static Direction[] getRenderFacings(OutlineMode mode, BlockState state) {
         if (mode == OutlineMode.POSTER && state.getBlock() instanceof PosterBlock) {
@@ -833,22 +829,24 @@ public class InteractiveBlockOutlineRenderer {
         renderLine(consumer, matrix, minX, minY, maxZ, minX, maxY, maxZ);
     }
 
-    private static void renderTextureOutlineOnModelQuads(BlockState state, List<EdgeSegment> outline,
+    private static void renderTextureOutlineOnModelQuads(BlockState state, BlockPos pos, List<EdgeSegment> outline,
                                                          VertexConsumer consumer, Matrix4f matrix,
                                                          boolean chainTopCap, boolean chainBottomCap) {
         Minecraft mc = Minecraft.getInstance();
-        BakedModel model = mc.getBlockRenderer().getBlockModel(state);
-        boolean isChain = state.getBlock() == MarallyzenBlocks.INTERACTIVE_CHAIN.get();
-
-        for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(0), ModelData.EMPTY)) {
-            renderModelQuads(model.getQuads(state, null, RandomSource.create(0), ModelData.EMPTY, renderType),
-                outline, consumer, matrix);
+        BlockStateModel model = mc.getBlockRenderer().getBlockModel(state);
+        boolean isChain = false;
+        if (mc.level == null) {
+            return;
+        }
+        RandomSource random = RandomSource.create(0);
+        List<BlockModelPart> parts = model.collectParts(mc.level, pos, state, random);
+        for (BlockModelPart part : parts) {
+            renderModelQuads(part.getQuads(null), outline, consumer, matrix);
             for (Direction dir : Direction.values()) {
                 if (isChain && ((dir == Direction.UP && !chainTopCap) || (dir == Direction.DOWN && !chainBottomCap))) {
                     continue;
                 }
-                renderModelQuads(model.getQuads(state, dir, RandomSource.create(0), ModelData.EMPTY, renderType),
-                    outline, consumer, matrix);
+                renderModelQuads(part.getQuads(dir), outline, consumer, matrix);
             }
         }
     }
@@ -859,7 +857,7 @@ public class InteractiveBlockOutlineRenderer {
             return;
         }
         for (BakedQuad quad : quads) {
-            TextureAtlasSprite sprite = quad.getSprite();
+            TextureAtlasSprite sprite = quad.sprite();
             if (sprite == null) {
                 continue;
             }
@@ -944,14 +942,11 @@ public class InteractiveBlockOutlineRenderer {
         }
 
         static QuadMapping fromQuad(BakedQuad quad) {
-            int[] data = quad.getVertices();
-            if (data.length < 32) {
-                return null;
-            }
+            long[] packedUv = new long[] { quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3() };
 
-            Vertex v0 = Vertex.from(data, 0);
-            Vertex v1 = Vertex.from(data, 1);
-            Vertex v3 = Vertex.from(data, 3);
+            Vertex v0 = Vertex.from(quad, packedUv, 0);
+            Vertex v1 = Vertex.from(quad, packedUv, 1);
+            Vertex v3 = Vertex.from(quad, packedUv, 3);
 
             float du1x = v1.u - v0.u;
             float du1y = v1.v - v0.v;
@@ -991,14 +986,11 @@ public class InteractiveBlockOutlineRenderer {
     }
 
     private static float[] mapUvToPosFallback(BakedQuad quad, float u, float v) {
-        int[] data = quad.getVertices();
-        if (data.length < 32) {
-            return null;
-        }
-        Vertex v0 = Vertex.from(data, 0);
-        Vertex v1 = Vertex.from(data, 1);
-        Vertex v2 = Vertex.from(data, 2);
-        Vertex v3 = Vertex.from(data, 3);
+        long[] packedUv = new long[] { quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3() };
+        Vertex v0 = Vertex.from(quad, packedUv, 0);
+        Vertex v1 = Vertex.from(quad, packedUv, 1);
+        Vertex v2 = Vertex.from(quad, packedUv, 2);
+        Vertex v3 = Vertex.from(quad, packedUv, 3);
 
         Vertex uAxis = pickAxisVertex(v0, v1, v2, v3, true);
         Vertex vAxis = pickAxisVertex(v0, v1, v2, v3, false);
@@ -1063,17 +1055,28 @@ public class InteractiveBlockOutlineRenderer {
             float v = Float.intBitsToFloat(data[base + 5]);
             return new Vertex(x, y, z, u, v);
         }
+
+        static Vertex from(BakedQuad quad, long[] packedUv, int index) {
+            var pos = quad.position(index);
+            float x = pos.x();
+            float y = pos.y();
+            float z = pos.z();
+            long uv = packedUv[index];
+            float u = Float.intBitsToFloat((int) uv);
+            float v = Float.intBitsToFloat((int) (uv >>> 32));
+            return new Vertex(x, y, z, u, v);
+        }
     }
 
     private record EdgeSegment3D(float x1, float y1, float z1, float x2, float y2, float z2) {}
 
-    private static final Map<ResourceLocation, List<EdgeSegment3D>> MODEL_OUTLINE_CACHE = new HashMap<>();
+    private static final Map<Identifier, List<EdgeSegment3D>> MODEL_OUTLINE_CACHE = new HashMap<>();
 
-    private static List<EdgeSegment3D> getOrBuildModelOutline(ResourceLocation modelLoc) {
+    private static List<EdgeSegment3D> getOrBuildModelOutline(Identifier modelLoc) {
         return MODEL_OUTLINE_CACHE.computeIfAbsent(modelLoc, InteractiveBlockOutlineRenderer::buildModelOutline);
     }
 
-    private static List<EdgeSegment3D> buildModelOutline(ResourceLocation modelLoc) {
+    private static List<EdgeSegment3D> buildModelOutline(Identifier modelLoc) {
         List<EdgeSegment3D> edges = new ArrayList<>();
         try {
             Minecraft mc = Minecraft.getInstance();
@@ -1132,7 +1135,7 @@ public class InteractiveBlockOutlineRenderer {
         return edges;
     }
 
-    private static ResourceLocation getPosterModelLocation(int posterNumber) {
+    private static Identifier getPosterModelLocation(int posterNumber) {
         String modelName = switch (posterNumber) {
             case 1 -> "poster1";
             case 2 -> "poster2";
@@ -1149,7 +1152,7 @@ public class InteractiveBlockOutlineRenderer {
             case 13 -> "paperposter2";
             default -> "poster1";
         };
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "models/block/" + modelName + ".json");
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, "models/block/" + modelName + ".json");
     }
 
     private static float[] readVec3(JsonArray array) {
@@ -1247,11 +1250,11 @@ public class InteractiveBlockOutlineRenderer {
         double rz = -dx * Math.sin(angle) + dz * Math.cos(angle);
         return new float[] { (float) (rx + cx), y, (float) (rz + cz) };
     }
-    private static List<EdgeSegment> getOrBuildOutline(ResourceLocation textureLoc) {
+    private static List<EdgeSegment> getOrBuildOutline(Identifier textureLoc) {
         return OUTLINE_CACHE.computeIfAbsent(textureLoc, InteractiveBlockOutlineRenderer::buildOutline);
     }
 
-    private static List<EdgeSegment> buildOutline(ResourceLocation textureLoc) {
+    private static List<EdgeSegment> buildOutline(Identifier textureLoc) {
         List<EdgeSegment> edges = new ArrayList<>();
 
         try {
@@ -1276,8 +1279,8 @@ public class InteractiveBlockOutlineRenderer {
                 for (int y = 0; y <= height; y++) {
                     int startX = -1;
                     for (int x = 0; x < width; x++) {
-                        boolean topOpaque = (y > 0) && ((image.getPixelRGBA(x, y - 1) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
-                        boolean bottomOpaque = (y < height) && ((image.getPixelRGBA(x, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
+                        boolean topOpaque = (y > 0) && ((image.getPixel(x, y - 1) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
+                        boolean bottomOpaque = (y < height) && ((image.getPixel(x, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
                         boolean hasEdge = topOpaque != bottomOpaque;
 
                         if (hasEdge) {
@@ -1303,8 +1306,8 @@ public class InteractiveBlockOutlineRenderer {
                 for (int x = 0; x <= width; x++) {
                     int startY = -1;
                     for (int y = 0; y < height; y++) {
-                        boolean leftOpaque = (x > 0) && ((image.getPixelRGBA(x - 1, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
-                        boolean rightOpaque = (x < width) && ((image.getPixelRGBA(x, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
+                        boolean leftOpaque = (x > 0) && ((image.getPixel(x - 1, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
+                        boolean rightOpaque = (x < width) && ((image.getPixel(x, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
                         boolean hasEdge = leftOpaque != rightOpaque;
 
                         if (hasEdge) {
@@ -1350,29 +1353,41 @@ public class InteractiveBlockOutlineRenderer {
         }
 
         consumer.addVertex(matrix, x1, y1, z1)
-            .setColor(OUTLINE_R, OUTLINE_G, OUTLINE_B, OUTLINE_A)
-            .setNormal(dx, dy, dz);
+            .setColor(lineR, lineG, lineB, lineA)
+            .setNormal(dx, dy, dz)
+            .setLineWidth(LINE_WIDTH);
         consumer.addVertex(matrix, x2, y2, z2)
-            .setColor(OUTLINE_R, OUTLINE_G, OUTLINE_B, OUTLINE_A)
-            .setNormal(dx, dy, dz);
+            .setColor(lineR, lineG, lineB, lineA)
+            .setNormal(dx, dy, dz)
+            .setLineWidth(LINE_WIDTH);
+    }
+
+    private static void setLineColor(int r, int g, int b, int a) {
+        lineR = r;
+        lineG = g;
+        lineB = b;
+        lineA = a;
     }
 
     private static int renderChainSilhouetteFromQuads(BlockState state, VertexConsumer consumer, Matrix4f matrix,
                                                       boolean chainTopCap, boolean chainBottomCap) {
         Minecraft mc = Minecraft.getInstance();
-        BakedModel model = mc.getBlockRenderer().getBlockModel(state);
+        BlockStateModel model = mc.getBlockRenderer().getBlockModel(state);
         Map<String, EdgeInfo> edges = new HashMap<>();
-
-        for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(0), ModelData.EMPTY)) {
-            collectQuadEdges(model.getQuads(state, null, RandomSource.create(0), ModelData.EMPTY, renderType), edges);
-            for (Direction dir : Direction.values()) {
-                collectQuadEdges(model.getQuads(state, dir, RandomSource.create(0), ModelData.EMPTY, renderType), edges);
+        if (mc.level != null) {
+            RandomSource random = RandomSource.create(0);
+            List<BlockModelPart> parts = model.collectParts(mc.level, BlockPos.ZERO, state, random);
+            for (BlockModelPart part : parts) {
+                collectQuadEdges(part.getQuads(null), edges);
+                for (Direction dir : Direction.values()) {
+                    collectQuadEdges(part.getQuads(dir), edges);
+                }
             }
         }
 
         int drawn = 0;
         for (EdgeInfo info : edges.values()) {
-            if (info.coplanar) {
+            if (info.coplanar || info.internal) {
                 continue;
             }
             EdgeSegment3D edge = info.edge;
@@ -1388,7 +1403,7 @@ public class InteractiveBlockOutlineRenderer {
 
         if (drawn == 0) {
             List<EdgeSegment3D> modelEdges = getOrBuildModelOutline(
-                ResourceLocation.fromNamespaceAndPath("minecraft", "models/block/chain.json"));
+                Identifier.fromNamespaceAndPath("minecraft", "models/block/chain.json"));
             for (EdgeSegment3D edge : modelEdges) {
                 if (shouldSkipChainBoundary(edge, chainTopCap, chainBottomCap)) {
                     continue;
@@ -1403,25 +1418,46 @@ public class InteractiveBlockOutlineRenderer {
         return drawn;
     }
 
-    private static void renderModelOutlineFromQuads(BlockState state, VertexConsumer consumer, Matrix4f matrix) {
+    private static int renderModelOutlineFromQuads(BlockState state, VertexConsumer consumer, Matrix4f matrix,
+                                                   Vec3 cameraPos, BlockPos pos, OutlineMode mode) {
         Minecraft mc = Minecraft.getInstance();
-        BakedModel model = mc.getBlockRenderer().getBlockModel(state);
+        BlockStateModel model = mc.getBlockRenderer().getBlockModel(state);
         Map<String, EdgeInfo> edges = new HashMap<>();
-
-        for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(0), ModelData.EMPTY)) {
-            collectQuadEdges(model.getQuads(state, null, RandomSource.create(0), ModelData.EMPTY, renderType), edges);
-            for (Direction dir : Direction.values()) {
-                collectQuadEdges(model.getQuads(state, dir, RandomSource.create(0), ModelData.EMPTY, renderType), edges);
+        if (mc.level != null) {
+            RandomSource random = RandomSource.create(0);
+            List<BlockModelPart> parts = model.collectParts(mc.level, pos, state, random);
+            for (BlockModelPart part : parts) {
+                collectQuadEdges(part.getQuads(null), edges);
+                for (Direction dir : Direction.values()) {
+                    collectQuadEdges(part.getQuads(dir), edges);
+                }
             }
         }
 
+        Vec3 toCamera = cameraPos.subtract(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        float viewX = (float) toCamera.x;
+        float viewY = (float) toCamera.y;
+        float viewZ = (float) toCamera.z;
+        int drawn = 0;
         for (EdgeInfo info : edges.values()) {
-            if (info.coplanar) {
+            if (info.coplanar || info.internal) {
+                continue;
+            }
+            int frontCount = 0;
+            if (info.normalA != null && dot(info.normalA, viewX, viewY, viewZ) > 0.0f) {
+                frontCount++;
+            }
+            if (info.normalB != null && dot(info.normalB, viewX, viewY, viewZ) > 0.0f) {
+                frontCount++;
+            }
+            if (frontCount != 1) {
                 continue;
             }
             EdgeSegment3D edge = info.edge;
             renderLine(consumer, matrix, edge.x1, edge.y1, edge.z1, edge.x2, edge.y2, edge.z2);
+            drawn++;
         }
+        return drawn;
     }
 
     private static void collectQuadEdges(List<BakedQuad> quads,
@@ -1430,15 +1466,12 @@ public class InteractiveBlockOutlineRenderer {
             return;
         }
         for (BakedQuad quad : quads) {
-            int[] data = quad.getVertices();
-            if (data.length < 32) {
-                continue;
-            }
-            Vertex v0 = Vertex.from(data, 0);
-            Vertex v1 = Vertex.from(data, 1);
-            Vertex v2 = Vertex.from(data, 2);
-            Vertex v3 = Vertex.from(data, 3);
-            float[] normal = normalForDirection(quad.getDirection());
+            long[] packedUv = new long[] { quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3() };
+            Vertex v0 = Vertex.from(quad, packedUv, 0);
+            Vertex v1 = Vertex.from(quad, packedUv, 1);
+            Vertex v2 = Vertex.from(quad, packedUv, 2);
+            Vertex v3 = Vertex.from(quad, packedUv, 3);
+            float[] normal = normalForDirection(quad.direction());
             addEdge(v0, v1, normal, edges);
             addEdge(v1, v2, normal, edges);
             addEdge(v2, v3, normal, edges);
@@ -1451,11 +1484,16 @@ public class InteractiveBlockOutlineRenderer {
         String key = edgeKey(a, b);
         EdgeInfo existing = edges.get(key);
         if (existing == null) {
-            edges.put(key, new EdgeInfo(new EdgeSegment3D(a.x, a.y, a.z, b.x, b.y, b.z), normal, false));
+            edges.put(key, new EdgeInfo(new EdgeSegment3D(a.x, a.y, a.z, b.x, b.y, b.z), normal, null, false, false));
             return;
         }
-        if (dot(existing.normal, normal) > 0.999f) {
+        float alignment = dot(existing.normalA, normal);
+        if (alignment > 0.999f) {
             existing.coplanar = true;
+        } else if (alignment < -0.999f) {
+            existing.internal = true;
+        } else if (existing.normalB == null) {
+            existing.normalB = normal;
         }
     }
 
@@ -1492,16 +1530,31 @@ public class InteractiveBlockOutlineRenderer {
         return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     }
 
+    private static float dot(float[] a, float x, float y, float z) {
+        return a[0] * x + a[1] * y + a[2] * z;
+    }
+
     private static final class EdgeInfo {
         final EdgeSegment3D edge;
-        final float[] normal;
+        final float[] normalA;
+        float[] normalB;
         boolean coplanar;
+        boolean internal;
 
-        private EdgeInfo(EdgeSegment3D edge, float[] normal, boolean coplanar) {
+        private EdgeInfo(EdgeSegment3D edge, float[] normalA, float[] normalB, boolean coplanar, boolean internal) {
             this.edge = edge;
-            this.normal = normal;
+            this.normalA = normalA;
+            this.normalB = normalB;
             this.coplanar = coplanar;
+            this.internal = internal;
         }
     }
 }
+
+
+
+
+
+
+
 

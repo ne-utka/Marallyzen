@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import neutka.marallys.marallyzen.client.gui.TalkIconRenderer;
@@ -12,7 +10,7 @@ import neutka.marallys.marallyzen.client.gui.TalkIconRenderer;
 import java.util.UUID;
 
 /**
- * S2C пакет: показывает/скрывает значок разговора над NPC.
+ * S2C РїР°РєРµС‚: РїРѕРєР°Р·С‹РІР°РµС‚/СЃРєСЂС‹РІР°РµС‚ Р·РЅР°С‡РѕРє СЂР°Р·РіРѕРІРѕСЂР° РЅР°Рґ NPC.
  */
 public record NpcTalkIconPacket(UUID npcEntityUuid, int argbColor, boolean visible) implements CustomPacketPayload {
 
@@ -44,7 +42,7 @@ public record NpcTalkIconPacket(UUID npcEntityUuid, int argbColor, boolean visib
 
     public static void handle(NpcTalkIconPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 TalkIconRenderer.updateIcon(
                         packet.npcEntityUuid(),
                         packet.argbColor(),
@@ -54,4 +52,5 @@ public record NpcTalkIconPacket(UUID npcEntityUuid, int argbColor, boolean visib
         });
     }
 }
+
 

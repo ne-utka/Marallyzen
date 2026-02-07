@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.audio;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -55,7 +55,9 @@ public final class MarallyzenSounds {
     private MarallyzenSounds() {
     }
 
-    private static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, path);
+    private static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, path);
     }
 }
+
+

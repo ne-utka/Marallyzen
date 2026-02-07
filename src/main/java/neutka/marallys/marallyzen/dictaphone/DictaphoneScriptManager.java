@@ -102,7 +102,7 @@ public final class DictaphoneScriptManager {
         long currentTick = level.getGameTime();
         if (Boolean.TRUE.equals(isPlayingByPos.get(posKey))) {
             Marallyzen.LOGGER.info("DictaphoneScriptManager: already playing at pos={} dim={}",
-                pos, level.dimension().location());
+                pos, level.dimension().identifier());
             return;
         }
         Long playUntil = playLockUntil.get(posKey);
@@ -111,7 +111,7 @@ public final class DictaphoneScriptManager {
         }
         isPlayingByPos.put(posKey, true);
         Marallyzen.LOGGER.info("DictaphoneScriptManager: playBoundScript script='{}' player='{}' pos={} dim={}",
-            scriptName, player.getName().getString(), pos, level.dimension().location());
+            scriptName, player.getName().getString(), pos, level.dimension().identifier());
         playLocalSystemSound(level, player, SYSTEM_SOUND_START);
         java.util.Map.Entry<List<String>, Integer> narrateData =
             DialogScriptLoader.parseInitialNarrateMessages(scriptName, 1);
@@ -270,11 +270,13 @@ public final class DictaphoneScriptManager {
         Marallyzen.LOGGER.info("DictaphoneScriptManager: play system sound '{}' for player='{}'",
             soundId, player.getName().getString());
         if (SYSTEM_SOUND_START.equals(soundId)) {
-            player.playNotifySound(MarallyzenSounds.DICTAPHONE_START.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                MarallyzenSounds.DICTAPHONE_START.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
             return;
         }
         if (SYSTEM_SOUND_STOP.equals(soundId)) {
-            player.playNotifySound(MarallyzenSounds.DICTAPHONE_STOP.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                MarallyzenSounds.DICTAPHONE_STOP.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
             return;
         }
         Marallyzen.LOGGER.warn("DictaphoneScriptManager: unknown system sound id '{}'", soundId);
@@ -423,7 +425,7 @@ public final class DictaphoneScriptManager {
     }
 
     private static String buildKey(ResourceKey<Level> dimension, BlockPos pos) {
-        return dimension.location() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ();
+        return dimension.identifier() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ();
     }
 
     private static String normalizeScriptName(String name) {
@@ -437,4 +439,7 @@ public final class DictaphoneScriptManager {
         return trimmed.isEmpty() ? null : trimmed;
     }
 }
+
+
+
 

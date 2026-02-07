@@ -3,7 +3,7 @@ package neutka.marallys.marallyzen.quest;
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -78,8 +78,8 @@ public class QuestConditionEvaluator {
         if (itemId == null || itemId.isBlank()) {
             return false;
         }
-        ResourceLocation id = ResourceLocation.parse(itemId);
-        var item = BuiltInRegistries.ITEM.get(id);
+        Identifier id = Identifier.parse(itemId);
+        var item = BuiltInRegistries.ITEM.get(id).map(net.minecraft.core.Holder.Reference::value).orElse(null);
         if (item == null) {
             return false;
         }
@@ -101,7 +101,7 @@ public class QuestConditionEvaluator {
         if (dimensionId == null || dimensionId.isBlank()) {
             return true;
         }
-        return player.level().dimension().location().toString().equals(dimensionId);
+        return player.level().dimension().identifier().toString().equals(dimensionId);
     }
 
     private boolean matchesBiome(ServerPlayer player, String biomeId) {
@@ -110,7 +110,7 @@ public class QuestConditionEvaluator {
         }
         BlockPos pos = player.blockPosition();
         var key = player.level().getBiome(pos).unwrapKey();
-        return key.map(resourceKey -> resourceKey.location().toString().equals(biomeId)).orElse(false);
+        return key.map(resourceKey -> resourceKey.identifier().toString().equals(biomeId)).orElse(false);
     }
 
     private boolean matchesTime(ServerPlayer player, String value) {
@@ -162,3 +162,7 @@ public class QuestConditionEvaluator {
         return System.currentTimeMillis() - instance.completedAt() >= cooldownMs;
     }
 }
+
+
+
+

@@ -3,14 +3,20 @@ package neutka.marallys.marallyzen.client.renderer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -18,10 +24,9 @@ import neutka.marallys.marallyzen.entity.PosterEntity;
 import neutka.marallys.marallyzen.client.poster.text.PosterStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.minecraft.world.entity.Entity;
 
 
-public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
+public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEntityRenderer.RenderState> {
     private static final Logger LOGGER = LoggerFactory.getLogger(PosterEntityRenderer.class);
     
     // Poster dimensions (55x72 pixels scaled to blocks)
@@ -38,16 +43,38 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
         super(context);
     }
     
-    @Override
-    public ResourceLocation getTextureLocation(PosterEntity entity) {
+    public Identifier getTextureLocation(PosterEntity entity) {
         int posterNumber = entity.getPosterNumber();
         String variant = entity.getOldposterVariant();
         return PosterTextures.getFullTexture(posterNumber, variant);
     }
     
     @Override
-    public void render(PosterEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
-                      MultiBufferSource bufferSource, int packedLight) {
+    public RenderState createRenderState() {
+        return new RenderState();
+    }
+
+    @Override
+    public void extractRenderState(PosterEntity entity, RenderState renderState, float partialTick) {
+        super.extractRenderState(entity, renderState, partialTick);
+        renderState.entity = entity;
+        renderState.partialTick = partialTick;
+    }
+
+    @Override
+    public void submit(RenderState renderState, PoseStack poseStack, SubmitNodeCollector renderTasks, CameraRenderState cameraState) {
+        PosterEntity entity = renderState.entity;
+        if (entity == null) {
+            return;
+        }
+        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+        renderPoster(entity, renderState.partialTick, poseStack, bufferSource, renderState.lightCoords);
+        bufferSource.endBatch();
+        super.submit(renderState, poseStack, renderTasks, cameraState);
+    }
+
+    private void renderPoster(PosterEntity entity, float partialTick, PoseStack poseStack,
+                              MultiBufferSource.BufferSource bufferSource, int packedLight) {
         poseStack.pushPose();
         
         // AAA+ smooth animation: compute position on client in real-time
@@ -262,7 +289,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             
             // Rotate to face camera (billboard effect)
             // This makes the poster always face the player
-            poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+            poseStack.mulPose(Minecraft.getInstance().gameRenderer.getMainCamera().rotation());
             poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
             
             // Get flip rotation for animation
@@ -286,21 +313,20 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             
             Matrix4f matrix = poseStack.last().pose();
 
-            ResourceLocation texture = getTextureLocation(entity);
+            Identifier texture = getTextureLocation(entity);
             // Force nearest sampling for the entity texture every frame.
             // Rationale: unlike block textures in the atlas (where we can reliably use cutout + mcmeta),
             // entity textures can still end up with filtering that visually "fills" transparent holes
             // when the quad moves/scales. This makes posterfull match poster1..poster10 behavior.
             // NOTE: second param is mipmap filtering; we explicitly DISABLE it for crisp mask edges.
-            var tex = Minecraft.getInstance().getTextureManager().getTexture(texture);
-            tex.setFilter(false, false);
+            // Texture filtering is controlled by the render pipeline in this version.
             // Clamp is handled via the .png.mcmeta (clamp=true). AbstractTexture doesn't expose setClamp in this version.
             // IMPORTANT: Use CUTOUT, not TRANSLUCENT.
             // Translucent blending + filtering will "smear/fill" fully-transparent pixels (visible in holes),
             // especially during motion, scaling, and at distance.
             
             // Render the textured poster
-            RenderType renderType = RenderType.entityCutoutNoCull(texture);
+            RenderType renderType = RenderTypes.entityCutoutNoCull(texture);
             VertexConsumer vertexConsumer = bufferSource.getBuffer(renderType);
             
             // Render a single quad.
@@ -308,41 +334,49 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             // coplanar "back face" quad (which causes z-fighting and mirrored artifacts).
             renderQuad(vertexConsumer, matrix, packedLight, false);
             
-            // Render text on BOTH sides with correct textures
-            // Text is rendered AFTER flipRotation is applied, so it rotates together with the poster
-            // Front side (translate -0.01f) always shows frontTexture
-            // Back side (translate 0.01f) always shows backTexture
-            net.minecraft.resources.ResourceLocation frontTexture = entity.getTextTexture();
-            net.minecraft.resources.ResourceLocation backTexture = entity.getTextTextureBack();
+            // Render text on BOTH sides (direct rendering fallback for 1.21.11).
+            net.minecraft.resources.Identifier frontTexture = entity.getTextTexture();
+            net.minecraft.resources.Identifier backTexture = entity.getTextTextureBack();
+            var frontTextData = entity.getFrontTextData();
+            var backTextData = entity.getBackTextData();
             PosterStyle posterStyle = PosterStyle.fromPosterNumber(posterNumber);
             float textOffsetX = posterStyle == PosterStyle.PAPER ? -0.095f : 0.0f;
             
-            if (frontTexture != null || backTexture != null) {
-                // Render text on front side (translate -0.01f) - always use frontTexture
+            if (frontTextData != null || backTextData != null) {
+                if (frontTextData != null) {
+                    poseStack.pushPose();
+                    poseStack.translate(textOffsetX, 0, -0.01f);
+                    renderPosterText(poseStack, bufferSource, frontTextData, true, packedLight);
+                    poseStack.popPose();
+                }
+                if (backTextData != null) {
+                    poseStack.pushPose();
+                    poseStack.translate(textOffsetX, 0, 0.01f);
+                    renderPosterText(poseStack, bufferSource, backTextData, false, packedLight);
+                    poseStack.popPose();
+                }
+            } else if (frontTexture != null || backTexture != null) {
                 if (frontTexture != null) {
                     poseStack.pushPose();
                     poseStack.translate(textOffsetX, 0, -0.01f);
                     Matrix4f textMatrixFront = poseStack.last().pose();
                     
-                    RenderType textRenderType = RenderType.entityCutoutNoCull(frontTexture);
+                    RenderType textRenderType = RenderTypes.entityCutoutNoCull(frontTexture);
                     VertexConsumer textVertexConsumer = bufferSource.getBuffer(textRenderType);
                     
-                    // Render text quad (mirrored horizontally like poster)
                     renderTexturedQuad(textVertexConsumer, textMatrixFront, packedLight, true);
                     
                     poseStack.popPose();
                 }
                 
-                // Render text on back side (translate 0.01f) - always use backTexture
                 if (backTexture != null) {
                     poseStack.pushPose();
                     poseStack.translate(textOffsetX, 0, 0.01f);
                     Matrix4f textMatrixBack = poseStack.last().pose();
                     
-                    RenderType backTextRenderType = RenderType.entityCutoutNoCull(backTexture);
+                    RenderType backTextRenderType = RenderTypes.entityCutoutNoCull(backTexture);
                     VertexConsumer textVertexConsumerBack = bufferSource.getBuffer(backTextRenderType);
                     
-                    // Render text quad mirrored for back side
                     renderTexturedQuad(textVertexConsumerBack, textMatrixBack, packedLight, false);
                     
                     poseStack.popPose();
@@ -365,7 +399,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
                                 String playerName = playerNames.get(i);
                                 if (playerName != null && !playerName.isEmpty()) {
                                     // Request head texture (async, may return null if not yet loaded)
-                                    net.minecraft.resources.ResourceLocation headTexture = 
+                                    net.minecraft.resources.Identifier headTexture = 
                                         neutka.marallys.marallyzen.client.head.HeadCacheManager.getOrRequestHead(playerName);
                                     
                                     if (headTexture != null) {
@@ -380,7 +414,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
                                         
                                         Matrix4f headMatrix = poseStack.last().pose();
                                         
-                                        RenderType headRenderType = RenderType.entityCutoutNoCull(headTexture);
+                                        RenderType headRenderType = RenderTypes.entityCutoutNoCull(headTexture);
                                         VertexConsumer headVertexConsumer = bufferSource.getBuffer(headRenderType);
                                         
                                         // Render head quad with specific position and size (16x16 for band)
@@ -406,7 +440,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
                         String playerName = entity.getTargetPlayerName();
                         if (playerName != null && !playerName.isEmpty()) {
                             // Request head texture (async, may return null if not yet loaded)
-                            net.minecraft.resources.ResourceLocation headTexture = 
+                            net.minecraft.resources.Identifier headTexture = 
                                 neutka.marallys.marallyzen.client.head.HeadCacheManager.getOrRequestHead(playerName);
                             
                             if (headTexture != null) {
@@ -421,7 +455,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
                                 
                                 Matrix4f headMatrix = poseStack.last().pose();
                                 
-                                RenderType headRenderType = RenderType.entityCutoutNoCull(headTexture);
+                                RenderType headRenderType = RenderTypes.entityCutoutNoCull(headTexture);
                                 VertexConsumer headVertexConsumer = bufferSource.getBuffer(headRenderType);
                                 
                                 // Render head quad with specific UV coordinates
@@ -435,6 +469,11 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             }
         
         poseStack.popPose();
+    }
+
+    public static final class RenderState extends EntityRenderState {
+        private PosterEntity entity;
+        private float partialTick;
     }
     
     /**
@@ -677,6 +716,62 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
             .setNormal(normalX, normalY, normalZ);
     }
 
+    private void renderPosterText(PoseStack poseStack, MultiBufferSource bufferSource,
+                                  neutka.marallys.marallyzen.client.poster.text.PosterTextData data,
+                                  boolean mirrorHorizontal, int packedLight) {
+        if (data == null || data.isEmpty()) {
+            return;
+        }
+        var font = Minecraft.getInstance().font;
+        if (font == null) {
+            return;
+        }
+
+        poseStack.pushPose();
+        // Map poster quad to 55x73 px space.
+        poseStack.translate(-0.5f, 0.5f, 0.0f);
+        float scaleX = 1.0f / 55.0f;
+        float scaleY = -1.0f / 73.0f;
+        poseStack.scale(scaleX, scaleY, 1.0f);
+        if (mirrorHorizontal) {
+            poseStack.translate(55.0f, 0.0f, 0.0f);
+            poseStack.scale(-1.0f, 1.0f, 1.0f);
+        }
+
+        int color = 0xFF1A1A1A;
+        int x = 6;
+        int y = 6;
+        int maxWidth = 43;
+        int maxHeight = 61;
+
+        java.util.List<net.minecraft.util.FormattedCharSequence> lines = new java.util.ArrayList<>();
+        if (data.title() != null && !data.title().isBlank()) {
+            lines.addAll(font.split(net.minecraft.network.chat.Component.literal(data.title()), maxWidth));
+            lines.add(net.minecraft.util.FormattedCharSequence.EMPTY);
+        }
+        if (data.pages() != null) {
+            for (String page : data.pages()) {
+                if (page == null || page.isBlank()) {
+                    continue;
+                }
+                lines.addAll(font.split(net.minecraft.network.chat.Component.literal(page), maxWidth));
+                lines.add(net.minecraft.util.FormattedCharSequence.EMPTY);
+            }
+        }
+
+        int lineHeight = font.lineHeight;
+        int maxLines = Math.max(0, maxHeight / lineHeight);
+        int count = Math.min(lines.size(), maxLines);
+        Matrix4f matrix = poseStack.last().pose();
+        for (int i = 0; i < count; i++) {
+            var line = lines.get(i);
+            font.drawInBatch(line, x, y + (i * lineHeight), color, false, matrix, bufferSource,
+                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
+        }
+
+        poseStack.popPose();
+    }
+
     /**
      * Ultra-smooth easing function - ease-out-cubic
      * Starts fast and smoothly decelerates for natural, cinematic motion
@@ -791,3 +886,10 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity> {
         }
     }
 }
+
+
+
+
+
+
+

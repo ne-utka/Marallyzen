@@ -3,7 +3,7 @@ package neutka.marallys.marallyzen.client.head;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,6 @@ import java.util.regex.Pattern;
  * Manages client-side caching of player head textures.
  * Downloads heads from mc-heads.net and caches them locally.
  */
-@net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
 public class HeadCacheManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(HeadCacheManager.class);
     
@@ -35,8 +34,8 @@ public class HeadCacheManager {
     // Pattern for valid Minecraft usernames: 3-16 characters, letters, numbers, underscores
     private static final Pattern VALID_USERNAME = Pattern.compile("^[a-zA-Z0-9_]{3,16}$");
     
-    private static final Map<String, ResourceLocation> textureCache = new HashMap<>();
-    private static final Map<String, CompletableFuture<ResourceLocation>> pendingDownloads = new HashMap<>();
+    private static final Map<String, Identifier> textureCache = new HashMap<>();
+    private static final Map<String, CompletableFuture<Identifier>> pendingDownloads = new HashMap<>();
     private static final ExecutorService downloadExecutor = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "Marallyzen-HeadDownloader");
         t.setDaemon(true);
@@ -108,10 +107,10 @@ public class HeadCacheManager {
     }
     
     /**
-     * Gets the ResourceLocation for a cached head texture.
+     * Gets the Identifier for a cached head texture.
      * Returns null if the texture is not yet loaded or registered.
      */
-    public static ResourceLocation getHeadTexture(String nickname) {
+    public static Identifier getHeadTexture(String nickname) {
         if (!isValidNickname(nickname)) {
             return null;
         }
@@ -124,7 +123,7 @@ public class HeadCacheManager {
      * Downloads a head from the internet and caches it.
      * This method is async and returns a CompletableFuture.
      */
-    public static CompletableFuture<ResourceLocation> requestHead(String nickname) {
+    public static CompletableFuture<Identifier> requestHead(String nickname) {
         if (!isValidNickname(nickname)) {
             LOGGER.warn("HeadCacheManager: Invalid nickname: {}", nickname);
             return CompletableFuture.completedFuture(null);
@@ -133,13 +132,13 @@ public class HeadCacheManager {
         String normalized = normalizeNickname(nickname);
         
         // Check if already cached
-        ResourceLocation existing = textureCache.get(normalized);
+        Identifier existing = textureCache.get(normalized);
         if (existing != null) {
             return CompletableFuture.completedFuture(existing);
         }
         
         // Check if download is already in progress
-        CompletableFuture<ResourceLocation> pending = pendingDownloads.get(normalized);
+        CompletableFuture<Identifier> pending = pendingDownloads.get(normalized);
         if (pending != null) {
             return pending;
         }
@@ -148,7 +147,7 @@ public class HeadCacheManager {
         Path filePath = getHeadFilePath(nickname);
         if (filePath != null && Files.exists(filePath)) {
             // Load from disk
-            CompletableFuture<ResourceLocation> loadFuture = CompletableFuture.supplyAsync(() -> {
+            CompletableFuture<Identifier> loadFuture = CompletableFuture.supplyAsync(() -> {
                 return loadHeadFromFile(nickname, filePath);
             }, downloadExecutor);
             pendingDownloads.put(normalized, loadFuture);
@@ -162,7 +161,7 @@ public class HeadCacheManager {
         }
         
         // Start new download
-        CompletableFuture<ResourceLocation> downloadFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Identifier> downloadFuture = CompletableFuture.supplyAsync(() -> {
             return downloadAndCacheHead(nickname);
         }, downloadExecutor);
         
@@ -181,7 +180,7 @@ public class HeadCacheManager {
      * Gets or requests a head texture.
      * Returns immediately if cached, otherwise starts async download.
      */
-    public static ResourceLocation getOrRequestHead(String nickname) {
+    public static Identifier getOrRequestHead(String nickname) {
         if (!isValidNickname(nickname)) {
             return null;
         }
@@ -189,7 +188,7 @@ public class HeadCacheManager {
         String normalized = normalizeNickname(nickname);
         
         // Check if already loaded
-        ResourceLocation cached = textureCache.get(normalized);
+        Identifier cached = textureCache.get(normalized);
         if (cached != null) {
             return cached;
         }
@@ -197,7 +196,7 @@ public class HeadCacheManager {
         // Check if file exists - load it synchronously if possible
         Path filePath = getHeadFilePath(nickname);
         if (filePath != null && Files.exists(filePath)) {
-            ResourceLocation loaded = loadHeadFromFile(nickname, filePath);
+            Identifier loaded = loadHeadFromFile(nickname, filePath);
             if (loaded != null) {
                 return loaded;
             }
@@ -211,7 +210,7 @@ public class HeadCacheManager {
     /**
      * Downloads a head from the internet and saves it to cache.
      */
-    private static ResourceLocation downloadAndCacheHead(String nickname) {
+    private static Identifier downloadAndCacheHead(String nickname) {
         String normalized = normalizeNickname(nickname);
         String urlString = String.format(HEAD_URL_TEMPLATE, normalized);
         
@@ -247,7 +246,7 @@ public class HeadCacheManager {
                 }
                 
                 // Register texture on render thread
-                ResourceLocation location = registerHeadTexture(nickname, image);
+                Identifier location = registerHeadTexture(nickname, image);
                 return location;
             }
         } catch (IOException e) {
@@ -262,7 +261,7 @@ public class HeadCacheManager {
     /**
      * Loads a head from a cached file.
      */
-    private static ResourceLocation loadHeadFromFile(String nickname, Path filePath) {
+    private static Identifier loadHeadFromFile(String nickname, Path filePath) {
         String normalized = normalizeNickname(nickname);
         
         LOGGER.info("HeadCacheManager: Loading head from cache: {}", filePath);
@@ -271,7 +270,7 @@ public class HeadCacheManager {
             NativeImage image = NativeImage.read(Files.newInputStream(filePath));
             
             // Register texture on render thread
-            ResourceLocation location = registerHeadTexture(nickname, image);
+            Identifier location = registerHeadTexture(nickname, image);
             return location;
         } catch (IOException e) {
             LOGGER.error("HeadCacheManager: Failed to load head from file {}: {}", filePath, e.getMessage());
@@ -286,9 +285,9 @@ public class HeadCacheManager {
      * Registers a head texture with the TextureManager.
      * Must be called on the render thread.
      */
-    private static ResourceLocation registerHeadTexture(String nickname, NativeImage image) {
+    private static Identifier registerHeadTexture(String nickname, NativeImage image) {
         String normalized = normalizeNickname(nickname);
-        ResourceLocation location = ResourceLocation.fromNamespaceAndPath("marallyzen", "head/" + normalized);
+        Identifier location = Identifier.fromNamespaceAndPath("marallyzen", "head/" + normalized);
         
         // Check if already registered
         if (textureCache.containsKey(normalized)) {
@@ -303,7 +302,7 @@ public class HeadCacheManager {
             try {
                 // Create a copy of the image for the texture (NativeImage may be closed)
                 // Actually, we should keep the image alive until registered
-                DynamicTexture dynamicTexture = new DynamicTexture(image);
+                DynamicTexture dynamicTexture = new DynamicTexture(() -> "marallyzen_head_" + normalized, image);
                 Minecraft.getInstance().getTextureManager().register(location, dynamicTexture);
                 textureCache.put(normalized, location);
                 LOGGER.info("HeadCacheManager: Registered head texture: {}", location);
@@ -323,4 +322,6 @@ public class HeadCacheManager {
         pendingDownloads.clear();
     }
 }
+
+
 

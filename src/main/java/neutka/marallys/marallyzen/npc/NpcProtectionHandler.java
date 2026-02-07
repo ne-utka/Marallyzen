@@ -12,7 +12,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 /**
  * Handles protection for NPCs (invulnerability, damage cancellation, death prevention).
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class NpcProtectionHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

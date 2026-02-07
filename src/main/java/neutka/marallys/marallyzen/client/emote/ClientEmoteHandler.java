@@ -1,12 +1,9 @@
 package neutka.marallys.marallyzen.client.emote;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import neutka.marallys.marallyzen.Marallyzen;
-import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder;
-import neutka.marallys.marallyzen.replay.client.ReplayClientRecorder;
-import neutka.marallys.marallyzen.replay.client.ReplayEmoteStateTracker;
 import neutka.marallys.marallyzen.util.EmoteConfigUtil;
 
 import java.io.InputStream;
@@ -18,7 +15,6 @@ import java.util.UUID;
  * Handler for playing Emotecraft emotes on NPCs using IPlayerEntity.emotecraft$playEmote().
  * Works only with entities that implement IPlayerEntity (Player, RemotePlayer via Emotecraft mixin).
  */
-@net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
 public final class ClientEmoteHandler {
     private static final Set<String> LEGACY_EMOTE_LOGGED = new HashSet<>();
 
@@ -965,17 +961,6 @@ public final class ClientEmoteHandler {
             return;
         }
 
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.setActive(entityId, emoteId);
-        }
-
-        if (record) {
-            CutsceneRecorder recorder = CutsceneRecorder.getInstance();
-            if (recorder != null && recorder.isRecording()) {
-                recorder.recordEmoteEvent(entity, emoteId);
-            }
-        }
-
         // Play emote on entity
         playEmoteOnNpc(entity, emote);
     }
@@ -990,17 +975,6 @@ public final class ClientEmoteHandler {
             return;
         }
 
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.setActive(entity.getUUID(), emoteId);
-        }
-
-        if (record) {
-            CutsceneRecorder recorder = CutsceneRecorder.getInstance();
-            if (recorder != null && recorder.isRecording()) {
-                recorder.recordEmoteEvent(entity, emoteId);
-            }
-        }
-
         playEmoteOnNpc(entity, emote);
     }
 
@@ -1013,9 +987,6 @@ public final class ClientEmoteHandler {
         if (entity == null) {
             Marallyzen.LOGGER.warn("ClientEmoteHandler: Entity not found for UUID {} (stop)", entityId);
             return;
-        }
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.clear(entityId);
         }
         stop(entity);
     }
@@ -1237,7 +1208,7 @@ public final class ClientEmoteHandler {
     private static String resolveResourceName(String emoteId) {
         String path = emoteId;
         try {
-            ResourceLocation id = ResourceLocation.tryParse(emoteId);
+            Identifier id = Identifier.tryParse(emoteId);
             if (id != null) {
                 path = id.getPath();
             }
@@ -1253,3 +1224,5 @@ public final class ClientEmoteHandler {
         return path;
     }
 }
+
+

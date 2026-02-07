@@ -96,11 +96,8 @@ public class InteractiveBlockProximityHandler {
                         if (type == InteractiveBlockTargeting.Type.POSTER) {
                             continue;
                         }
-                        if (type != InteractiveBlockTargeting.Type.CHAIN
-                            || !player.getPersistentData().getBoolean("marallyzen_chain_hang")) {
-                            newTarget = new Target(hitPos, type);
-                            message = InteractiveBlockTargeting.getNarrationMessage(state);
-                        }
+                        newTarget = new Target(hitPos, type);
+                        message = InteractiveBlockTargeting.getNarrationMessage(state);
                     }
                 }
 

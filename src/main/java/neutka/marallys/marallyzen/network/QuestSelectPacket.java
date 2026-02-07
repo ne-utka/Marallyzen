@@ -34,3 +34,4 @@ public record QuestSelectPacket(String questId) implements CustomPacketPayload {
         });
     }
 }
+

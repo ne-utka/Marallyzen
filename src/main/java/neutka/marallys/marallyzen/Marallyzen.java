@@ -40,7 +40,10 @@ public class Marallyzen {
             "gecko_npc",
             () -> EntityType.Builder.<GeckoNpcEntity>of(GeckoNpcEntity::new, MobCategory.CREATURE)
                     .sized(0.6f, 1.8f)
-                    .build(Marallyzen.MODID + ":gecko_npc")
+                    .build(net.minecraft.resources.ResourceKey.create(
+                        net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath(Marallyzen.MODID, "gecko_npc")
+                    ))
     );
 
     
@@ -49,14 +52,30 @@ public class Marallyzen {
             "poster",
             () -> EntityType.Builder.<neutka.marallys.marallyzen.entity.PosterEntity>of(neutka.marallys.marallyzen.entity.PosterEntity::new, MobCategory.MISC)
                     .sized(1.0f, 1.0f)
-                    .build(MODID + ":poster")
+                    .build(net.minecraft.resources.ResourceKey.create(
+                        net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "poster")
+                    ))
     );
 
     public static final net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<neutka.marallys.marallyzen.entity.DictaphoneEntity>> DICTAPHONE_ENTITY = ENTITIES.register(
             "dictaphone",
             () -> EntityType.Builder.<neutka.marallys.marallyzen.entity.DictaphoneEntity>of(neutka.marallys.marallyzen.entity.DictaphoneEntity::new, MobCategory.MISC)
                     .sized(1.0f, 1.0f)
-                    .build(MODID + ":dictaphone")
+                    .build(net.minecraft.resources.ResourceKey.create(
+                        net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "dictaphone")
+                    ))
+    );
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity>> DECORATED_POT_ENTITY = ENTITIES.register(
+            "decorated_pot",
+            () -> EntityType.Builder.<neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity>of(neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity::new, MobCategory.MISC)
+                    .sized(1.0f, 1.0f)
+                    .build(net.minecraft.resources.ResourceKey.create(
+                        net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "decorated_pot")
+                    ))
     );
     
 
@@ -113,3 +132,5 @@ public class Marallyzen {
         LOGGER.info("Marallyzen server stopping. Saved {} NPC state(s).", registry.captureNpcStates().size());
     }
 }
+
+

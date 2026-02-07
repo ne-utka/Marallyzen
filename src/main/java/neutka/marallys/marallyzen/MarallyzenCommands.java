@@ -8,6 +8,9 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -17,8 +20,6 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.OldTvBindModePacket;
-import neutka.marallys.marallyzen.network.PlayScenePacket;
-import neutka.marallys.marallyzen.network.ReloadScenesPacket;
 import neutka.marallys.marallyzen.npc.DialogScriptLoader;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcData;
@@ -29,7 +30,7 @@ import neutka.marallys.marallyzen.npc.NpcSpawner;
 
 import java.util.Objects;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class MarallyzenCommands {
 
     @SubscribeEvent
@@ -39,14 +40,10 @@ public class MarallyzenCommands {
         dispatcher.register(Commands.literal("marallyzen")
                 .executes(MarallyzenCommands::infoCommand)
                 .then(Commands.literal("reload")
-                        .requires(source -> source.hasPermission(2)) // OP level 2
+                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) // OP level 2
                         .executes(MarallyzenCommands::reloadCommand))
-                .then(Commands.literal("playscene")
-                        .requires(source -> source.hasPermission(2))
-                        .then(Commands.argument("sceneName", StringArgumentType.string())
-                                .executes(MarallyzenCommands::playSceneCommand)))
                 .then(Commands.literal("spawnnpc")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(MarallyzenCommands::listNpcsCommand)
                         .then(Commands.argument("npcId", StringArgumentType.string())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
@@ -57,7 +54,7 @@ public class MarallyzenCommands {
                                 .then(Commands.literal("--keep")
                                         .executes(context -> spawnNpcCommand(context, true)))))
                 .then(Commands.literal("removenpc")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .then(Commands.argument("npcId", StringArgumentType.string())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                         NpcClickHandler.getRegistry().getSpawnedNpcs().stream()
@@ -67,7 +64,7 @@ public class MarallyzenCommands {
                                 ))
                                 .executes(MarallyzenCommands::removeNpcCommand)))
                 .then(Commands.literal("waypoint")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .then(Commands.argument("npcId", StringArgumentType.string())
                                 .then(Commands.literal("loop")
                                         .then(Commands.argument("enabled", com.mojang.brigadier.arguments.BoolArgumentType.bool())
@@ -75,11 +72,6 @@ public class MarallyzenCommands {
                                 .then(Commands.literal("move")
                                         .then(Commands.argument("waypointIndex", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
                                                 .executes(MarallyzenCommands::moveToWaypointCommand)))))
-                .then(Commands.literal("editcutscene")
-                        .requires(source -> source.hasPermission(2))
-                        .executes(MarallyzenCommands::editCutsceneCommand)
-                        .then(Commands.argument("sceneId", StringArgumentType.string())
-                                .executes(MarallyzenCommands::editCutsceneCommand)))
         );
     }
 
@@ -94,46 +86,33 @@ public class MarallyzenCommands {
         source.sendSuccess(() -> title, false);
 
         net.minecraft.network.chat.MutableComponent github = Component.literal("\uE000")
-            .withStyle(style -> style.withFont(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "icons")
-            ))
+            .withStyle(style -> style.withFont(new FontDescription.Resource(net.minecraft.resources.Identifier.fromNamespaceAndPath(Marallyzen.MODID, "icons"))))
             .append(Component.literal(" Github").withStyle(style -> style
-                .withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("default"))
+                .withFont(FontDescription.DEFAULT)
                 .withColor(net.minecraft.ChatFormatting.AQUA)
-                .withClickEvent(new net.minecraft.network.chat.ClickEvent(
-                    net.minecraft.network.chat.ClickEvent.Action.OPEN_URL,
-                    "https://github.com/ne-utka/Marallyzen"
-                ))
-                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
-                    net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                    Component.literal("Нажмите для открытия страницы на Github.")
-                ))
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.OpenUrl(java.net.URI.create("https://github.com/ne-utka/Marallyzen")))
+                .withHoverEvent(new HoverEvent.ShowText(Component.literal("Discord: mengion")))
             ));
         source.sendSuccess(() -> github, false);
 
-        Component author = Component.literal("Автор мода - loneliness")
+        Component author = Component.literal("РђРІС‚РѕСЂ РјРѕРґР° - loneliness")
             .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY));
         source.sendSuccess(() -> author, false);
 
         net.minecraft.network.chat.MutableComponent discord = Component.literal("\uE001")
-            .withStyle(style -> style.withFont(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "icons")
-            ))
+            .withStyle(style -> style.withFont(new FontDescription.Resource(net.minecraft.resources.Identifier.fromNamespaceAndPath(Marallyzen.MODID, "icons"))))
             .append(Component.literal(" Discord - mengion").withStyle(style -> style
-                .withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("default"))
+                .withFont(FontDescription.DEFAULT)
                 .withColor(net.minecraft.ChatFormatting.DARK_AQUA)
-                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
-                    net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                    Component.literal("Discord: mengion")
-                ))
+                .withHoverEvent(new HoverEvent.ShowText(Component.literal("Нажмите для открытия страницы на Github.")))
             ));
         source.sendSuccess(() -> discord, false);
 
-        Component contributors = Component.literal("Вложили вклад:")
+        Component contributors = Component.literal("Р’Р»РѕР¶РёР»Рё РІРєР»Р°Рґ:")
             .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.YELLOW));
         source.sendSuccess(() -> contributors, false);
         source.sendSuccess(() -> Component.literal(" - Yl7oPoTblU_KoT").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
-        source.sendSuccess(() -> Component.literal(" - Bumchik_ (Иван Казмиренко)").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
+        source.sendSuccess(() -> Component.literal(" - Bumchik_ (РРІР°РЅ РљР°Р·РјРёСЂРµРЅРєРѕ)").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
         source.sendSuccess(() -> Component.literal(" - ItsReizy").withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GRAY)), false);
         return 1;
     }
@@ -167,9 +146,6 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
             // Reload quests and zones
             neutka.marallys.marallyzen.quest.QuestManager.getInstance().reload(context.getSource().getServer());
 
-            // Reload cutscenes on all clients
-            NetworkHelper.sendToAll(new ReloadScenesPacket());
-            
             int npcCount = registry.getAllNpcData().size();
             context.getSource().sendSuccess(
                     () -> Component.literal("Marallyzen reloaded successfully. Loaded " + npcCount + " NPC(s), respawned " + respawnedCount + ", removed " + removed + "."),
@@ -185,27 +161,6 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
         }
     }
 
-    private static int playSceneCommand(CommandContext<CommandSourceStack> context) {
-        String sceneName = StringArgumentType.getString(context, "sceneName");
-        var source = context.getSource();
-        var player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player"));
-            return 0;
-        }
-
-        // Send scene playback packet to client
-        NetworkHelper.sendToPlayer(
-                player,
-                new PlayScenePacket(sceneName)
-        );
-
-        source.sendSuccess(
-                () -> Component.literal("Scene playback started: " + sceneName),
-                true
-        );
-        return 1;
-    }
 
     private static int listNpcsCommand(CommandContext<CommandSourceStack> context) {
         var source = context.getSource();
@@ -380,38 +335,6 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
         }
     }
 
-    private static int editCutsceneCommand(CommandContext<CommandSourceStack> context) {
-        var source = context.getSource();
-        var player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player"));
-            return 0;
-        }
-
-        // This command should open the editor on the client side
-        // For now, just send a message - the client will handle opening the screen via key binding
-        String sceneId = null;
-        try {
-            sceneId = StringArgumentType.getString(context, "sceneId");
-        } catch (IllegalArgumentException e) {
-            // No scene ID provided, will create new
-        }
-
-        final String finalSceneId = sceneId; // Make final for lambda
-        if (finalSceneId != null) {
-            source.sendSuccess(
-                () -> Component.literal("Opening cutscene editor for: " + finalSceneId + ". Press K key to open editor."),
-                false
-            );
-        } else {
-            source.sendSuccess(
-                () -> Component.literal("Press K key to open cutscene editor."),
-                false
-            );
-        }
-
-        return 1;
-    }
 
     private static int onTvCommand(CommandContext<CommandSourceStack> context) {
         String mediaName = StringArgumentType.getString(context, "mediaName");
@@ -444,4 +367,7 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
         return 1;
     }
 }
+
+
+
 

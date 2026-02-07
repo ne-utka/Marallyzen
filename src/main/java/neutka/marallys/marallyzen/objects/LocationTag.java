@@ -61,7 +61,7 @@ public class LocationTag implements ObjectTag, VectorObject {
     }
 
     public LocationTag(Vec3 vec, Level level) {
-        this(vec.x(), vec.y(), vec.z(), 0, 0, level != null ? level.dimension().location().toString() : null, level);
+        this(vec.x(), vec.y(), vec.z(), 0, 0, level != null ? level.dimension().identifier().toString() : null, level);
     }
 
     @Override
@@ -245,3 +245,6 @@ public class LocationTag implements ObjectTag, VectorObject {
         });
     }
 }
+
+
+

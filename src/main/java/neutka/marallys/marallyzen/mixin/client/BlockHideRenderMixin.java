@@ -1,6 +1,6 @@
 package neutka.marallys.marallyzen.mixin.client;
 
-import net.minecraft.client.renderer.chunk.RenderChunkRegion;
+import net.minecraft.client.renderer.chunk.RenderSectionRegion;
 import net.minecraft.client.renderer.chunk.SectionCompiler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
@@ -16,14 +16,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(SectionCompiler.class)
 public class BlockHideRenderMixin {
     @Redirect(
-        method = "compile(Lnet/minecraft/core/SectionPos;Lnet/minecraft/client/renderer/chunk/RenderChunkRegion;Lcom/mojang/blaze3d/vertex/VertexSorting;Lnet/minecraft/client/renderer/SectionBufferBuilderPack;Ljava/util/List;)Lnet/minecraft/client/renderer/chunk/SectionCompiler$Results;",
+        method = "compile(Lnet/minecraft/core/SectionPos;Lnet/minecraft/client/renderer/chunk/RenderSectionRegion;Lcom/mojang/blaze3d/vertex/VertexSorting;Lnet/minecraft/client/renderer/SectionBufferBuilderPack;Ljava/util/List;)Lnet/minecraft/client/renderer/chunk/SectionCompiler$Results;",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/chunk/RenderChunkRegion;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
+            target = "Lnet/minecraft/client/renderer/chunk/RenderSectionRegion;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
         ),
         require = 0
     )
-    private BlockState marallyzen$hideBlocks(RenderChunkRegion region, BlockPos pos) {
+    private BlockState marallyzen$hideBlocks(RenderSectionRegion region, BlockPos pos) {
         BlockState state = region.getBlockState(pos);
         if (state.getBlock() instanceof DictaphoneSimpleBlock
             && ClientDictaphoneManager.hasClientDictaphone(pos)) {

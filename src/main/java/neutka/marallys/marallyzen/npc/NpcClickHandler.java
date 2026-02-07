@@ -22,7 +22,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Handles player interactions with NPCs.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class NpcClickHandler {
 
     private static final NpcRegistry registry = new NpcRegistry();
@@ -124,9 +124,6 @@ public class NpcClickHandler {
             List<neutka.marallys.marallyzen.npc.DialogScriptLoader.AudioData> initialAudioList =
                     neutka.marallys.marallyzen.npc.DialogScriptLoader.parseInitialAudioCommands(npcData.getDialogScript(), 1);
             
-            // Check if step 1 has screen fade (after initial narration)
-            var initialScreenFade = neutka.marallys.marallyzen.npc.DialogScriptLoader.parseInitialScreenFade(npcData.getDialogScript(), 1);
-            
             if (initialNarrateMessages != null && !initialNarrateMessages.isEmpty()) {
                 // Send initial narration messages before opening dialog
                 String npcName = npcData.getName() != null ? npcData.getName() : npcData.getId();
@@ -154,19 +151,7 @@ public class NpcClickHandler {
                     Marallyzen.LOGGER.info("NpcClickHandler: Opened dialog after initial narration/screen fade completed");
                 };
                 
-                // If there's a screen fade, chain it: narration → screen fade → open dialog
-                // Otherwise, just open dialog after narration
-                Runnable onNarrationComplete;
-                if (initialScreenFade != null) {
-                    // Chain: narration → screen fade → open dialog
-                    onNarrationComplete = () -> {
-                        Marallyzen.LOGGER.info("NpcClickHandler: Narration complete, starting screen fade before opening dialog");
-                        neutka.marallys.marallyzen.npc.NpcNarrateHandler.scheduleScreenFadeAfterNarration(player, initialScreenFade, serverLevel, finalCallback);
-                    };
-                } else {
-                    // No screen fade - open dialog directly after narration
-                    onNarrationComplete = finalCallback;
-                }
+                Runnable onNarrationComplete = finalCallback;
 
                 if (initialAudioList != null && !initialAudioList.isEmpty()) {
                     long totalAudioDurationMs = calculateTotalAudioDurationMs(initialAudioList);

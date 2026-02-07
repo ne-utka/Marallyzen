@@ -4,8 +4,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
@@ -37,14 +35,10 @@ public record LeverInteractionMovePacket(Vec3 targetPos, float targetYaw, float 
 
     public static void handle(LeverInteractionMovePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
-                neutka.marallys.marallyzen.client.lever.LeverInteractionClient.startMove(
-                    packet.targetPos(),
-                    packet.targetYaw(),
-                    packet.targetPitch(),
-                    packet.moveTicks()
-                );
+            if (ClientOnly.isClient(context)) {
+                // Smooth approach disabled.
             }
         });
     }
 }
+

@@ -6,7 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class InstanceCloneHandler {
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
@@ -23,7 +23,7 @@ public class InstanceCloneHandler {
         manager.carryPendingInstanceRespawn(oldPlayer, newPlayer);
         Marallyzen.LOGGER.info(
                 "[InstanceClone] pending respawn carried over player={}",
-                newPlayer.getGameProfile().getName()
+                newPlayer.getGameProfile().name()
         );
     }
 }
