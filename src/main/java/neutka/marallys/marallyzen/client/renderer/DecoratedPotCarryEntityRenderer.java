@@ -120,53 +120,39 @@ public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPot
         double dz = camPos.z - entity.getZ();
         double distSq = dx * dx + dy * dy + dz * dz;
 
-        if (distSq > BE_RENDER_DISTANCE_SQ) {
-            BlockState stateToRender = entity.getStoredBlockState();
-            if (stateToRender == null || stateToRender.isAir()) {
-                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
-            }
-            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
-                stateToRender,
-                poseStack,
-                bufferSource,
-                renderLight,
-                OverlayTexture.NO_OVERLAY
-            );
-            return;
-        }
-
-        BlockEntity blockEntity = entity.getOrCreateRenderEntity(level);
-        if (blockEntity == null) {
-            BlockState stateToRender = entity.getStoredBlockState();
-            if (stateToRender == null || stateToRender.isAir()) {
-                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
-            }
-            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
-                stateToRender,
-                poseStack,
-                bufferSource,
-                renderLight,
-                OverlayTexture.NO_OVERLAY
-            );
-            return;
-        }
-        var dispatcher = Minecraft.getInstance().getBlockEntityRenderDispatcher();
-        var renderState = dispatcher.tryExtractRenderState(blockEntity, partialTick, null);
-        if (renderState != null) {
-            dispatcher.submit(renderState, poseStack, submitNodeCollector, cameraState);
-            return;
-        }
         BlockState stateToRender = entity.getStoredBlockState();
         if (stateToRender == null || stateToRender.isAir()) {
             stateToRender = Blocks.DECORATED_POT.defaultBlockState();
         }
-        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
-            stateToRender,
-            poseStack,
-            bufferSource,
-            renderLight,
-            OverlayTexture.NO_OVERLAY
-        );
+
+        BlockPos renderPos = BlockPos.containing(entity.getX(), entity.getY(), entity.getZ());
+        BlockEntity blockEntity = null;
+        net.minecraft.nbt.CompoundTag tag = entity.getStoredBlockEntityTag();
+        if (tag != null && !tag.isEmpty()) {
+            net.minecraft.nbt.CompoundTag copy = tag.copy();
+            if (!copy.contains("id")) {
+                copy.putString("id", "minecraft:decorated_pot");
+            }
+            copy.putInt("x", renderPos.getX());
+            copy.putInt("y", renderPos.getY());
+            copy.putInt("z", renderPos.getZ());
+            blockEntity = BlockEntity.loadStatic(renderPos, stateToRender, copy, level.registryAccess());
+        } else {
+            blockEntity = new net.minecraft.world.level.block.entity.DecoratedPotBlockEntity(renderPos, stateToRender);
+        }
+        if (blockEntity != null) {
+            blockEntity.setLevel(level);
+            var data = blockEntity.getPersistentData();
+            if (data != null) {
+                data.putFloat(DecoratedPotCarryEntity.ROTATION_TAG, entity.getPotYaw());
+            }
+            var dispatcher = Minecraft.getInstance().getBlockEntityRenderDispatcher();
+            var renderState = dispatcher.tryExtractRenderState(blockEntity, partialTick, null);
+            if (renderState != null) {
+                dispatcher.submit(renderState, poseStack, submitNodeCollector, cameraState);
+                return;
+            }
+        }
     }
 
     public static final class RenderState extends EntityRenderState {

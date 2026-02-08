@@ -190,12 +190,14 @@ public class DecoratedPotCarryEntity extends Entity {
         this.entityData.set(DATA_MODE, mode.getId());
         if (mode == Mode.CARRIED) {
             this.noPhysics = true;
+            this.blocksBuilding = false;
             this.setNoGravity(true);
             this.setDeltaMovement(Vec3.ZERO);
             resetImpactState();
             crushedThisFall = false;
         } else if (mode == Mode.THROWN) {
             this.noPhysics = false;
+            this.blocksBuilding = true;
             this.setNoGravity(false);
             if (initialVelocity != null) {
                 this.setDeltaMovement(initialVelocity);
@@ -204,6 +206,7 @@ public class DecoratedPotCarryEntity extends Entity {
             crushedThisFall = false;
         } else if (mode == Mode.RESTING) {
             this.noPhysics = false;
+            this.blocksBuilding = true;
             this.setNoGravity(true);
             this.setDeltaMovement(Vec3.ZERO);
             wasOnGround = onGround();
@@ -218,13 +221,16 @@ public class DecoratedPotCarryEntity extends Entity {
             Mode mode = getMode();
             if (mode == Mode.CARRIED) {
                 this.noPhysics = true;
+                this.blocksBuilding = false;
                 this.setNoGravity(true);
                 this.setDeltaMovement(Vec3.ZERO);
             } else if (mode == Mode.THROWN) {
                 this.noPhysics = false;
+                this.blocksBuilding = true;
                 this.setNoGravity(false);
             } else if (mode == Mode.RESTING) {
                 this.noPhysics = false;
+                this.blocksBuilding = true;
                 this.setNoGravity(true);
                 this.setDeltaMovement(Vec3.ZERO);
             }
@@ -877,7 +883,7 @@ public class DecoratedPotCarryEntity extends Entity {
 
     @Override
     public boolean isPushable() {
-        return getMode() == Mode.THROWN;
+        return getMode() != Mode.CARRIED;
     }
 
     @Override
