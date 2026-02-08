@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.mixin.client;
 
 import net.minecraft.client.Camera;
-import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -22,7 +22,7 @@ public abstract class CameraMixin {
     private static java.lang.reflect.Method cachedSetRotation;
 
     @Inject(method = "setup", at = @At("TAIL"), require = 0)
-    private void marallyzen$fpvEmote(BlockGetter level, Entity entity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci) {
+    private void marallyzen$fpvEmote(Level level, Entity entity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci) {
         if (DirectorRuntime.isPreviewing()) {
             long timeMs = Util.getMillis();
             DirectorRuntime.tick(timeMs);
