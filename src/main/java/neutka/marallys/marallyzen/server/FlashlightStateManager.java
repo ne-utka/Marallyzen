@@ -17,7 +17,7 @@ import java.util.UUID;
  * Server-side manager that tracks flashlight states for all players
  * and broadcasts updates to tracking clients.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class FlashlightStateManager {
     
     private static final Map<UUID, FlashlightState> FLASHLIGHT_STATES = new HashMap<>();

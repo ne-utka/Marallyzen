@@ -4,7 +4,6 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -16,23 +15,25 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.extensions.common.IClientBlockExtensions;
 import neutka.marallys.marallyzen.client.ClientPosterManager;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.function.Consumer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
 
 public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlock {
     private static final Logger LOGGER = LoggerFactory.getLogger(PosterBlock.class);
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
     private final int posterNumber;
     
     // Poster texture dimensions: 0.8 blocks wide, 1.0 blocks tall
@@ -103,7 +104,8 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     public float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
         if (player != null) {
             if (level.getBlockEntity(pos) instanceof PosterBlockEntity posterBe) {
-                if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                if (posterBe.isProtectedByOp()
+                    && !(player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))) {
                     return 0.0f;
                 }
             }
@@ -112,17 +114,18 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     }
 
     @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, ItemStack stack, boolean willHarvest, FluidState fluid) {
         if (!level.isClientSide()) {
             if (player != null) {
                 if (level.getBlockEntity(pos) instanceof PosterBlockEntity posterBe) {
-                    if (posterBe.isProtectedByOp() && !player.hasPermissions(2)) {
+                    if (posterBe.isProtectedByOp()
+                        && !(player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))) {
                         return false;
                     }
                 }
             }
         }
-        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+        return super.onDestroyedByPlayer(state, level, pos, player, stack, willHarvest, fluid);
     }
     
     @Override
@@ -131,27 +134,23 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     }
     
     @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        // Remove BlockEntity completely when block is removed
-        // This ensures new poster at same position starts with fresh BlockEntity
-        if (!level.isClientSide() && !newState.is(state.getBlock())) {
-            // Block is being removed (not just state change)
-            // Remove BlockEntity completely to ensure fresh start
-            net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
-            if (be != null) {
-                level.removeBlockEntity(pos);
-                LOGGER.warn("PosterBlock: Removed BlockEntity at {} after block removal", pos);
-            }
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        // Block is being removed (not just state change): drop BE and let vanilla finish removal.
+        net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
+        if (be != null) {
+            level.removeBlockEntity(pos);
+            LOGGER.warn("PosterBlock: Removed BlockEntity at {} after block removal", pos);
         }
-        
-        // Clear client-side cache when block is removed
-        // This ensures new poster at same position starts with default values
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (level.isClientSide()) {
-            neutka.marallys.marallyzen.client.ClientPosterManager.clearCacheForPosition(pos);
+            ClientPosterManager.clearCacheForPosition(pos);
             LOGGER.warn("PosterBlock: Cleared client cache for position {} after block removal", pos);
         }
-        
-        super.onRemove(state, level, pos, newState, movedByPiston);
+        return super.playerWillDestroy(level, pos, state, player);
     }
     
     @Override
@@ -198,17 +197,19 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
     }
     
     @Override
-    @OnlyIn(Dist.CLIENT)
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        if (level.isClientSide) {
-            if (stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem && player.hasPermissions(2)) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (level.isClientSide()) {
+            if ((stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem
+                || stack.getItem() instanceof net.minecraft.world.item.WritableBookItem)
+                && (player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))) {
                 markProtectedByOpClient(level, pos, state);
             }
-            if (stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem) {
+            if (stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem
+                || stack.getItem() instanceof net.minecraft.world.item.WritableBookItem) {
                 neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
                     new neutka.marallys.marallyzen.network.PosterBookBindPacket(pos, hand == InteractionHand.MAIN_HAND)
                 );
-                return ItemInteractionResult.CONSUME;
+                return InteractionResult.CONSUME;
             }
             // Check if player is holding a written book and this is oldposter (ID 11)
             if (posterNumber == 11 && stack.getItem() instanceof net.minecraft.world.item.WrittenBookItem) {
@@ -280,7 +281,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                             if (be instanceof neutka.marallys.marallyzen.blocks.PosterBlockEntity posterBe) {
                                 String oldVariant = posterBe.getOldposterVariant();
                                 posterBe.setOldposterVariant(variant);
-                                if (player.hasPermissions(2)) {
+                                if (player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer)) {
                                     posterBe.setProtectedByOp(true);
                                 }
                                 
@@ -322,7 +323,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                                             final BlockPos finalPos = pos;
                                             final java.util.List<String> finalPlayerNames = new java.util.ArrayList<>(playerNames);
                                             // Execute on server thread to ensure thread safety
-                                            final boolean protectByOp = player.hasPermissions(2);
+                                            final boolean protectByOp = player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer);
                                             minecraft.getSingleplayerServer().execute(() -> {
                                                 net.minecraft.world.level.block.entity.BlockEntity serverBe = serverLevel.getBlockEntity(finalPos);
                                                 // Create BlockEntity if it doesn't exist
@@ -347,7 +348,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                                                     }
                                                     serverPosterBe.setChanged();
                                                     // Force mark chunk as dirty to ensure it's saved
-                                                    serverLevel.getChunkAt(finalPos).setUnsaved(true);
+                                                    serverLevel.getChunkAt(finalPos).markUnsaved();
                                                     LOGGER.warn("PosterBlock: Saved variant '{}' to SERVER BlockEntity at {} (chunk marked dirty)", finalVariant, finalPos);
                                                 } else {
                                                     LOGGER.warn("PosterBlock: SERVER BlockEntity is not PosterBlockEntity at {}", finalPos);
@@ -365,7 +366,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                                 ClientPosterManager.createClientPoster(pos, posterNumber, state);
                                 
                                 // Return CONSUME to prevent book GUI from opening
-                                return ItemInteractionResult.CONSUME;
+                                return InteractionResult.CONSUME;
                             } else {
                                 LOGGER.warn("PosterBlock: BlockEntity is not PosterBlockEntity, cannot set variant");
                             }
@@ -385,7 +386,7 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                         clientLevel.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 18);
                     }
                 }
-                return ItemInteractionResult.SUCCESS; // Already active, don't do anything
+                return InteractionResult.SUCCESS; // Already active, don't do anything
             }
             
             // Client-side: create client-only PosterEntity
@@ -400,10 +401,9 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
                     new neutka.marallys.marallyzen.network.PosterInteractPacket(pos)
             );
         }
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
-    @OnlyIn(Dist.CLIENT)
     private static void markProtectedByOpClient(Level level, BlockPos pos, BlockState state) {
         net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
         if (be == null) {
@@ -433,8 +433,6 @@ public class PosterBlock extends HorizontalDirectionalBlock implements EntityBlo
         }
     }
     
-    @Override
-    @OnlyIn(Dist.CLIENT)
     public void initializeClient(Consumer<IClientBlockExtensions> consumer) {
         consumer.accept(new IClientBlockExtensions() {
             @Override

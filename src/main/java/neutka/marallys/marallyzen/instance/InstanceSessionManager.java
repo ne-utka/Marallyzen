@@ -12,7 +12,6 @@ import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.network.InstanceStatusPacket;
 import neutka.marallys.marallyzen.network.InstanceRegistryPacket;
 import neutka.marallys.marallyzen.network.NetworkHelper;
-import neutka.marallys.marallyzen.network.ScreenFadePacket;
 import neutka.marallys.marallyzen.quest.QuestDefinition;
 import neutka.marallys.marallyzen.quest.QuestInstanceSpec;
 
@@ -111,7 +110,7 @@ public class InstanceSessionManager {
                 "InstanceSessionManager: zone_enter quest={} zone={} player={} state={} size={}/{}",
                 definition.id(),
                 zoneId,
-                player.getGameProfile().getName(),
+                player.getGameProfile().name(),
                 session.state(),
                 session.players().size() + 1,
                 spec.groupRequired()
@@ -156,7 +155,7 @@ public class InstanceSessionManager {
         setPlayerState(playerId, PlayerState.LEAVE_PENDING);
         Marallyzen.LOGGER.info(
                 "[InstanceLeave] restoring snapshot player={} reason={}",
-                player.getGameProfile().getName(),
+                player.getGameProfile().name(),
                 reason
         );
         if (restoreAfterLeave(player, reason)) {
@@ -267,16 +266,16 @@ public class InstanceSessionManager {
         if (snapshot == null) {
             Marallyzen.LOGGER.info(
                     "LOGIN_RESTORE_SKIPPED player={} reason=no_snapshot",
-                    player.getGameProfile().getName()
+                    player.getGameProfile().name()
             );
             return false;
         }
         setPlayerState(player.getUUID(), blockZoneEnter ? PlayerState.LEAVE_PENDING : PlayerState.LOGIN_RESTORE_PENDING);
         Marallyzen.LOGGER.info(
                 "LOGIN_SNAPSHOT_FOUND player={} dim={} snapshotDim={}",
-                player.getGameProfile().getName(),
-                player.level().dimension().location(),
-                snapshot.dimension() != null ? snapshot.dimension().location() : null
+                player.getGameProfile().name(),
+                player.level().dimension().identifier(),
+                snapshot.dimension() != null ? snapshot.dimension().identifier() : null
         );
         clearRestrictions(player);
         boolean restored = snapshot.restore(player);
@@ -290,7 +289,7 @@ public class InstanceSessionManager {
             }
             Marallyzen.LOGGER.warn(
                     "LOGIN_RESTORE_FAILED player={} snapshot kept",
-                    player.getGameProfile().getName()
+                    player.getGameProfile().name()
             );
             return false;
         }
@@ -303,8 +302,8 @@ public class InstanceSessionManager {
         }
         Marallyzen.LOGGER.info(
                 "LOGIN_RESTORE_FORCED player={} dim={} reason={}",
-                player.getGameProfile().getName(),
-                player.level().dimension().location(),
+                player.getGameProfile().name(),
+                player.level().dimension().identifier(),
                 reason
         );
         return true;
@@ -422,7 +421,7 @@ public class InstanceSessionManager {
         setPlayerState(playerId, PlayerState.IN_INSTANCE_DEAD);
         Marallyzen.LOGGER.info(
                 "[InstanceDeath] queued respawn player={} session={}",
-                player.getGameProfile().getName(),
+                player.getGameProfile().name(),
                 sessionId
         );
     }
@@ -453,7 +452,7 @@ public class InstanceSessionManager {
         blockedZoneEnter.add(playerId);
         Marallyzen.LOGGER.info(
                 "[InstanceLeave] zone_enter blocked player={} reason={}",
-                player.getGameProfile().getName(),
+                player.getGameProfile().name(),
                 reason
         );
     }
@@ -502,19 +501,28 @@ public class InstanceSessionManager {
         }
         BlockPos spawn = session.spawn();
         if (spawn == null) {
-            spawn = session.spec().spawn() != null ? session.spec().spawn() : target.getSharedSpawnPos();
+            spawn = session.spec().spawn() != null ? session.spec().spawn() : getDefaultSpawn(target);
             if (session.spec().spawn() == null) {
                 spawn = clampSpawnHeight(target, spawn);
             }
             session.setSpawn(spawn);
         }
-        player.teleportTo(target, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, player.getYRot(), player.getXRot());
+        player.teleportTo(
+                target,
+                spawn.getX() + 0.5,
+                spawn.getY(),
+                spawn.getZ() + 0.5,
+                java.util.Collections.emptySet(),
+                player.getYRot(),
+                player.getXRot(),
+                false
+        );
         player.fallDistance = 0.0f;
         setPlayerState(player.getUUID(), PlayerState.IN_INSTANCE);
         Marallyzen.LOGGER.info(
                 "[InstanceDeath] respawn in instance player={} dim={} spawn={}",
-                player.getGameProfile().getName(),
-                target.dimension().location(),
+                player.getGameProfile().name(),
+                target.dimension().identifier(),
                 spawn
         );
     }
@@ -551,7 +559,7 @@ public class InstanceSessionManager {
             return;
         }
         worldUsage.merge(spec.world(), 1, Integer::sum);
-        BlockPos spawn = spec.spawn() != null ? spec.spawn() : target.getSharedSpawnPos();
+        BlockPos spawn = spec.spawn() != null ? spec.spawn() : getDefaultSpawn(target);
         if (spec.spawn() == null) {
             spawn = clampSpawnHeight(target, spawn);
         }
@@ -582,15 +590,6 @@ public class InstanceSessionManager {
                 session.snapshots().put(playerId, snapshot);
                 snapshot.saveToPlayer(player);
             }
-            NetworkHelper.sendToPlayer(player, new ScreenFadePacket(
-                    PRE_TELEPORT_FADE_OUT,
-                    PRE_TELEPORT_BLACK,
-                    PRE_TELEPORT_FADE_IN,
-                    Component.empty(),
-                    Component.empty(),
-                    true,
-                    null
-            ));
             setPlayerState(playerId, PlayerState.ENTER_PENDING);
             pendingTeleports.put(playerId, new PendingTeleport(session.sessionId(), PRE_TELEPORT_DELAY));
         }
@@ -623,8 +622,8 @@ public class InstanceSessionManager {
         }
         Marallyzen.LOGGER.info(
                 "InstanceSessionManager: preparing teleport for {} to {} {} {}",
-                player.getGameProfile().getName(),
-                target.dimension().location(),
+                player.getGameProfile().name(),
+                target.dimension().identifier(),
                 spawn.getX(),
                 spawn.getZ()
         );
@@ -636,11 +635,20 @@ public class InstanceSessionManager {
         player.setGameMode(mode);
         restrictedPlayers.add(playerId);
         try {
-            player.teleportTo(target, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, player.getYRot(), player.getXRot());
+            player.teleportTo(
+                    target,
+                    spawn.getX() + 0.5,
+                    spawn.getY(),
+                    spawn.getZ() + 0.5,
+                    java.util.Collections.emptySet(),
+                    player.getYRot(),
+                    player.getXRot(),
+                    false
+            );
         } catch (Exception e) {
             Marallyzen.LOGGER.warn(
                     "InstanceSessionManager: teleport failed for {} session {}",
-                    player.getGameProfile().getName(),
+                    player.getGameProfile().name(),
                     session.sessionId(),
                     e
             );
@@ -650,15 +658,15 @@ public class InstanceSessionManager {
         }
         Marallyzen.LOGGER.info(
                 "InstanceSessionManager: teleported player {} to {} {} {}",
-                player.getGameProfile().getName(),
-                target.dimension().location(),
+                player.getGameProfile().name(),
+                target.dimension().identifier(),
                 spawn.getX(),
                 spawn.getZ()
         );
         Marallyzen.LOGGER.info(
                 "InstanceSessionManager: post-teleport server pos={} dim={}",
                 player.blockPosition(),
-                player.level().dimension().location()
+                player.level().dimension().identifier()
         );
         NetworkHelper.sendToPlayer(player, new InstanceStatusPacket(true, session.questId()));
         sendWaitingOverlay(player);
@@ -727,7 +735,7 @@ public class InstanceSessionManager {
         if (player == null) {
             return false;
         }
-        var key = player.level().dimension().location();
+        var key = player.level().dimension().identifier();
         return Marallyzen.MODID.equals(key.getNamespace()) && key.getPath().startsWith("instance/");
     }
 
@@ -735,7 +743,6 @@ public class InstanceSessionManager {
         if (session == null || server == null) {
             return;
         }
-        Component title = Component.translatable("screen.marallyzen.instance_waiting");
         for (UUID playerId : session.players()) {
             ServerPlayer player = server.getPlayerList().getPlayer(playerId);
             if (player == null) {
@@ -743,17 +750,8 @@ public class InstanceSessionManager {
             }
             Marallyzen.LOGGER.info(
                     "InstanceSessionManager: sending waiting overlay to {}",
-                    player.getGameProfile().getName()
+                    player.getGameProfile().name()
             );
-            NetworkHelper.sendToPlayer(player, new ScreenFadePacket(
-                    WAIT_FADE_OUT,
-                    WAIT_BLACK,
-                    WAIT_FADE_IN,
-                    title,
-                    null,
-                    true,
-                    null
-            ));
         }
     }
 
@@ -761,16 +759,6 @@ public class InstanceSessionManager {
         if (player == null) {
             return;
         }
-        Component title = Component.translatable("screen.marallyzen.instance_waiting");
-        NetworkHelper.sendToPlayer(player, new ScreenFadePacket(
-                WAIT_FADE_OUT,
-                WAIT_BLACK,
-                WAIT_FADE_IN,
-                title,
-                null,
-                true,
-                null
-        ));
     }
 
     private void notifySessionFailure(InstanceSession session, String message) {
@@ -803,7 +791,7 @@ public class InstanceSessionManager {
             return;
         }
         ChunkPos chunkPos = new ChunkPos(pos);
-        level.getChunkSource().addRegionTicket(TicketType.POST_TELEPORT, chunkPos, 1, 0);
+        level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, chunkPos, 1);
     }
 
     private BlockPos clampSpawnHeight(ServerLevel level, BlockPos base) {
@@ -811,7 +799,7 @@ public class InstanceSessionManager {
             return base;
         }
         try {
-            int minY = level.getMinBuildHeight();
+            int minY = level.getMinY();
             int y = base.getY();
             if (y <= minY + 1) {
                 y = Math.max(level.getSeaLevel(), minY + 1);
@@ -821,6 +809,18 @@ public class InstanceSessionManager {
             Marallyzen.LOGGER.warn("InstanceSessionManager: failed to clamp spawn at {}", base, e);
             return base;
         }
+    }
+
+    private BlockPos getDefaultSpawn(ServerLevel level) {
+        if (level == null) {
+            return BlockPos.ZERO;
+        }
+        BlockPos base = BlockPos.containing(
+                level.getWorldBorder().getCenterX(),
+                level.getSeaLevel(),
+                level.getWorldBorder().getCenterZ()
+        );
+        return clampSpawnHeight(level, base);
     }
 
     private static final class PendingTeleport {
@@ -833,3 +833,6 @@ public class InstanceSessionManager {
         }
     }
 }
+
+
+

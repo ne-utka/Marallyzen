@@ -3,6 +3,8 @@ package neutka.marallys.marallyzen.blocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
@@ -72,15 +74,15 @@ public class OldTvBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putBoolean("ProtectedByOp", protectedByOp);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putBoolean("ProtectedByOp", protectedByOp);
     }
 
     @Override
-    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        protectedByOp = tag.getBoolean("ProtectedByOp");
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        protectedByOp = input.getBooleanOr("ProtectedByOp", false);
     }
 
     public boolean isProtectedByOp() {

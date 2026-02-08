@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import neutka.marallys.marallyzen.client.FlashlightStateCache;
 
@@ -56,7 +54,7 @@ public record FlashlightStatePacket(UUID playerId, boolean enabled, float yaw, f
 
     public static void handle(FlashlightStatePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 // Update client-side cache
                 FlashlightStateCache.updateState(
                     packet.playerId(),
@@ -68,4 +66,5 @@ public record FlashlightStatePacket(UUID playerId, boolean enabled, float yaw, f
         });
     }
 }
+
 

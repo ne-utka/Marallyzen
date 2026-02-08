@@ -1,6 +1,6 @@
 package neutka.marallys.marallyzen.client.renderer;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import neutka.marallys.marallyzen.Marallyzen;
 
 import java.util.Map;
@@ -37,9 +37,9 @@ public final class PosterTextures {
     /**
      * Small wall texture (block atlas).
      */
-    public static ResourceLocation getSmallTexture(int posterNumber) {
+    public static Identifier getSmallTexture(int posterNumber) {
         String name = resolveSmallName(posterNumber);
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/" + name + ".png");
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/" + name + ".png");
     }
 
     /**
@@ -48,7 +48,7 @@ public final class PosterTextures {
      * Overrides use block/xxxfull.png as requested.
      * For oldposter (ID 11), supports variants: "default", "alive", "band", "dead"
      */
-    public static ResourceLocation getFullTexture(int posterNumber) {
+    public static Identifier getFullTexture(int posterNumber) {
         return getFullTexture(posterNumber, "default");
     }
     
@@ -56,7 +56,7 @@ public final class PosterTextures {
      * Full-size flying poster texture with variant support.
      * For oldposter (ID 11), variant can be "default", "alive", "band", or "dead".
      */
-    public static ResourceLocation getFullTexture(int posterNumber, String variant) {
+    public static Identifier getFullTexture(int posterNumber, String variant) {
         String name = resolveFullName(posterNumber);
         
         // Special handling for oldposter (ID 11) with variants
@@ -67,10 +67,12 @@ public final class PosterTextures {
         
         // If default posterfull, keep existing entity path
         if ("posterfull".equals(name)) {
-            return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/entity/posterfull.png");
+            return Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/entity/posterfull.png");
         }
         // Override textures are stored in block/ folder
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/" + name + ".png");
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/" + name + ".png");
     }
 }
+
+
 

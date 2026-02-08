@@ -5,11 +5,14 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -20,26 +23,38 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity;
+import net.minecraft.client.renderer.state.CameraRenderState;
 
-public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPotCarryEntity> {
+public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPotCarryEntity, DecoratedPotCarryEntityRenderer.RenderState> {
     private static final double BE_RENDER_DISTANCE_SQ = 128.0 * 128.0;
     public DecoratedPotCarryEntityRenderer(EntityRendererProvider.Context context) {
         super(context);
     }
 
-    @Override
-    public boolean shouldRender(DecoratedPotCarryEntity entity, Frustum frustum, double x, double y, double z) {
-        return true;
+    public Identifier getTextureLocation(DecoratedPotCarryEntity entity) {
+        return Identifier.fromNamespaceAndPath("minecraft", "textures/block/decorated_pot.png");
     }
 
     @Override
-    public ResourceLocation getTextureLocation(DecoratedPotCarryEntity entity) {
-        return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/block/decorated_pot.png");
+    public RenderState createRenderState() {
+        return new RenderState();
     }
 
     @Override
-    public void render(DecoratedPotCarryEntity entity, float entityYaw, float partialTick,
-                       PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+    public void extractRenderState(DecoratedPotCarryEntity entity, RenderState state, float partialTick) {
+        super.extractRenderState(entity, state, partialTick);
+        state.entity = entity;
+        state.partialTick = partialTick;
+    }
+
+    @Override
+    public void submit(RenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraState) {
+        DecoratedPotCarryEntity entity = state.entity;
+        if (entity == null) {
+            return;
+        }
+        float partialTick = state.partialTick;
+        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
         poseStack.pushPose();
         Player localPlayer = Minecraft.getInstance().player;
         if (localPlayer != null && entity.getMode() == DecoratedPotCarryEntity.Mode.CARRIED
@@ -85,19 +100,21 @@ public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPot
             poseStack.mulPose(Axis.YP.rotationDegrees(entity.getPotYaw()));
         }
         poseStack.translate(-0.5, 0.0, -0.5);
-        renderPot(entity, partialTick, poseStack, bufferSource, packedLight);
+        renderPot(entity, partialTick, poseStack, bufferSource, state.lightCoords, submitNodeCollector, cameraState);
         poseStack.popPose();
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+        bufferSource.endBatch();
+        super.submit(state, poseStack, submitNodeCollector, cameraState);
     }
 
     private void renderPot(DecoratedPotCarryEntity entity, float partialTick, PoseStack poseStack,
-                           MultiBufferSource bufferSource, int packedLight) {
+                           MultiBufferSource.BufferSource bufferSource, int packedLight,
+                           SubmitNodeCollector submitNodeCollector, CameraRenderState cameraState) {
         var level = Minecraft.getInstance().level;
         if (level == null) {
             return;
         }
         int renderLight = LevelRenderer.getLightColor(level, BlockPos.containing(entity.getX(), entity.getY(), entity.getZ()));
-        Vec3 camPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        Vec3 camPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
         double dx = camPos.x - entity.getX();
         double dy = camPos.y - entity.getY();
         double dz = camPos.z - entity.getZ();
@@ -134,24 +151,17 @@ public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPot
             return;
         }
         var dispatcher = Minecraft.getInstance().getBlockEntityRenderDispatcher();
-        var renderer = dispatcher.getRenderer(blockEntity);
-        if (renderer == null) {
-            BlockState stateToRender = entity.getStoredBlockState();
-            if (stateToRender == null || stateToRender.isAir()) {
-                stateToRender = Blocks.DECORATED_POT.defaultBlockState();
-            }
-            Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
-                stateToRender,
-                poseStack,
-                bufferSource,
-                renderLight,
-                OverlayTexture.NO_OVERLAY
-            );
+        var renderState = dispatcher.tryExtractRenderState(blockEntity, partialTick, null);
+        if (renderState != null) {
+            dispatcher.submit(renderState, poseStack, submitNodeCollector, cameraState);
             return;
         }
-        renderer.render(
-            blockEntity,
-            partialTick,
+        BlockState stateToRender = entity.getStoredBlockState();
+        if (stateToRender == null || stateToRender.isAir()) {
+            stateToRender = Blocks.DECORATED_POT.defaultBlockState();
+        }
+        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
+            stateToRender,
             poseStack,
             bufferSource,
             renderLight,
@@ -159,4 +169,10 @@ public class DecoratedPotCarryEntityRenderer extends EntityRenderer<DecoratedPot
         );
     }
 
+    public static final class RenderState extends EntityRenderState {
+        private DecoratedPotCarryEntity entity;
+        private float partialTick;
+    }
 }
+
+

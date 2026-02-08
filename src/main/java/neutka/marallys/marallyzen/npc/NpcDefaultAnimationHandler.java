@@ -15,7 +15,7 @@ import java.util.UUID;
  * Handles default animation playback for NPCs.
  * Tracks when NPCs should return to their default animation after other animations finish.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class NpcDefaultAnimationHandler {
     
     // Track NPCs that should play default animation
@@ -126,6 +126,7 @@ public class NpcDefaultAnimationHandler {
         });
     }
 }
+
 
 
 

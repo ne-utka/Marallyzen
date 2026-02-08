@@ -56,3 +56,4 @@ public record RadioInteractPacket(BlockPos blockPos, byte action, String station
         });
     }
 }
+

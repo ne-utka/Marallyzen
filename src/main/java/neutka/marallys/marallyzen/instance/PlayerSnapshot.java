@@ -3,10 +3,13 @@ package neutka.marallys.marallyzen.instance;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Relative;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -36,6 +39,7 @@ public record PlayerSnapshot(
         Inventory inventory = player.getInventory();
         CompoundTag inventoryTag = new CompoundTag();
         ListTag items = new ListTag();
+        var ops = RegistryOps.create(NbtOps.INSTANCE, player.registryAccess());
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) {
@@ -43,14 +47,15 @@ public record PlayerSnapshot(
             }
             CompoundTag itemTag = new CompoundTag();
             itemTag.putInt("Slot", i);
-            stack.save(player.registryAccess(), itemTag);
+            var encoded = ItemStack.CODEC.encodeStart(ops, stack).result().orElse(new CompoundTag());
+            itemTag.put("Stack", encoded);
             items.add(itemTag);
         }
         inventoryTag.put("Items", items);
         var abilities = player.getAbilities();
         Marallyzen.LOGGER.debug(
                 "InstanceSnapshot: capture dim={} pos={} mode={} abilities=[invuln={},flying={},mayfly={},instabuild={},mayBuild={},flySpeed={},walkSpeed={}]",
-                player.level().dimension().location(),
+                player.level().dimension().identifier(),
                 player.position(),
                 player.gameMode.getGameModeForPlayer(),
                 abilities.invulnerable,
@@ -85,7 +90,7 @@ public record PlayerSnapshot(
         }
         CompoundTag tag = new CompoundTag();
         if (dimension != null) {
-            tag.putString("dim", dimension.location().toString());
+            tag.putString("dim", dimension.identifier().toString());
         }
         if (position != null) {
             tag.putDouble("x", position.x);
@@ -118,39 +123,43 @@ public record PlayerSnapshot(
         if (player == null) {
             return null;
         }
-        CompoundTag tag = player.getPersistentData().getCompound(PERSIST_TAG);
+        CompoundTag tag = player.getPersistentData().getCompound(PERSIST_TAG).orElse(null);
         if (tag == null || tag.isEmpty()) {
             return null;
         }
-        if (tag.contains("restored") && tag.getBoolean("restored")) {
+        if (tag.contains("restored") && tag.getBoolean("restored").orElse(false)) {
             return null;
         }
         ResourceKey<Level> dimKey = null;
         if (tag.contains("dim")) {
-            ResourceLocation loc = ResourceLocation.tryParse(tag.getString("dim"));
+            Identifier loc = Identifier.tryParse(tag.getString("dim").orElse(null));
             if (loc != null) {
                 dimKey = ResourceKey.create(Registries.DIMENSION, loc);
             }
         }
         Vec3 pos = null;
         if (tag.contains("x") && tag.contains("y") && tag.contains("z")) {
-            pos = new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z"));
+            pos = new Vec3(
+                    tag.getDouble("x").orElse(0.0),
+                    tag.getDouble("y").orElse(0.0),
+                    tag.getDouble("z").orElse(0.0)
+            );
         }
-        float yaw = tag.contains("yaw") ? tag.getFloat("yaw") : 0.0f;
-        float pitch = tag.contains("pitch") ? tag.getFloat("pitch") : 0.0f;
+        float yaw = tag.contains("yaw") ? tag.getFloat("yaw").orElse(0.0f) : 0.0f;
+        float pitch = tag.contains("pitch") ? tag.getFloat("pitch").orElse(0.0f) : 0.0f;
         GameType mode = null;
         if (tag.contains("mode")) {
-            mode = GameType.byName(tag.getString("mode"), GameType.SURVIVAL);
+            mode = GameType.byName(tag.getString("mode").orElse(null), GameType.SURVIVAL);
         }
-        CompoundTag inv = tag.contains("inv", Tag.TAG_COMPOUND) ? tag.getCompound("inv") : null;
-        boolean hasAbilities = tag.contains("hasAbilities") && tag.getBoolean("hasAbilities");
-        boolean invulnerable = tag.getBoolean("invulnerable");
-        boolean flying = tag.getBoolean("flying");
-        boolean mayfly = tag.getBoolean("mayfly");
-        boolean instabuild = tag.getBoolean("instabuild");
-        boolean mayBuild = tag.getBoolean("mayBuild");
-        float flySpeed = tag.contains("flySpeed") ? tag.getFloat("flySpeed") : 0.05f;
-        float walkSpeed = tag.contains("walkSpeed") ? tag.getFloat("walkSpeed") : 0.1f;
+        CompoundTag inv = tag.getCompound("inv").orElse(null);
+        boolean hasAbilities = tag.contains("hasAbilities") && tag.getBoolean("hasAbilities").orElse(false);
+        boolean invulnerable = tag.getBoolean("invulnerable").orElse(false);
+        boolean flying = tag.getBoolean("flying").orElse(false);
+        boolean mayfly = tag.getBoolean("mayfly").orElse(false);
+        boolean instabuild = tag.getBoolean("instabuild").orElse(false);
+        boolean mayBuild = tag.getBoolean("mayBuild").orElse(false);
+        float flySpeed = tag.contains("flySpeed") ? tag.getFloat("flySpeed").orElse(0.05f) : 0.05f;
+        float walkSpeed = tag.contains("walkSpeed") ? tag.getFloat("walkSpeed").orElse(0.1f) : 0.1f;
         return new PlayerSnapshot(
                 dimKey,
                 pos,
@@ -180,32 +189,33 @@ public record PlayerSnapshot(
         if (player == null) {
             return false;
         }
-        if (player.getServer() == null || dimension == null || position == null) {
+        var server = player.level().getServer();
+        if (server == null || dimension == null || position == null) {
             Marallyzen.LOGGER.warn(
                     "InstanceSnapshot: restore skipped (missing server/dimension/position) dim={} pos={}",
-                    dimension != null ? dimension.location() : null,
+                    dimension != null ? dimension.identifier() : null,
                     position
             );
             return false;
         }
-        var target = player.getServer().getLevel(dimension);
+        var target = server.getLevel(dimension);
         if (target == null) {
             Marallyzen.LOGGER.warn(
                     "InstanceSnapshot: restore skipped (target dimension missing) dim={}",
-                    dimension.location()
+                    dimension.identifier()
             );
             return false;
         }
-        CompoundTag tag = player.getPersistentData().getCompound(PERSIST_TAG);
+        CompoundTag tag = player.getPersistentData().getCompound(PERSIST_TAG).orElse(null);
         if (tag != null && !tag.isEmpty()) {
-            if (tag.contains("restored") && tag.getBoolean("restored")) {
+            if (tag.contains("restored") && tag.getBoolean("restored").orElse(false)) {
                 Marallyzen.LOGGER.debug("InstanceSnapshot: restore skipped (already restored)");
                 return false;
             }
         }
         Marallyzen.LOGGER.debug(
                 "InstanceSnapshot: restore start dim={} pos={} mode={} abilities=[invuln={},flying={},mayfly={},instabuild={},mayBuild={},flySpeed={},walkSpeed={}] restricted={}",
-                dimension.location(),
+                dimension.identifier(),
                 position,
                 gameMode,
                 invulnerable,
@@ -220,11 +230,19 @@ public record PlayerSnapshot(
         Inventory inventory = player.getInventory();
         inventory.clearContent();
         if (inventoryTag != null) {
-            ListTag items = inventoryTag.getList("Items", Tag.TAG_COMPOUND);
+            ListTag items = inventoryTag.getList("Items").orElse(new ListTag());
+            var ops = RegistryOps.create(NbtOps.INSTANCE, player.registryAccess());
             for (int i = 0; i < items.size(); i++) {
-                CompoundTag itemTag = items.getCompound(i);
-                int slot = itemTag.getInt("Slot");
-                ItemStack stack = ItemStack.parse(player.registryAccess(), itemTag).orElse(ItemStack.EMPTY);
+                CompoundTag itemTag = items.getCompound(i).orElse(null);
+                if (itemTag == null) {
+                    continue;
+                }
+                int slot = itemTag.getInt("Slot").orElse(-1);
+                Tag stackTag = itemTag.get("Stack");
+                if (stackTag == null) {
+                    stackTag = new CompoundTag();
+                }
+                ItemStack stack = ItemStack.CODEC.parse(ops, stackTag).result().orElse(ItemStack.EMPTY);
                 if (slot >= 0 && slot < inventory.getContainerSize()) {
                     inventory.setItem(slot, stack);
                 }
@@ -244,14 +262,23 @@ public record PlayerSnapshot(
             abilities.setWalkingSpeed(walkingSpeed);
             player.onUpdateAbilities();
         }
-        player.teleportTo(target, position.x, position.y, position.z, yaw, pitch);
+        player.teleportTo(
+                target,
+                position.x,
+                position.y,
+                position.z,
+                java.util.EnumSet.noneOf(Relative.class),
+                yaw,
+                pitch,
+                false
+        );
         if (tag != null && !tag.isEmpty()) {
             tag.putBoolean("restored", true);
             player.getPersistentData().put(PERSIST_TAG, tag);
         }
         Marallyzen.LOGGER.debug(
                 "InstanceSnapshot: restore done dim={} pos={} mode={} restricted={}",
-                player.level().dimension().location(),
+                player.level().dimension().identifier(),
                 player.position(),
                 player.gameMode.getGameModeForPlayer(),
                 InstanceSessionManager.getInstance().isPlayerRestricted(player)
@@ -259,3 +286,7 @@ public record PlayerSnapshot(
         return true;
     }
 }
+
+
+
+

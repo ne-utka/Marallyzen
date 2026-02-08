@@ -20,19 +20,20 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.client.Minecraft;
@@ -41,16 +42,18 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.server.DecoratedPotCarryManager;
 import org.joml.Vector3f;
 
-import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 public class DecoratedPotCarryEntity extends Entity {
     public static final ResourceKey<net.minecraft.world.damagesource.DamageType> HEAVY_POT_DAMAGE =
-        ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "heavy_pot"));
+        ResourceKey.create(Registries.DAMAGE_TYPE, Identifier.fromNamespaceAndPath(Marallyzen.MODID, "heavy_pot"));
     public static final float CARRY_DISTANCE = 3.0f;
     public static final float CARRY_Y_OFFSET = -0.2f;
     public static final float CARRY_WALL_PADDING = 0.25f;
@@ -86,8 +89,8 @@ public class DecoratedPotCarryEntity extends Entity {
 
     private static final EntityDataAccessor<Integer> DATA_MODE =
         SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER =
-        SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    private static final EntityDataAccessor<OptionalInt> DATA_OWNER_ID =
+        SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.OPTIONAL_UNSIGNED_INT);
     private static final EntityDataAccessor<Float> DATA_YAW =
         SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_PITCH =
@@ -100,8 +103,8 @@ public class DecoratedPotCarryEntity extends Entity {
         SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_GRAB_OFFSET_Z =
         SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<CompoundTag> DATA_BLOCK_ENTITY =
-        SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<ItemStack> DATA_BLOCK_ITEM =
+        SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<BlockState> DATA_BLOCK_STATE =
         SynchedEntityData.defineId(DecoratedPotCarryEntity.class, EntityDataSerializers.BLOCK_STATE);
 
@@ -142,6 +145,7 @@ public class DecoratedPotCarryEntity extends Entity {
     private Vec3 clientCarryRenderCurr;
     private boolean clientCarryRenderValid;
     private boolean crushedThisFall;
+    private UUID ownerUuid;
 
     public DecoratedPotCarryEntity(EntityType<? extends DecoratedPotCarryEntity> entityType, Level level) {
         super(entityType, level);
@@ -150,11 +154,11 @@ public class DecoratedPotCarryEntity extends Entity {
     public void initializeFromBlock(BlockPos pos, BlockState state, CompoundTag blockEntityTag, float yaw, UUID owner) {
         BlockState normalized = normalizeFacing(state);
         this.entityData.set(DATA_BLOCK_STATE, normalized);
-        this.entityData.set(DATA_BLOCK_ENTITY, blockEntityTag == null ? new CompoundTag() : blockEntityTag.copy());
+        this.entityData.set(DATA_BLOCK_ITEM, buildPotItemStack(blockEntityTag));
         this.entityData.set(DATA_YAW, yaw);
         this.entityData.set(DATA_PITCH, 0.0f);
         this.entityData.set(DATA_ROLL, 0.0f);
-        this.entityData.set(DATA_OWNER, Optional.ofNullable(owner));
+        setOwnerUuid(owner);
         setGrabOffset(Vec3.ZERO);
         setMode(Mode.CARRIED);
         this.setPos(pos.getX(), pos.getY(), pos.getZ());
@@ -163,14 +167,14 @@ public class DecoratedPotCarryEntity extends Entity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_MODE, Mode.CARRIED.getId());
-        builder.define(DATA_OWNER, Optional.empty());
+        builder.define(DATA_OWNER_ID, OptionalInt.empty());
         builder.define(DATA_YAW, 0.0f);
         builder.define(DATA_PITCH, 0.0f);
         builder.define(DATA_ROLL, 0.0f);
         builder.define(DATA_GRAB_OFFSET_X, 0.0f);
         builder.define(DATA_GRAB_OFFSET_Y, 0.0f);
         builder.define(DATA_GRAB_OFFSET_Z, 0.0f);
-        builder.define(DATA_BLOCK_ENTITY, new CompoundTag());
+        builder.define(DATA_BLOCK_ITEM, ItemStack.EMPTY);
         builder.define(DATA_BLOCK_STATE, Blocks.DECORATED_POT.defaultBlockState());
     }
 
@@ -228,11 +232,21 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     public UUID getOwnerUuid() {
-        return this.entityData.get(DATA_OWNER).orElse(null);
+        return ownerUuid;
     }
 
     public void setOwnerUuid(UUID owner) {
-        this.entityData.set(DATA_OWNER, Optional.ofNullable(owner));
+        this.ownerUuid = owner;
+        if (!level().isClientSide()) {
+            OptionalInt ownerId = OptionalInt.empty();
+            if (owner != null && level() instanceof ServerLevel serverLevel) {
+                ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(owner);
+                if (player != null) {
+                    ownerId = OptionalInt.of(player.getId());
+                }
+            }
+            this.entityData.set(DATA_OWNER_ID, ownerId);
+        }
     }
 
     public Vec3 getGrabOffset() {
@@ -267,12 +281,31 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     public CompoundTag getStoredBlockEntityTag() {
-        return this.entityData.get(DATA_BLOCK_ENTITY);
+        ItemStack stack = this.entityData.get(DATA_BLOCK_ITEM);
+        if (stack == null || stack.isEmpty()) {
+            return new CompoundTag();
+        }
+        TypedEntityData<?> data = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+        if (data == null) {
+            return new CompoundTag();
+        }
+        return data.copyTagWithoutId();
     }
 
     public boolean isCarriedBy(UUID owner) {
+        if (owner == null || getMode() != Mode.CARRIED) {
+            return false;
+        }
+        if (level().isClientSide()) {
+            OptionalInt ownerId = this.entityData.get(DATA_OWNER_ID);
+            if (ownerId.isEmpty()) {
+                return false;
+            }
+            Entity entity = level().getEntity(ownerId.getAsInt());
+            return entity != null && owner.equals(entity.getUUID());
+        }
         UUID current = getOwnerUuid();
-        return current != null && current.equals(owner) && getMode() == Mode.CARRIED;
+        return current != null && current.equals(owner);
     }
 
     @Override
@@ -280,7 +313,7 @@ public class DecoratedPotCarryEntity extends Entity {
         if (hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
         }
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             return getMode() == Mode.RESTING ? InteractionResult.SUCCESS : InteractionResult.PASS;
         }
         if (!(player instanceof ServerPlayer serverPlayer)) {
@@ -298,7 +331,7 @@ public class DecoratedPotCarryEntity extends Entity {
         if (hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
         }
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             return getMode() == Mode.RESTING ? InteractionResult.SUCCESS : InteractionResult.PASS;
         }
         if (!(player instanceof ServerPlayer serverPlayer)) {
@@ -323,7 +356,6 @@ public class DecoratedPotCarryEntity extends Entity {
         this.setPos(pivot.x, pivot.y, pivot.z);
         Vec3 impulse = direction.scale(THROW_SPEED).add(0.0, THROW_LIFT, 0.0);
         setMode(Mode.THROWN, impulse);
-        this.hasImpulse = true;
         this.entityData.set(DATA_YAW, getPotYaw());
         this.entityData.set(DATA_ROLL, getPotRoll());
         landingTicks = 0;
@@ -347,7 +379,6 @@ public class DecoratedPotCarryEntity extends Entity {
             return;
         }
         setMode(Mode.THROWN, new Vec3(0.0, -DROP_SPEED, 0.0));
-        this.hasImpulse = true;
         landingTicks = 0;
         if (player.level() instanceof ServerLevel serverLevel) {
             Vec3 pos = new Vec3(getX(), getY(), getZ());
@@ -362,25 +393,25 @@ public class DecoratedPotCarryEntity extends Entity {
         if (mode == Mode.THROWN) {
             tickThrown();
             this.move(MoverType.SELF, this.getDeltaMovement());
-            if (!level().isClientSide) {
+            if (!level().isClientSide()) {
                 handleImpactParticles();
                 if (!crushedThisFall) {
                     crushEntitiesIfFalling();
                 }
             }
         } else if (mode == Mode.CARRIED) {
-            if (level().isClientSide) {
+            if (level().isClientSide()) {
                 tickCarriedClient();
             } else {
                 tickCarriedServer();
             }
         } else if (mode == Mode.RESTING) {
-            if (level().isClientSide) {
+            if (level().isClientSide()) {
                 clientCarryPosValid = false;
             } else {
                 tickResting();
             }
-        } else if (level().isClientSide) {
+        } else if (level().isClientSide()) {
             clientCarryPosValid = false;
         }
     }
@@ -580,7 +611,7 @@ public class DecoratedPotCarryEntity extends Entity {
                 0.0,
                 velocity.z * 0.15
             );
-            if (velocity.lengthSqr() < 0.0004 && !level().isClientSide) {
+            if (velocity.lengthSqr() < 0.0004 && !level().isClientSide()) {
                 settle();
             }
         }
@@ -703,7 +734,7 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     public void settleFromCarry() {
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             return;
         }
         setMode(Mode.RESTING);
@@ -729,16 +760,8 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     private void dropAsItem(ServerLevel level, BlockPos pos) {
-        ItemStack stack = new ItemStack(Blocks.DECORATED_POT.asItem());
-        CompoundTag tag = getStoredBlockEntityTag();
-        if (tag != null && !tag.isEmpty()) {
-            CompoundTag copy = tag.copy();
-            copy.remove("x");
-            copy.remove("y");
-            copy.remove("z");
-            stack.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(copy));
-        }
-        this.spawnAtLocation(stack);
+        ItemStack stack = buildPotItemStack(getStoredBlockEntityTag());
+        this.spawnAtLocation(level, stack);
         Marallyzen.LOGGER.debug("Decorated pot placement failed at {}, dropped item", pos);
     }
 
@@ -786,67 +809,60 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        tag.putInt("Mode", getMode().getId());
+    protected void addAdditionalSaveData(ValueOutput output) {
+        output.putInt("Mode", getMode().getId());
         UUID owner = getOwnerUuid();
         if (owner != null) {
-            tag.putUUID("Owner", owner);
+            output.putString("Owner", owner.toString());
         }
-        tag.putFloat("Yaw", getPotYaw());
-        tag.putFloat("Pitch", getPotPitch());
-        tag.putFloat("Roll", getPotRoll());
+        output.putFloat("Yaw", getPotYaw());
+        output.putFloat("Pitch", getPotPitch());
+        output.putFloat("Roll", getPotRoll());
         Vec3 grabOffset = getGrabOffset();
-        tag.putFloat("GrabOffsetX", (float) grabOffset.x);
-        tag.putFloat("GrabOffsetY", (float) grabOffset.y);
-        tag.putFloat("GrabOffsetZ", (float) grabOffset.z);
+        output.putFloat("GrabOffsetX", (float) grabOffset.x);
+        output.putFloat("GrabOffsetY", (float) grabOffset.y);
+        output.putFloat("GrabOffsetZ", (float) grabOffset.z);
         BlockState state = getStoredBlockState();
         if (state != null) {
-            var result = BlockState.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, state);
-            result.result().ifPresent(nbt -> tag.put("BlockState", nbt));
+            output.store("BlockState", BlockState.CODEC, state);
         }
-        CompoundTag beTag = getStoredBlockEntityTag();
-        if (beTag != null && !beTag.isEmpty()) {
-            tag.put("BlockEntity", beTag);
-        }
-    }
-
-    @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        if (tag.contains("Mode")) {
-            setMode(Mode.fromId(tag.getInt("Mode")));
-        }
-        if (tag.contains("Owner")) {
-            this.entityData.set(DATA_OWNER, Optional.of(tag.getUUID("Owner")));
-        }
-        if (tag.contains("Yaw")) {
-            this.entityData.set(DATA_YAW, tag.getFloat("Yaw"));
-        }
-        if (tag.contains("Pitch")) {
-            this.entityData.set(DATA_PITCH, tag.getFloat("Pitch"));
-        }
-        if (tag.contains("Roll")) {
-            this.entityData.set(DATA_ROLL, tag.getFloat("Roll"));
-        }
-        if (tag.contains("GrabOffsetX") || tag.contains("GrabOffsetY") || tag.contains("GrabOffsetZ")) {
-            this.entityData.set(DATA_GRAB_OFFSET_X, tag.getFloat("GrabOffsetX"));
-            this.entityData.set(DATA_GRAB_OFFSET_Y, tag.getFloat("GrabOffsetY"));
-            this.entityData.set(DATA_GRAB_OFFSET_Z, tag.getFloat("GrabOffsetZ"));
-        }
-        if (tag.contains("BlockState")) {
-            var result = BlockState.CODEC.decode(net.minecraft.nbt.NbtOps.INSTANCE, tag.get("BlockState"));
-            result.result().ifPresent(pair -> this.entityData.set(DATA_BLOCK_STATE, pair.getFirst()));
-        }
-        if (tag.contains("BlockEntity")) {
-            this.entityData.set(DATA_BLOCK_ENTITY, tag.getCompound("BlockEntity"));
+        ItemStack blockItem = this.entityData.get(DATA_BLOCK_ITEM);
+        if (blockItem != null && !blockItem.isEmpty()) {
+            output.store("BlockItem", ItemStack.CODEC, blockItem);
         }
     }
 
     @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        input.getInt("Mode").ifPresent(modeId -> setMode(Mode.fromId(modeId)));
+        input.getString("Owner").ifPresent(value -> {
+            try {
+                setOwnerUuid(UUID.fromString(value));
+            } catch (IllegalArgumentException ignored) {
+                setOwnerUuid(null);
+            }
+        });
+        this.entityData.set(DATA_YAW, input.getFloatOr("Yaw", 0.0f));
+        this.entityData.set(DATA_PITCH, input.getFloatOr("Pitch", 0.0f));
+        this.entityData.set(DATA_ROLL, input.getFloatOr("Roll", 0.0f));
+        float grabX = input.getFloatOr("GrabOffsetX", 0.0f);
+        float grabY = input.getFloatOr("GrabOffsetY", 0.0f);
+        float grabZ = input.getFloatOr("GrabOffsetZ", 0.0f);
+        if (grabX != 0.0f || grabY != 0.0f || grabZ != 0.0f) {
+            this.entityData.set(DATA_GRAB_OFFSET_X, grabX);
+            this.entityData.set(DATA_GRAB_OFFSET_Y, grabY);
+            this.entityData.set(DATA_GRAB_OFFSET_Z, grabZ);
+        }
+        input.read("BlockState", BlockState.CODEC)
+            .ifPresent(state -> this.entityData.set(DATA_BLOCK_STATE, state));
+        input.read("BlockItem", ItemStack.CODEC)
+            .ifPresent(stack -> this.entityData.set(DATA_BLOCK_ITEM, stack));
+    }
+
     public boolean shouldRenderAtSqrDistance(double distance) {
         return true;
     }
 
-    @Override
     public EntityDimensions getDimensions(Pose pose) {
         AABB b = POT_BOUNDS;
         return EntityDimensions.fixed(
@@ -855,20 +871,6 @@ public class DecoratedPotCarryEntity extends Entity {
         );
     }
 
-    @Override
-    protected AABB makeBoundingBox() {
-        AABB b = POT_BOUNDS;
-        return new AABB(
-            getX() + b.minX,
-            getY() + b.minY,
-            getZ() + b.minZ,
-            getX() + b.maxX,
-            getY() + b.maxY,
-            getZ() + b.maxZ
-        ).inflate(COLLISION_EPS, 0.0, COLLISION_EPS);
-    }
-
-    @Override
     public boolean canBeCollidedWith() {
         return !isRemoved() && getMode() != Mode.CARRIED;
     }
@@ -902,45 +904,40 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     @Override
-    public boolean hurt(DamageSource source, float amount) {
-        if (level().isClientSide) {
-            return true;
-        }
+    public boolean hurtServer(ServerLevel serverLevel, DamageSource source, float amount) {
         if (getMode() == Mode.CARRIED) {
             return false;
         }
         Entity attacker = source.getEntity();
         if (attacker instanceof Player player) {
-            if (level() instanceof ServerLevel serverLevel) {
-                BlockState state = getStoredBlockState();
-                if (state == null || state.isAir()) {
-                    state = Blocks.DECORATED_POT.defaultBlockState();
-                }
-                serverLevel.sendParticles(
-                    new BlockParticleOption(ParticleTypes.BLOCK, state),
-                    getX(),
-                    getY(),
-                    getZ(),
-                    12,
-                    0.2,
-                    0.2,
-                    0.2,
-                    0.02
-                );
-                serverLevel.playSound(
-                    null,
-                    getX(),
-                    getY(),
-                    getZ(),
-                    SoundEvents.DECORATED_POT_BREAK,
-                    SoundSource.BLOCKS,
-                    1.0f,
-                    1.0f
-                );
+            BlockState state = getStoredBlockState();
+            if (state == null || state.isAir()) {
+                state = Blocks.DECORATED_POT.defaultBlockState();
             }
+            serverLevel.sendParticles(
+                new BlockParticleOption(ParticleTypes.BLOCK, state),
+                getX(),
+                getY(),
+                getZ(),
+                12,
+                0.2,
+                0.2,
+                0.2,
+                0.02
+            );
+            serverLevel.playSound(
+                null,
+                getX(),
+                getY(),
+                getZ(),
+                SoundEvents.DECORATED_POT_BREAK,
+                SoundSource.BLOCKS,
+                1.0f,
+                1.0f
+            );
             if (player.isCreative()) {
                 discard();
-            } else if (level() instanceof ServerLevel serverLevel) {
+            } else {
                 dropAsItem(serverLevel, BlockPos.containing(position()));
                 discard();
             }
@@ -948,4 +945,19 @@ public class DecoratedPotCarryEntity extends Entity {
         }
         return false;
     }
+
+    private ItemStack buildPotItemStack(CompoundTag blockEntityTag) {
+        ItemStack stack = new ItemStack(Blocks.DECORATED_POT.asItem());
+        if (blockEntityTag == null || blockEntityTag.isEmpty()) {
+            return stack;
+        }
+        CompoundTag copy = blockEntityTag.copy();
+        copy.remove("x");
+        copy.remove("y");
+        copy.remove("z");
+        stack.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(BlockEntityType.DECORATED_POT, copy));
+        return stack;
+    }
 }
+
+

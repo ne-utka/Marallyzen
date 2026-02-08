@@ -2,6 +2,7 @@ package neutka.marallys.marallyzen.npc;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
@@ -110,7 +111,7 @@ public class FakePlayerEntity extends ServerPlayer {
             // Minecraft determines slim model ONLY by UUID, not by JSON content
             // The UUID already has the correct bit set above
             Property skinProperty = new Property("textures", texture, signature != null ? signature : "");
-            profile.getProperties().put("textures", skinProperty);
+            addProfileProperty(profile, "textures", skinProperty);
             
             // Verify the UUID has the correct bit set
             boolean slimBitSet = (uuid.getLeastSignificantBits() & 0x1L) == 0x1L;
@@ -124,6 +125,25 @@ public class FakePlayerEntity extends ServerPlayer {
         
         return profile;
     }
+
+    private static void addProfileProperty(GameProfile profile, String key, Property property) {
+        if (profile == null || property == null) {
+            return;
+        }
+        try {
+            Object props = null;
+            try {
+                props = profile.getClass().getMethod("getProperties").invoke(profile);
+            } catch (NoSuchMethodException ignored) {
+                props = profile.getClass().getMethod("properties").invoke(profile);
+            }
+            if (props instanceof PropertyMap map) {
+                map.put(key, property);
+            }
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to set GameProfile property {}", key, e);
+        }
+    }
     
     @Override
     public boolean isSpectator() {
@@ -135,4 +155,3 @@ public class FakePlayerEntity extends ServerPlayer {
         return false;
     }
 }
-

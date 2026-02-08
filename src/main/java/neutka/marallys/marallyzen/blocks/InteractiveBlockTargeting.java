@@ -14,9 +14,9 @@ public final class InteractiveBlockTargeting {
         RADIO,
         OLD_TV,
         VIDEO_CAMERA,
-        CHAIN,
         DICTAPHONE,
         DICTAPHONE_SIMPLE,
+        DECORATED_POT,
         NONE
     }
 
@@ -40,14 +40,14 @@ public final class InteractiveBlockTargeting {
         if (block == MarallyzenBlocks.VIDEO_CAMERA.get()) {
             return Type.VIDEO_CAMERA;
         }
-        if (block == MarallyzenBlocks.INTERACTIVE_CHAIN.get()) {
-            return Type.CHAIN;
-        }
         if (block == MarallyzenBlocks.DICTAPHONE.get()) {
             return Type.DICTAPHONE;
         }
         if (block == MarallyzenBlocks.DICTAPHONE_SIMPLE.get()) {
             return Type.DICTAPHONE_SIMPLE;
+        }
+        if (block == net.minecraft.world.level.block.Blocks.DECORATED_POT) {
+            return Type.DECORATED_POT;
         }
         return Type.NONE;
     }
@@ -60,9 +60,9 @@ public final class InteractiveBlockTargeting {
             case RADIO -> null;
             case OLD_TV -> null;
             case VIDEO_CAMERA -> null;
-            case CHAIN -> InteractiveBlockNarrations.chainInstructionMessage();
             case DICTAPHONE -> null;
             case DICTAPHONE_SIMPLE -> null;
+            case DECORATED_POT -> null;
             case NONE -> null;
         };
     }

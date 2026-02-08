@@ -101,7 +101,8 @@ public class NarrationManager {
         if (value == null || value.isEmpty()) {
             return value;
         }
-        return value.replace('\ue901', '\ue900');
+        return value.replace('\ue901', '\ue900')
+            .replace('\ue903', '\ue902');
     }
     
     /**

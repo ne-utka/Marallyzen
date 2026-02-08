@@ -27,3 +27,4 @@ public record InstanceLeaveRequestPacket() implements CustomPacketPayload {
         });
     }
 }
+

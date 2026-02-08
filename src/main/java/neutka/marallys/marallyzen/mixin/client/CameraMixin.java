@@ -5,11 +5,11 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Util;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.fpv.MarallyzenFpvController;
 import neutka.marallys.marallyzen.director.CameraState;
 import neutka.marallys.marallyzen.director.DirectorRuntime;
-import neutka.marallys.marallyzen.director.ReplayTimeSourceHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,7 +24,7 @@ public abstract class CameraMixin {
     @Inject(method = "setup", at = @At("TAIL"), require = 0)
     private void marallyzen$fpvEmote(BlockGetter level, Entity entity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci) {
         if (DirectorRuntime.isPreviewing()) {
-            long timeMs = ReplayTimeSourceHolder.get().getTimestamp();
+            long timeMs = Util.getMillis();
             DirectorRuntime.tick(timeMs);
             CameraState state = DirectorRuntime.evaluate(timeMs);
             if (state != null) {
@@ -35,15 +35,6 @@ public abstract class CameraMixin {
             }
         }
         var cameraController = neutka.marallys.marallyzen.client.camera.CameraManager.getInstance().getCameraController();
-        if (neutka.marallys.marallyzen.client.cutscene.editor.CutscenePreviewPlayer.isPreviewActive()) {
-            float time = neutka.marallys.marallyzen.client.cutscene.editor.CutscenePreviewPlayer.getActivePreviewTime()
-                + (float) tickDelta;
-            if (neutka.marallys.marallyzen.client.cutscene.editor.CutscenePreviewPlayer.applyPreviewCamera(time, cameraController)) {
-                Camera camera = (Camera) (Object) this;
-                applyCameraPosition(camera, cameraController.getPosition());
-                return;
-            }
-        }
         if (cameraController.isActive()) {
             Camera camera = (Camera) (Object) this;
             applyCameraPosition(camera, cameraController.getInterpolatedPosition(tickDelta));
@@ -57,7 +48,7 @@ public abstract class CameraMixin {
             Camera camera = (Camera) (Object) this;
             Vec3 forward = player.getLookAngle();
             if (forward.lengthSqr() > 1.0E-6) {
-                Vec3 pos = camera.getPosition();
+                Vec3 pos = camera.position();
                 Vec3 shifted = pos.add(forward.normalize().scale(FPV_FORWARD_OFFSET));
                 applyCameraPosition(camera, shifted);
             }

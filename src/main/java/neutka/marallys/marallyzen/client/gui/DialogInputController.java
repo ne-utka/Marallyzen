@@ -16,7 +16,7 @@ import neutka.marallys.marallyzen.network.NetworkHelper;
  * Processes scroll wheel, right click, and ESC key.
  * Input is blocked during OPENING, EXECUTING, and TRANSITION states.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class DialogInputController {
     
     /**
@@ -119,18 +119,6 @@ public class DialogInputController {
         // Check if ESC key is pressed (key code 256 = GLFW.GLFW_KEY_ESCAPE)
         // Also check if no screen is open (otherwise ESC would close the screen)
         if (event.getKey() == 256 && event.getAction() == 1 && mc.screen == null) { // 1 = press
-            // Block ESC during screen fade
-            var screenFadeManager = neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance();
-            if (screenFadeManager.isActive()) {
-                return;
-            }
-            
-            // Block ESC during eyes close cutscene
-            var eyesCloseManager = neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance();
-            if (eyesCloseManager.isActive()) {
-                return;
-            }
-            
             DialogStateMachine stateMachine = DialogStateMachine.getInstance();
             
             // Only process ESC if dialog is active (not IDLE or CLOSED)

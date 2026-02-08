@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Map;
@@ -29,11 +27,12 @@ public record ReceiveScriptsPacket(Map<String, String> scripts) implements Custo
 
     public static void handle(ReceiveScriptsPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 // TODO: Load scripts into client-side DenizenCore (if we add client-side scripting)
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("ReceiveScriptsPacket received: {} scripts", packet.scripts.size());
             }
         });
     }
 }
+
 

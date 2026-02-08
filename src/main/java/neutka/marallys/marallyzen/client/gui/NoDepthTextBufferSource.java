@@ -1,22 +1,18 @@
 package neutka.marallys.marallyzen.client.gui;
 
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.IdentityHashMap;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class NoDepthTextBufferSource implements MultiBufferSource {
     private final MultiBufferSource delegate;
-
-    private static final Field TEXTURE_STATE_FIELD = findTextureStateField();
-    private static final Field TEXTURE_FIELD = findTextureField();
-    private static final Map<Class<?>, Field> COMPOSITE_STATE_FIELDS = new ConcurrentHashMap<>();
 
     public NoDepthTextBufferSource(MultiBufferSource delegate) {
         this.delegate = delegate;
@@ -25,7 +21,7 @@ public final class NoDepthTextBufferSource implements MultiBufferSource {
     @Override
     public com.mojang.blaze3d.vertex.VertexConsumer getBuffer(RenderType type) {
         if (isTextRenderType(type)) {
-            ResourceLocation texture = extractTexture(type);
+            Identifier texture = extractTexture(type);
             if (texture != null) {
                 return delegate.getBuffer(NoDepthTextRenderType.textNoDepth(texture));
             }
@@ -38,61 +34,45 @@ public final class NoDepthTextBufferSource implements MultiBufferSource {
         return name.contains("text");
     }
 
-    private static ResourceLocation extractTexture(RenderType type) {
-        if (TEXTURE_STATE_FIELD == null || TEXTURE_FIELD == null) {
-            return null;
-        }
-        try {
-            Field compositeField = COMPOSITE_STATE_FIELDS.computeIfAbsent(type.getClass(), NoDepthTextBufferSource::findCompositeStateField);
-            if (compositeField == null) {
-                return null;
-            }
-            Object compositeState = compositeField.get(type);
-            if (compositeState == null) {
-                return null;
-            }
-            Object textureState = TEXTURE_STATE_FIELD.get(compositeState);
-            if (textureState == null) {
-                return null;
-            }
-            Object value = TEXTURE_FIELD.get(textureState);
-            return value instanceof ResourceLocation rl ? rl : null;
-        } catch (IllegalAccessException e) {
-            return null;
-        }
+    private static Identifier extractTexture(RenderType type) {
+        return findResourceLocation(type, new IdentityHashMap<>());
     }
 
-    private static Field findCompositeStateField(Class<?> typeClass) {
-        Class<?> current = typeClass;
-        while (current != null && RenderType.class.isAssignableFrom(current)) {
-            for (Field field : current.getDeclaredFields()) {
-                if (field.getType().getName().contains("CompositeState")) {
-                    field.setAccessible(true);
-                    return field;
+    private static Identifier findResourceLocation(Object value, IdentityHashMap<Object, Boolean> seen) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Identifier rl) {
+            return rl;
+        }
+        if (value.getClass().isPrimitive() || value.getClass().isEnum() || value instanceof String) {
+            return null;
+        }
+        if (seen.put(value, Boolean.TRUE) != null) {
+            return null;
+        }
+        for (Field field : value.getClass().getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            field.setAccessible(true);
+            try {
+                Identifier found = findResourceLocation(field.get(value), seen);
+                if (found != null) {
+                    return found;
                 }
-            }
-            current = current.getSuperclass();
-        }
-        return null;
-    }
-
-    private static Field findTextureStateField() {
-        for (Field field : RenderType.CompositeState.class.getDeclaredFields()) {
-            if (field.getType() == RenderStateShard.TextureStateShard.class) {
-                field.setAccessible(true);
-                return field;
-            }
-        }
-        return null;
-    }
-
-    private static Field findTextureField() {
-        for (Field field : RenderStateShard.TextureStateShard.class.getDeclaredFields()) {
-            if (field.getType() == ResourceLocation.class) {
-                field.setAccessible(true);
-                return field;
+            } catch (IllegalAccessException ignored) {
+                // ignore inaccessible fields
             }
         }
         return null;
     }
 }
+
+
+
+
+
+
+
+

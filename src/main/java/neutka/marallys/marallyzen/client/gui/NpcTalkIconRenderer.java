@@ -7,6 +7,8 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
@@ -72,11 +74,11 @@ public class NpcTalkIconRenderer {
             float bob = (float) Math.sin((gameTime + partialTick) * BOB_SPEED) * BOB_AMPLITUDE;
 
             poseStack.pushPose();
-            poseStack.translate(x - camera.getPosition().x, y - camera.getPosition().y + yOffset + bob, z - camera.getPosition().z);
+            poseStack.translate(x - camera.position().x, y - camera.position().y + yOffset + bob, z - camera.position().z);
 
             // Поворачиваем к камере (billboard)
-            float cameraYaw = camera.getYRot();
-            float cameraPitch = camera.getXRot();
+            float cameraYaw = camera.yRot();
+            float cameraPitch = camera.xRot();
             poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
             poseStack.mulPose(Axis.XP.rotationDegrees(cameraPitch));
             poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f));
@@ -106,7 +108,7 @@ public class NpcTalkIconRenderer {
     }
 
     private static void renderPixelIcon(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource, int color) {
-        VertexConsumer vc = bufferSource.getBuffer(net.minecraft.client.renderer.RenderType.gui());
+        VertexConsumer vc = bufferSource.getBuffer(RenderTypes.textBackground());
 
         float widthPx = ICON_WIDTH * PIXEL_SIZE;
         float heightPx = ICON_HEIGHT * PIXEL_SIZE;
@@ -146,4 +148,10 @@ public class NpcTalkIconRenderer {
     private record TalkIcon(int argbColor) {
     }
 }
+
+
+
+
+
+
 

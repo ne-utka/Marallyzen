@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 /**
- * Controls camera position, rotation, and FOV for cutscenes.
+ * Controls camera position, rotation, and FOV.
  * Provides smooth interpolation between camera states.
  */
 public class CameraController {

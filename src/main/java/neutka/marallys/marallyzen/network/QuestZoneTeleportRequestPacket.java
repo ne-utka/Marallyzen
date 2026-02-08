@@ -34,3 +34,4 @@ public record QuestZoneTeleportRequestPacket(String zoneId) implements CustomPac
         });
     }
 }
+

@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.network;
 
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -9,12 +9,12 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 @SuppressWarnings("removal")
 public class MarallyzenNetwork {
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, path);
+    public static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, path);
     }
 
     @SubscribeEvent
@@ -29,18 +29,6 @@ public class MarallyzenNetwork {
                     Marallyzen.LOGGER.info("[NetDebug] CLIENT recv OpenDialogPacket");
                     OpenDialogPacket.handle(packet, ctx);
                 }
-        );
-
-        registrar.playToClient(
-                PlayScenePacket.TYPE,
-                PlayScenePacket.STREAM_CODEC,
-                PlayScenePacket::handle
-        );
-
-        registrar.playToClient(
-                ReloadScenesPacket.TYPE,
-                ReloadScenesPacket.STREAM_CODEC,
-                ReloadScenesPacket::handle
         );
 
         registrar.playToClient(
@@ -101,49 +89,77 @@ public class MarallyzenNetwork {
         );
 
         registrar.playToClient(
-                ScreenFadePacket.TYPE,
-                ScreenFadePacket.STREAM_CODEC,
-                (packet, ctx) -> {
-                    Marallyzen.LOGGER.info("[NetDebug] CLIENT recv ScreenFadePacket");
-                    ScreenFadePacket.handle(packet, ctx);
-                }
-        );
-
-        registrar.playToClient(
-                EyesClosePacket.TYPE,
-                EyesClosePacket.STREAM_CODEC,
-                EyesClosePacket::handle
-        );
-
-        registrar.playToClient(
                 FlashlightStatePacket.TYPE,
                 FlashlightStatePacket.STREAM_CODEC,
                 FlashlightStatePacket::handle
         );
 
         registrar.playToClient(
-                InteractiveChainJumpPacket.TYPE,
-                InteractiveChainJumpPacket.STREAM_CODEC,
-                InteractiveChainJumpPacket::handle
+                LeverShakePacket.TYPE,
+                LeverShakePacket.STREAM_CODEC,
+                LeverShakePacket::handle
         );
 
         registrar.playToClient(
-                InteractiveChainHangPacket.TYPE,
-                InteractiveChainHangPacket.STREAM_CODEC,
-                InteractiveChainHangPacket::handle
+                LeverInteractionStartPacket.TYPE,
+                LeverInteractionStartPacket.STREAM_CODEC,
+                LeverInteractionStartPacket::handle
         );
 
         registrar.playToClient(
-                InteractiveChainAttachPacket.TYPE,
-                InteractiveChainAttachPacket.STREAM_CODEC,
-                InteractiveChainAttachPacket::handle
+                LeverInteractionMovePacket.TYPE,
+                LeverInteractionMovePacket.STREAM_CODEC,
+                LeverInteractionMovePacket::handle
         );
 
         registrar.playToClient(
-                InteractiveChainSwingStatePacket.TYPE,
-                InteractiveChainSwingStatePacket.STREAM_CODEC,
-                InteractiveChainSwingStatePacket::handle
+                LeverQteStartPacket.TYPE,
+                LeverQteStartPacket.STREAM_CODEC,
+                LeverQteStartPacket::handle
         );
+
+        registrar.playToClient(
+                LeverQteStepPacket.TYPE,
+                LeverQteStepPacket.STREAM_CODEC,
+                LeverQteStepPacket::handle
+        );
+
+        registrar.playToClient(
+                LeverQteEndPacket.TYPE,
+                LeverQteEndPacket.STREAM_CODEC,
+                LeverQteEndPacket::handle
+        );
+
+        registrar.playToClient(
+                ValveInteractionStartPacket.TYPE,
+                ValveInteractionStartPacket.STREAM_CODEC,
+                ValveInteractionStartPacket::handle
+        );
+
+        registrar.playToClient(
+                ValveInteractionMovePacket.TYPE,
+                ValveInteractionMovePacket.STREAM_CODEC,
+                ValveInteractionMovePacket::handle
+        );
+
+        registrar.playToClient(
+                ValveQteStartPacket.TYPE,
+                ValveQteStartPacket.STREAM_CODEC,
+                ValveQteStartPacket::handle
+        );
+
+        registrar.playToClient(
+                ValveQteStepPacket.TYPE,
+                ValveQteStepPacket.STREAM_CODEC,
+                ValveQteStepPacket::handle
+        );
+
+        registrar.playToClient(
+                ValveQteEndPacket.TYPE,
+                ValveQteEndPacket.STREAM_CODEC,
+                ValveQteEndPacket::handle
+        );
+
 
         registrar.playToClient(
                 QuestSyncPacket.TYPE,
@@ -151,11 +167,6 @@ public class MarallyzenNetwork {
                 QuestSyncPacket::handle
         );
 
-        registrar.playToClient(
-                CutsceneWorldTrackPacket.TYPE,
-                CutsceneWorldTrackPacket.STREAM_CODEC,
-                CutsceneWorldTrackPacket::handle
-        );
 
         registrar.playToClient(
                 QuestAudioPacket.TYPE,
@@ -224,17 +235,6 @@ public class MarallyzenNetwork {
                 NarrationCompletePacket::handle
         );
 
-        registrar.playToServer(
-                ScreenFadeCompletePacket.TYPE,
-                ScreenFadeCompletePacket.STREAM_CODEC,
-                ScreenFadeCompletePacket::handle
-        );
-
-        registrar.playToServer(
-                EyesCloseCompletePacket.TYPE,
-                EyesCloseCompletePacket.STREAM_CODEC,
-                EyesCloseCompletePacket::handle
-        );
 
         registrar.playToServer(
                 PosterInteractPacket.TYPE,
@@ -248,23 +248,9 @@ public class MarallyzenNetwork {
                 PosterBookBindPacket::handle
         );
 
-        registrar.playToServer(
-                ReplayRecordPacket.TYPE,
-                ReplayRecordPacket.STREAM_CODEC,
-                ReplayRecordPacket::handle
-        );
+        // Replay networking removed.
 
-        registrar.playToServer(
-                InteractiveChainInteractPacket.TYPE,
-                InteractiveChainInteractPacket.STREAM_CODEC,
-                InteractiveChainInteractPacket::handle
-        );
-
-        registrar.playToServer(
-                InteractiveChainSwingPacket.TYPE,
-                InteractiveChainSwingPacket.STREAM_CODEC,
-                InteractiveChainSwingPacket::handle
-        );
+        // Interactive chain networking removed.
 
         registrar.playToServer(
                 QuestSelectPacket.TYPE,
@@ -272,11 +258,6 @@ public class MarallyzenNetwork {
                 QuestSelectPacket::handle
         );
 
-        registrar.playToServer(
-                CutsceneWorldRecordPacket.TYPE,
-                CutsceneWorldRecordPacket.STREAM_CODEC,
-                CutsceneWorldRecordPacket::handle
-        );
 
         registrar.playToServer(
                 OldTvBookBindPacket.TYPE,
@@ -302,6 +283,39 @@ public class MarallyzenNetwork {
                 QuestZoneTeleportRequestPacket::handle
         );
 
+        registrar.playToServer(
+                DecoratedPotCarryActionPacket.TYPE,
+                DecoratedPotCarryActionPacket.STREAM_CODEC,
+                DecoratedPotCarryActionPacket::handle
+        );
+
+        registrar.playToServer(
+                LeverQteInputPacket.TYPE,
+                LeverQteInputPacket.STREAM_CODEC,
+                LeverQteInputPacket::handle
+        );
+
+        registrar.playToServer(
+                LeverQteDownAckPacket.TYPE,
+                LeverQteDownAckPacket.STREAM_CODEC,
+                LeverQteDownAckPacket::handle
+        );
+
+        registrar.playToServer(
+                ValveQteInputPacket.TYPE,
+                ValveQteInputPacket.STREAM_CODEC,
+                ValveQteInputPacket::handle
+        );
+
+        registrar.playToServer(
+                ValveQteDownAckPacket.TYPE,
+                ValveQteDownAckPacket.STREAM_CODEC,
+                ValveQteDownAckPacket::handle
+        );
+
         Marallyzen.LOGGER.info("Marallyzen network packets registered");
     }
 }
+
+
+

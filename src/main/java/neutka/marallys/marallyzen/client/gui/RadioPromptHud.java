@@ -1,15 +1,15 @@
 package neutka.marallys.marallyzen.client.gui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
-import org.lwjgl.opengl.GL11;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import neutka.marallys.marallyzen.Marallyzen;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -22,7 +22,6 @@ import neutka.marallys.marallyzen.client.ClientRadioManager;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
-import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
 
 public class RadioPromptHud {
     private static RadioPromptHud instance;
@@ -37,7 +36,12 @@ public class RadioPromptHud {
     private static final int NARRATION_TEXT_COLOR = 0x404040;
     private static final int NARRATION_BG_COLOR = 0x000000;
     private static final float BACKGROUND_PADDING_X = 3.42f;
-    private static final float BACKGROUND_PADDING_Y = 1.855f;
+    private static final float BACKGROUND_PADDING_Y = 2.855f;
+    private static final float BACKGROUND_CORNER_RADIUS = 2.0f;
+    private static final float ROUNDED_BG_TEX_SIZE = 64.0f;
+    private static final float ROUNDED_BG_CORNER_PX = 10.0f;
+    private static final Identifier ROUNDED_BG_TEXTURE =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
     private static final int OPTION_HEIGHT_PIXELS = 13;
     private static final int OPTION_SPACING_PIXELS = 4;
     private static final float LINE_TEXT_OFFSET_Y = OPTION_HEIGHT_PIXELS / 2.0f - 3.0f;
@@ -89,13 +93,6 @@ public class RadioPromptHud {
         if (mc.player == null || mc.level == null) {
             return;
         }
-        if (neutka.marallys.marallyzen.client.cutscene.ScreenFadeManager.getInstance().isActive()) {
-            return;
-        }
-        if (neutka.marallys.marallyzen.client.cutscene.EyesCloseManager.getInstance().isActive()) {
-            return;
-        }
-
         float interpolatedFadeIn = Mth.lerp(partialTick, previousFadeInProgress, fadeInProgress);
         float interpolatedFadeOut = Mth.lerp(partialTick, previousFadeOutProgress, fadeOutProgress);
         boolean showing = targetVisible;
@@ -111,9 +108,9 @@ public class RadioPromptHud {
             - PromptAnchorUtil.pxToWorld(20.0f, SCALE_BASE);
         double blockZ = targetPos.getZ() + 0.5;
 
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        double camX = camera.position().x;
+        double camY = camera.position().y;
+        double camZ = camera.position().z;
 
         double dx = blockX - camX;
         double dy = blockY - camY;
@@ -146,8 +143,8 @@ public class RadioPromptHud {
 
         poseStack.translate(offsetX, offsetY, offsetZ);
 
-        float cameraYaw = camera.getYRot();
-        float cameraPitch = camera.getXRot();
+        float cameraYaw = camera.yRot();
+        float cameraPitch = camera.xRot();
         poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(cameraPitch));
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f));
@@ -163,7 +160,7 @@ public class RadioPromptHud {
         poseStack.scale(scale, scale, scale);
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        MultiBufferSource textSource = new NoDepthTextBufferSource(bufferSource);
+        MultiBufferSource textSource = bufferSource;
         Font font = mc.font;
         Matrix4f matrix = poseStack.last().pose();
 
@@ -177,9 +174,6 @@ public class RadioPromptHud {
         String toggleLabel = isPlaying ? "Выкл." : "Вкл.";
 
         float currentY = 0.0f;
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
         if (isPlaying) {
             currentY -= (OPTION_HEIGHT_PIXELS + OPTION_SPACING_PIXELS);
             currentY = renderTitleLine(font, bufferSource, textSource, matrix, currentY, alpha, ClientRadioManager.getStationName(targetPos), primeColor);
@@ -187,7 +181,6 @@ public class RadioPromptHud {
         }
         renderToggleLine(font, bufferSource, textSource, matrix, currentY, alpha, color, narrationColor, toggleLabel, !isPlaying);
         bufferSource.endBatch();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         poseStack.popPose();
     }
 
@@ -240,7 +233,7 @@ public class RadioPromptHud {
         float bgY = (currentY + LINE_TEXT_OFFSET_Y + textHeight / 2.0f) - bgHeight / 2.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+        fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
         drawText(matrix, textSource, font, title, 0.0f, textY, color);
         return currentY + OPTION_HEIGHT_PIXELS + OPTION_SPACING_PIXELS;
     }
@@ -267,7 +260,7 @@ public class RadioPromptHud {
         if (drawBackground) {
             int bgAlpha = (int) (alpha * 120);
             int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-            fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+            fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
         }
 
         float cursorX = 0.0f;
@@ -304,7 +297,7 @@ public class RadioPromptHud {
         if (drawBackground) {
             int bgAlpha = (int) (alpha * 120);
             int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-            fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+            fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
         }
 
         float cursorX = 0.0f;
@@ -323,7 +316,7 @@ public class RadioPromptHud {
                           float x, float y, float width, float height, int color) {
         com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
             NoDepthTextRenderType.textNoDepth(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
             )
         );
 
@@ -375,6 +368,95 @@ public class RadioPromptHud {
             .setNormal(normalX, normalY, normalZ);
     }
 
+    private void fillRoundedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                 float x, float y, float width, float height, float radius, int color) {
+        if (radius <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+        fillTexturedRect(matrix, bufferSource, x, y, width, height, color);
+    }
+
+    private void fillTexturedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                  float x, float y, float width, float height, int color) {
+        float corner = Math.min(Math.max(BACKGROUND_CORNER_RADIUS, 0.0f), Math.min(width, height) / 2.0f);
+        if (corner <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+
+        com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
+            NoDepthTextRenderType.textNoDepth(ROUNDED_BG_TEXTURE)
+        );
+
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+
+        int light = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
+        int overlay = net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY;
+        int lightU = light & 0xFFFF;
+        int lightV = (light >> 16) & 0xFFFF;
+        int overlayU = overlay & 0xFFFF;
+        int overlayV = (overlay >> 16) & 0xFFFF;
+
+        float z = 0.01f;
+        float uCorner = ROUNDED_BG_CORNER_PX / ROUNDED_BG_TEX_SIZE;
+
+        float x0 = x;
+        float x1 = x + corner;
+        float x2 = x + width - corner;
+        float x3 = x + width;
+        float y0 = y;
+        float y1 = y + corner;
+        float y2 = y + height - corner;
+        float y3 = y + height;
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y0, x1, y1, 0.0f, 0.0f, uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y0, x2, y1, uCorner, 0.0f, 1.0f - uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y0, x3, y1, 1.0f - uCorner, 0.0f, 1.0f, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y1, x1, y2, 0.0f, uCorner, uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y1, x2, y2, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y1, x3, y2, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y2, x1, y3, 0.0f, 1.0f - uCorner, uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y2, x2, y3, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y2, x3, y3, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+    }
+
+    private void drawTexturedQuad(com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer, Matrix4f matrix,
+                                  float left, float top, float right, float bottom,
+                                  float u0, float v0, float u1, float v1,
+                                  int r, int g, int b, int a, float z,
+                                  int overlayU, int overlayV, int lightU, int lightV) {
+        vertexConsumer.addVertex(matrix, left, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, left, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+    }
+
     private void drawComponent(Matrix4f matrix, MultiBufferSource bufferSource, Font font,
                                Component text, float x, float y, int color) {
         font.drawInBatch(
@@ -407,4 +489,9 @@ public class RadioPromptHud {
         );
     }
 }
+
+
+
+
+
 

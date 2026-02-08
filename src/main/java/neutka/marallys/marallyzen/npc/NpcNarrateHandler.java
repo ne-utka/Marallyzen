@@ -1,6 +1,7 @@
 package neutka.marallys.marallyzen.npc;
 
 import net.minecraft.network.chat.Component;
+import neutka.marallys.marallyzen.util.ComponentUtil;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -65,11 +66,6 @@ public class NpcNarrateHandler {
     // Track pending onComplete callbacks that should be executed when narration completes on client
     private static final Map<UUID, Runnable> pendingNarrationCompleteCallbacks = new HashMap<>();
     
-    // Track pending onComplete callbacks that should be executed when screen fade completes on client
-    private static final Map<UUID, Runnable> pendingScreenFadeCompleteCallbacks = new HashMap<>();
-    
-    // Track pending onComplete callbacks that should be executed when eyes close cutscene completes on client
-    private static final Map<UUID, Runnable> pendingEyesCloseCompleteCallbacks = new HashMap<>();
     
     /**
      * Checks if a player currently has narrate messages being sent.
@@ -117,110 +113,6 @@ public class NpcNarrateHandler {
         }
     }
     
-    /**
-     * Called when client confirms that screen fade has completely finished (fade-in complete).
-     * Executes the pending onComplete callback if one exists.
-     * 
-     * @param playerId The player UUID
-     */
-    public static void onScreenFadeComplete(UUID playerId) {
-        Runnable onComplete = pendingScreenFadeCompleteCallbacks.remove(playerId);
-        if (onComplete != null) {
-            Marallyzen.LOGGER.info("NpcNarrateHandler: Screen fade complete confirmed by client for player {}, executing onComplete callback", playerId);
-            onComplete.run();
-        } else {
-            Marallyzen.LOGGER.debug("NpcNarrateHandler: Screen fade complete confirmed for player {}, but no pending callback", playerId);
-        }
-    }
-    
-    /**
-     * Schedules a screen fade to be played after narration completes.
-     * 
-     * @param player The player
-     * @param screenFadeData The screen fade data
-     * @param serverLevel The server level (for parsing JSON components)
-     * @param onComplete Callback to execute when screen fade completes (can be null)
-     */
-    public static void scheduleScreenFadeAfterNarration(ServerPlayer player, DialogScriptLoader.ScreenFadeData screenFadeData, ServerLevel serverLevel, Runnable onComplete) {
-        if (screenFadeData == null) {
-            return;
-        }
-        
-        UUID playerId = player.getUUID();
-        
-        // Store callback to execute when screen fade completes
-        if (onComplete != null) {
-            pendingScreenFadeCompleteCallbacks.put(playerId, onComplete);
-        }
-        
-        // Parse title and subtitle as JSON components if they look like JSON
-        Component titleText = parseTextComponent(screenFadeData.titleText(), serverLevel);
-        Component subtitleText = parseTextComponent(screenFadeData.subtitleText(), serverLevel);
-        
-        // Send screen fade packet to client
-        neutka.marallys.marallyzen.network.NetworkHelper.sendToPlayer(player, 
-                new neutka.marallys.marallyzen.network.ScreenFadePacket(
-                        screenFadeData.fadeOutTicks(),
-                        screenFadeData.blackScreenTicks(),
-                        screenFadeData.fadeInTicks(),
-                        titleText,
-                        subtitleText,
-                        screenFadeData.blockPlayerInput(),
-                        screenFadeData.soundId()
-                ));
-        
-        Marallyzen.LOGGER.info("NpcNarrateHandler: Scheduled screen fade for player {} after narration (fadeOut={}t, blackScreen={}t, fadeIn={}t)", 
-                player.getName().getString(), screenFadeData.fadeOutTicks(), screenFadeData.blackScreenTicks(), screenFadeData.fadeInTicks());
-    }
-    
-    /**
-     * Called when client confirms that eyes close cutscene has completely finished.
-     * Executes the pending onComplete callback if one exists.
-     * 
-     * @param playerId The player UUID
-     */
-    public static void onEyesCloseComplete(UUID playerId) {
-        Runnable onComplete = pendingEyesCloseCompleteCallbacks.remove(playerId);
-        if (onComplete != null) {
-            Marallyzen.LOGGER.info("NpcNarrateHandler: Eyes close cutscene complete confirmed by client for player {}, executing onComplete callback", playerId);
-            onComplete.run();
-        } else {
-            Marallyzen.LOGGER.debug("NpcNarrateHandler: Eyes close cutscene complete confirmed for player {}, but no pending callback", playerId);
-        }
-    }
-    
-    /**
-     * Schedules an eyes close cutscene to be played after narration completes.
-     * 
-     * @param player The player to send the cutscene to
-     * @param eyesCloseData The eyes close cutscene parameters
-     * @param serverLevel The server level
-     * @param onComplete Callback to execute when eyes close cutscene completes (can be null)
-     */
-    public static void scheduleEyesCloseAfterNarration(ServerPlayer player, DialogScriptLoader.EyesCloseData eyesCloseData, ServerLevel serverLevel, Runnable onComplete) {
-        if (eyesCloseData == null) {
-            return;
-        }
-        
-        UUID playerId = player.getUUID();
-        
-        // Store callback to execute when eyes close cutscene completes
-        if (onComplete != null) {
-            pendingEyesCloseCompleteCallbacks.put(playerId, onComplete);
-        }
-        
-        // Send eyes close packet to client
-        neutka.marallys.marallyzen.network.NetworkHelper.sendToPlayer(player, 
-                new neutka.marallys.marallyzen.network.EyesClosePacket(
-                        eyesCloseData.closeDurationTicks(),
-                        eyesCloseData.blackDurationTicks(),
-                        eyesCloseData.openDurationTicks(),
-                        eyesCloseData.lockPlayer()
-                ));
-        
-        Marallyzen.LOGGER.info("NpcNarrateHandler: Scheduled eyes close cutscene for player {} after narration (close={}t, black={}t, open={}t)", 
-                player.getName().getString(), eyesCloseData.closeDurationTicks(), eyesCloseData.blackDurationTicks(), eyesCloseData.openDurationTicks());
-    }
     
     /**
      * Schedules narrate messages to be sent to a player sequentially with specified duration.
@@ -355,7 +247,7 @@ public class NpcNarrateHandler {
         // Try to parse as JSON first
         if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
             try {
-                return Component.Serializer.fromJson(text, level.registryAccess());
+                return ComponentUtil.fromJson(text, level.registryAccess()).orElse(Component.empty());
             } catch (Exception e) {
                 // If JSON parsing fails, treat as plain text
                 Marallyzen.LOGGER.debug("Failed to parse text as JSON, using plain text: " + text, e);
@@ -508,8 +400,6 @@ public class NpcNarrateHandler {
         playerMessageQueues.remove(playerId);
         pendingDialogOpens.remove(playerId);
         pendingNarrationCompleteCallbacks.remove(playerId);
-        pendingScreenFadeCompleteCallbacks.remove(playerId);
-        pendingEyesCloseCompleteCallbacks.remove(playerId);
         // Don't remove playerLastNarrationTick - we need it for proximity delay even after queue is empty
     }
     
@@ -539,4 +429,3 @@ public class NpcNarrateHandler {
         }
     }
 }
-

@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
@@ -26,7 +24,7 @@ public record ClearProximityPacket() implements CustomPacketPayload {
 
     public static void handle(ClearProximityPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("[ClearProximityPacket] CLIENT: Clearing proximity overlay");
                 // Clear proximity overlay on client
                 neutka.marallys.marallyzen.client.narration.NarrationManager.getInstance()
@@ -35,3 +33,4 @@ public record ClearProximityPacket() implements CustomPacketPayload {
         });
     }
 }
+

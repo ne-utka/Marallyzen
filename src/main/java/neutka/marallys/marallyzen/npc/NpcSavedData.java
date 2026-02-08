@@ -1,11 +1,10 @@
 package neutka.marallys.marallyzen.npc;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
@@ -22,15 +21,23 @@ public class NpcSavedData extends SavedData {
     private static final String KEY_NPCS = "npcs";
     private static final String KEY_ID = "id";
     private static final String KEY_STATE = "state";
+    public static final Codec<NpcSavedData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.unboundedMap(Codec.STRING, NpcState.CODEC)
+                    .fieldOf(KEY_NPCS)
+                    .forGetter(data -> data.npcStates)
+    ).apply(instance, map -> {
+        NpcSavedData data = new NpcSavedData();
+        data.npcStates.putAll(map);
+        data.rebuildIndex();
+        return data;
+    }));
+    public static final SavedDataType<NpcSavedData> TYPE = new SavedDataType<>(DATA_NAME, NpcSavedData::new, CODEC);
 
     private final Map<String, NpcState> npcStates = new HashMap<>();
     private transient Map<ResourceKey<Level>, Map<Long, Set<String>>> chunkIndex = new HashMap<>();
 
     public static NpcSavedData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(NpcSavedData::new, NpcSavedData::load),
-                DATA_NAME
-        );
+        return level.getDataStorage().computeIfAbsent(TYPE);
     }
 
     public Map<String, NpcState> getNpcStates() {
@@ -86,36 +93,7 @@ public class NpcSavedData extends SavedData {
         dimIndex.computeIfAbsent(chunkKey, key -> new HashSet<>()).add(npcId);
     }
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
-        ListTag list = new ListTag();
-        for (Map.Entry<String, NpcState> entry : npcStates.entrySet()) {
-            CompoundTag npcTag = new CompoundTag();
-            npcTag.putString(KEY_ID, entry.getKey());
-            npcTag.put(KEY_STATE, entry.getValue().toTag());
-            list.add(npcTag);
-        }
-        tag.put(KEY_NPCS, list);
-        return tag;
-    }
-
-    public static NpcSavedData load(CompoundTag tag, HolderLookup.Provider provider) {
-        NpcSavedData data = new NpcSavedData();
-        if (tag == null || !tag.contains(KEY_NPCS)) {
-            return data;
-        }
-        ListTag list = tag.getList(KEY_NPCS, Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            CompoundTag npcTag = list.getCompound(i);
-            String id = npcTag.getString(KEY_ID);
-            NpcState state = NpcState.fromTag(npcTag.getCompound(KEY_STATE));
-            if (id != null && !id.isEmpty() && state != null) {
-                data.npcStates.put(id, state);
-            }
-        }
-        data.rebuildIndex();
-        return data;
-    }
+    // SavedData serialization is handled via CODEC.
 
     public void updatePosition(String npcId, ServerLevel level, BlockPos pos, float yaw) {
         if (npcId == null || level == null || pos == null) {

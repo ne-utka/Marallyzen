@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
@@ -41,12 +39,13 @@ public record PlayNpcEmotePacket(UUID npcEntityUuid, String emoteId) implements 
 
     public static void handle(PlayNpcEmotePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.emote.ClientEmoteHandler.handle(packet.npcEntityUuid(), packet.emoteId());
             }
         });
     }
 }
+
 
 
 

@@ -1,0 +1,130 @@
+Initialized native services in: C:\Users\loneliness\.gradle\native
+Initialized jansi services in: C:\Users\loneliness\.gradle\native
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.2.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Starting process 'Gradle build daemon'. Working directory: C:\Users\loneliness\.gradle\daemon\9.2.0 Command: C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot\bin\java.exe --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED -Xmx2G -Dfile.encoding=UTF-8 -Duser.country=US -Duser.language=en -Duser.variant -cp C:\Users\loneliness\.gradle\wrapper\dists\gradle-9.2.0-bin\11i5gvueggl8a5cioxuftxrik\gradle-9.2.0\lib\gradle-daemon-main-9.2.0.jar -javaagent:C:\Users\loneliness\.gradle\wrapper\dists\gradle-9.2.0-bin\11i5gvueggl8a5cioxuftxrik\gradle-9.2.0\lib\agents\gradle-instrumentation-agent-9.2.0.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.2.0
+Successfully started process 'Gradle build daemon'
+An attempt to start the daemon took 2.186 secs.
+The client will now receive all logging from the daemon (pid: 4672). The daemon log file: C:\Users\loneliness\.gradle\daemon\9.2.0\daemon-4672.out.log
+Daemon will be stopped at the end of the build 
+Using 8 worker leases.
+Operational build model parameters: {requiresToolingModels=false, parallelProjectExecution=true, configureOnDemand=false, configurationCache=false, configurationCacheParallelStore=false, configurationCacheParallelLoad=true, isolatedProjects=false, parallelProjectConfiguration=false, intermediateModelCache=false, parallelToolingApiActions=true, invalidateCoupledProjects=false, modelAsProjectDependency=false, resilientModelBuilding=false}
+Received JVM installation metadata from 'C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot': {JAVA_HOME=C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot, JAVA_VERSION=21.0.9, JAVA_VENDOR=Microsoft, RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+10-LTS, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+10-LTS, VM_VENDOR=Microsoft, OS_ARCH=amd64}
+Watching the file system is configured to be enabled if available
+Not watching H:\launcher dev\Marallyzen since the file system is not supported
+File system watching is active
+Starting Build
+Settings evaluated using settings file 'H:\launcher dev\Marallyzen\settings.gradle'.
+Projects loaded. Root project using build file 'H:\launcher dev\Marallyzen\build.gradle'.
+Included projects: [root project 'marallyzen']
+
+> Configure project :
+Evaluating root project 'marallyzen' using build file 'H:\launcher dev\Marallyzen\build.gradle'.
+Resolved plugin [id: 'java-library']
+Resolved plugin [id: 'maven-publish']
+Resolved plugin [id: 'net.neoforged.moddev', version: '2.0.124']
+All projects evaluated.
+Task name matched 'createMinecraftArtifacts'
+Selected primary task 'createMinecraftArtifacts' from project :
+Tasks to be executed: [task ':createMinecraftArtifacts']
+Tasks that were excluded: []
+Resolve mutations for :createMinecraftArtifacts (Thread[#70,Execution worker Thread 3,5,main]) started.
+:createMinecraftArtifacts (Thread[#67,included builds,5,main]) started.
+
+> Task :createMinecraftArtifacts
+Downloading https://maven.neoforged.net/releases/net/neoforged/AutoRenamingTool/2.0.17/AutoRenamingTool-2.0.17.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download14074811592506869658bin
+Downloading https://maven.neoforged.net/releases/org/ow2/asm/asm-commons/9.7/asm-commons-9.7.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download13312887625467336945bin
+Downloading https://maven.neoforged.net/releases/net/neoforged/installertools/binarypatcher/4.0.7/binarypatcher-4.0.7.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download4455968654031640682bin
+Downloading https://maven.neoforged.net/releases/org/tukaani/xz/1.10/xz-1.10.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download11320314622010875653bin
+Downloading https://maven.neoforged.net/releases/net/sf/jopt-simple/jopt-simple/6.0-alpha-3/jopt-simple-6.0-alpha-3.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download4154458121713865870bin
+Downloading https://maven.neoforged.net/releases/org/ow2/asm/asm-tree/9.7/asm-tree-9.7.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download12401152576816740069bin
+Downloading https://maven.neoforged.net/releases/net/neoforged/installertools/installertools/4.0.7/installertools-4.0.7-fatjar.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download16248783551010112800bin
+Downloading https://maven.neoforged.net/releases/net/neoforged/AutoRenamingTool/2.0.17/AutoRenamingTool-2.0.17-all.jar to C:\Users\loneliness\.gradle\.tmp\gradle_download13039116585152631279bin
+Cached resource https://maven.neoforged.net/releases/net/neoforged/installertools/installertools/4.0.7/installertools-4.0.7-fatjar.jar is up-to-date (lastModified: Sun Dec 07 17:37:37 MSK 2025).
+Cached resource https://maven.neoforged.net/releases/net/neoforged/AutoRenamingTool/2.0.17/AutoRenamingTool-2.0.17-all.jar is up-to-date (lastModified: Sun Nov 09 22:47:31 MSK 2025).
+Cached resource https://maven.neoforged.net/releases/org/ow2/asm/asm-commons/9.7/asm-commons-9.7.jar is up-to-date (lastModified: Sat May 04 23:56:16 MSK 2024).
+Cached resource https://maven.neoforged.net/releases/net/sf/jopt-simple/jopt-simple/6.0-alpha-3/jopt-simple-6.0-alpha-3.jar is up-to-date (lastModified: Sat May 04 23:34:52 MSK 2024).
+Cached resource https://maven.neoforged.net/releases/net/neoforged/AutoRenamingTool/2.0.17/AutoRenamingTool-2.0.17.jar is up-to-date (lastModified: Sun Nov 09 22:46:53 MSK 2025).
+Cached resource https://maven.neoforged.net/releases/net/neoforged/installertools/binarypatcher/4.0.7/binarypatcher-4.0.7.jar is up-to-date (lastModified: Sun Dec 07 17:38:07 MSK 2025).
+Cached resource https://maven.neoforged.net/releases/org/tukaani/xz/1.10/xz-1.10.jar is up-to-date (lastModified: Tue Oct 29 19:24:21 MSK 2024).
+Cached resource https://maven.neoforged.net/releases/org/ow2/asm/asm-tree/9.7/asm-tree-9.7.jar is up-to-date (lastModified: Sat May 04 23:56:17 MSK 2024).
+Invalidating in-memory cache of C:\Users\loneliness\.gradle\caches\journal-1\file-access.bin
+Starting process 'command 'C:\Program Files\Java\jre-1.8\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm4207362076200288824probe Command: C:\Program Files\Java\jre-1.8\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Program Files\Java\jre-1.8\bin\java.exe''
+Received JVM installation metadata from 'C:\Program Files\Java\jre-1.8': {JAVA_HOME=C:\Program Files\Java\jre-1.8, JAVA_VERSION=1.8.0_401, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=1.8.0_401-b10, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=25.401-b10, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+
+Starting process 'command 'C:\Users\loneliness\.jdks\ms-21.0.9\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm13450196951821359331probe Command: C:\Users\loneliness\.jdks\ms-21.0.9\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Users\loneliness\.jdks\ms-21.0.9\bin\java.exe''
+Received JVM installation metadata from 'C:\Users\loneliness\.jdks\ms-21.0.9': {JAVA_HOME=C:\Users\loneliness\.jdks\ms-21.0.9, JAVA_VERSION=21.0.9, JAVA_VENDOR=Microsoft, RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+10-LTS, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+10-LTS, VM_VENDOR=Microsoft, OS_ARCH=amd64}
+Starting process 'command 'C:\Program Files\Java\jdk-25\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm3109324489442881106probe Command: C:\Program Files\Java\jdk-25\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Program Files\Java\jdk-25\bin\java.exe''
+Received JVM installation metadata from 'C:\Program Files\Java\jdk-25': {JAVA_HOME=C:\Program Files\Java\jdk-25, JAVA_VERSION=25, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=25+37-LTS-3491, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=25+37-LTS-3491, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+Starting process 'command 'C:\Program Files\Java\jdk-21\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm890806708875367497probe Command: C:\Program Files\Java\jdk-21\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Program Files\Java\jdk-21\bin\java.exe''
+Received JVM installation metadata from 'C:\Program Files\Java\jdk-21': {JAVA_HOME=C:\Program Files\Java\jdk-21, JAVA_VERSION=21.0.8, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=21.0.8+12-LTS-250, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=21.0.8+12-LTS-250, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+
+> Task :createMinecraftArtifacts
+Starting process 'command 'C:\Users\loneliness\.jdks\openjdk-25.0.1\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm12620672287775198212probe Command: C:\Users\loneliness\.jdks\openjdk-25.0.1\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Users\loneliness\.jdks\openjdk-25.0.1\bin\java.exe''
+Received JVM installation metadata from 'C:\Users\loneliness\.jdks\openjdk-25.0.1': {JAVA_HOME=C:\Users\loneliness\.jdks\openjdk-25.0.1, JAVA_VERSION=25.0.1, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=25.0.1+8-27, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=25.0.1+8-27, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+Starting process 'command 'C:\Program Files\Java\jdk-17\bin\java.exe''. Working directory: C:\Users\loneliness\.gradle\.tmp\tmp-jvm7619511381996099026probe Command: C:\Program Files\Java\jdk-17\bin\java.exe -Xmx32m -Xms32m -cp . JavaProbe
+Successfully started process 'command 'C:\Program Files\Java\jdk-17\bin\java.exe''
+Received JVM installation metadata from 'C:\Program Files\Java\jdk-17': {JAVA_HOME=C:\Program Files\Java\jdk-17, JAVA_VERSION=17.0.12, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=17.0.12+8-LTS-286, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=17.0.12+8-LTS-286, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+Invalidating in-memory cache of C:\Users\loneliness\.gradle\caches\9.2.0\fileHashes\fileHashes.bin
+Invalidating in-memory cache of C:\Users\loneliness\.gradle\caches\9.2.0\fileHashes\resourceHashesCache.bin
+Caching disabled for task ':createMinecraftArtifacts' because:
+  Build cache is disabled
+  Implements its own caching
+Task ':createMinecraftArtifacts' is not up-to-date because:
+  No history is available.
+Starting process 'command 'C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot\bin\java.exe''. Working directory: H:\launcher dev\Marallyzen Command: C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot\bin\java.exe -Dstderr.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dfile.encoding=UTF-8 -Duser.country=US -Duser.language=en -Duser.variant -jar C:\Users\loneliness\.gradle\caches\modules-2\files-2.1\net.neoforged\neoform-runtime\2.0.5\e7d573049e5c74fbdef54e33b1a42fac95f829f1\neoform-runtime-2.0.5-all.jar --home-dir C:\Users\loneliness\.gradle\caches\neoformruntime --work-dir H:\launcher dev\Marallyzen\build\tmp\neoformruntime run --java-executable C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot\bin\java.exe --neoforge net.neoforged:neoforge:21.1.209:userdev --dist joined --write-result clientResources:H:\launcher dev\Marallyzen\build\moddev\artifacts\neoforge-21.1.209-client-extra-aka-minecraft-resources.jar --write-result gameJarWithNeoForge:H:\launcher dev\Marallyzen\build\moddev\artifacts\neoforge-21.1.209.jar --write-result gameSourcesWithNeoForge:H:\launcher dev\Marallyzen\build\moddev\artifacts\neoforge-21.1.209-sources.jar --write-result gameJarWithSourcesAndNeoForge:H:\launcher dev\Marallyzen\build\moddev\artifacts\neoforge-21.1.209-merged.jar --problems-report H:\launcher dev\Marallyzen\build\tmp\createMinecraftArtifacts\nfrt-problem-report.json --artifact-manifest H:\launcher dev\Marallyzen\build\tmp\createMinecraftArtifacts\nfrt_artifact_manifest.properties --warn-on-artifact-manifest-miss
+Successfully started process 'command 'C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot\bin\java.exe''
+Loaded 145 artifacts from H:\launcher dev\Marallyzen\build\tmp\createMinecraftArtifacts\nfrt_artifact_manifest.properties
+*** Started working on downloadJson
+ DONE  Completed downloadJson in 0.05s
+*** Started working on downloadServer
+*** Started working on downloadClient
+*** Started working on downloadClientMappings
+ DONE  Completed downloadClient in 0.03s
+ DONE  Completed downloadServer in 0.03s
+ DONE  Completed downloadClientMappings in 0.03s
+*** Started working on mergeMappings
+ REUSE Used cache of mergeMappings in 0.00s
+*** Started working on stripClient
+ REUSE Used cache of stripClient in 0.00s
+*** Started working on extractServer
+ REUSE Used cache of extractServer in 0.00s
+*** Started working on stripServer
+ REUSE Used cache of stripServer in 0.00s
+*** Started working on merge
+ REUSE Used cache of merge in 0.00s
+*** Started working on rename
+ REUSE Used cache of rename in 0.00s
+*** Started working on decompile
+ REUSE Used cache of decompile in 0.00s
+*** Started working on inject
+ REUSE Used cache of inject in 0.00s
+*** Started working on patch
+ REUSE Used cache of patch in 0.00s
+*** Started working on applyNeoforgePatches
+ REUSE Used cache of applyNeoforgePatches in 0.00s
+*** Started working on transformSources
+ REUSE Used cache of transformSources in 0.00s
+*** Started working on recompile
+ REUSE Used cache of recompile in 0.00s
+*** Started working on sourcesWithNeoForge
+ REUSE Used cache of sourcesWithNeoForge in 0.00s
+*** Started working on compiledWithNeoForge
+ REUSE Used cache of compiledWithNeoForge in 0.00s
+*** Started working on sourcesAndCompiledWithNeoForge
+ REUSE Used cache of sourcesAndCompiledWithNeoForge in 0.00s
+Total runtime: 1.58s
+
+Invalidating in-memory cache of H:\launcher dev\Marallyzen\.gradle\9.2.0\fileHashes\fileHashes.bin
+Invalidating in-memory cache of H:\launcher dev\Marallyzen\.gradle\9.2.0\fileHashes\resourceHashesCache.bin
+Invalidating in-memory cache of H:\launcher dev\Marallyzen\.gradle\buildOutputCleanup\outputFiles.bin
+
+BUILD SUCCESSFUL in 10m 17s
+1 actionable task: 1 executed
+Some of the file system contents retained in the virtual file system are on file systems that Gradle doesn't support watching. The relevant state was discarded to ensure changes to these locations are properly detected. You can override this by explicitly enabling file system watching.
+Watched directory hierarchies: []
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.2.0/userguide/configuration_cache_enabling.html

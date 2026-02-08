@@ -10,7 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerEntity;
@@ -154,7 +154,9 @@ public class NpcRegistry {
             yaw = sourcePlayer.getYRot();
             pitch = sourcePlayer.getXRot();
         }
-        entity.moveTo(spawnX, spawnY, spawnZ, yaw, pitch);
+        entity.setPos(spawnX, spawnY, spawnZ);
+        entity.setYRot(yaw);
+        entity.setXRot(pitch);
         entity.setYRot(yaw);
         entity.setXRot(pitch);
         entity.yRotO = yaw;
@@ -308,7 +310,7 @@ public class NpcRegistry {
                     // Give locator to merchant in main hand
                     if (npcId.equals("merchant")) {
                         try {
-                            net.minecraft.resources.ResourceLocation itemLocation = net.minecraft.resources.ResourceLocation.parse("marallyzen:locator");
+                            net.minecraft.resources.Identifier itemLocation = net.minecraft.resources.Identifier.parse("marallyzen:locator");
                             net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(itemLocation).ifPresentOrElse(
                                     item -> {
                                         net.minecraft.world.item.ItemStack itemStack = new net.minecraft.world.item.ItemStack(item);
@@ -481,7 +483,7 @@ public class NpcRegistry {
             return createFakePlayer(level, data);
         }
 
-        Entity entity = entityType.create(level);
+        Entity entity = entityType.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (entity == null) {
             throw new IllegalStateException("Failed to create entity for NPC: " + data.getId());
         }
@@ -494,7 +496,7 @@ public class NpcRegistry {
     }
 
     private Entity createGeckoEntity(ServerLevel level, NpcData data) {
-        GeckoNpcEntity entity = Marallyzen.GECKO_NPC.get().create(level);
+        GeckoNpcEntity entity = Marallyzen.GECKO_NPC.get().create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (entity == null) {
             return null;
         }
@@ -592,7 +594,7 @@ public class NpcRegistry {
         if (current != team) {
             scoreboard.addPlayerToTeam(scoreboardEntry, team);
         }
-        String profileName = fakePlayer.getGameProfile().getName();
+        String profileName = fakePlayer.getGameProfile().name();
         if (profileName != null && !profileName.isEmpty() && !profileName.equals(scoreboardEntry)) {
             PlayerTeam currentByName = scoreboard.getPlayersTeam(profileName);
             if (currentByName != team) {
@@ -816,12 +818,14 @@ public class NpcRegistry {
         ClientboundPlayerInfoUpdatePacket packet =
                 ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(fakePlayers);
         player.connection.send(packet);
-        player.getServer().execute(() -> {
+        if (player.level().getServer() != null) {
+            player.level().getServer().execute(() -> {
             for (ServerPlayer fakePlayer : fakePlayers) {
                 forceRespawnForPlayer(player, fakePlayer);
                 // sendRemoveFromTab(player, fakePlayer);
             }
-        });
+            });
+        }
     }
 
     private static final java.lang.reflect.Field TRACKED_ENTITIES_FIELD = findTrackedEntitiesField();
@@ -1101,8 +1105,8 @@ public class NpcRegistry {
     private Map<String, Entity> scanExistingNpcEntities(ServerLevel level) {
         Map<String, Entity> result = new HashMap<>();
         AABB box = new AABB(
-            -3.0E7, level.getMinBuildHeight(), -3.0E7,
-            3.0E7, level.getMaxBuildHeight(), 3.0E7
+            -3.0E7, level.getMinY(), -3.0E7,
+            3.0E7, level.getMaxY(), 3.0E7
         );
         for (GeckoNpcEntity entity : level.getEntitiesOfClass(GeckoNpcEntity.class, box)) {
             if (entity == null || entity.isRemoved()) {
@@ -1214,7 +1218,6 @@ public class NpcRegistry {
         clone.setSkinSignature(original.getSkinSignature());
         clone.setSkinModel(original.getSkinModel());
         clone.setDialogScript(original.getDialogScript());
-        clone.setCutscene(original.getCutscene());
         clone.setDefaultAnimation(original.getDefaultAnimation());
         clone.setWaypoints(new ArrayList<>(original.getWaypoints()));
         clone.setWaypointsLoop(original.isWaypointsLoop());
@@ -1271,3 +1274,5 @@ public class NpcRegistry {
         return copy;
     }
 }
+
+

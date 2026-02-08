@@ -1,6 +1,6 @@
 package neutka.marallys.marallyzen.client.fpv;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import neutka.marallys.marallyzen.Marallyzen;
 
@@ -21,8 +21,8 @@ public final class MarallyzenFpvController {
      * Should FPV be applied for this player right now.
      */
     private static boolean lastShouldApplyResult = false;
-    private static ResourceLocation lastCtxId = null;
-    private static ResourceLocation lastResolvedId = null;
+    private static Identifier lastCtxId = null;
+    private static Identifier lastResolvedId = null;
 
     public static boolean shouldApply(Player player) {
         if (player == null) {
@@ -39,7 +39,7 @@ public final class MarallyzenFpvController {
         }
 
         // Prefer context-emote if set (explicit intent from Marallyzen)
-        ResourceLocation ctxId = MarallyzenRenderContext.getCurrentEmoteId();
+        Identifier ctxId = MarallyzenRenderContext.getCurrentEmoteId();
         if (ctxId != null) {
             boolean allowed = MarallyzenFpvEmotes.isAllowed(ctxId);
             if (ctxId != lastCtxId || allowed != lastShouldApplyResult) {
@@ -56,7 +56,7 @@ public final class MarallyzenFpvController {
 
         // Fallback to inspecting Emotecraft state
         Object emotePlayer = getEmotePlayer(player);
-        ResourceLocation emoteId = resolveEmoteId(emotePlayer);
+        Identifier emoteId = resolveEmoteId(emotePlayer);
         boolean allowed = emoteId != null && MarallyzenFpvEmotes.isAllowed(emoteId);
         if (emoteId != lastResolvedId || allowed != lastShouldApplyResult) {
             // Marallyzen.LOGGER.info("[FPV] MarallyzenFpvController.shouldApply: resolved emoteId={}, allowed={}, final result={}", emoteId, allowed, allowed);
@@ -76,7 +76,7 @@ public final class MarallyzenFpvController {
         // This method is kept for parity with the requested architecture.
     }
 
-    public static ResourceLocation getResolvedEmoteId(Player player) {
+    public static Identifier getResolvedEmoteId(Player player) {
         if (player == null) {
             return null;
         }
@@ -109,10 +109,10 @@ public final class MarallyzenFpvController {
     }
 
     /**
-     * Resolve the emote ID to a ResourceLocation by inspecting EmoteHolder list and current animation.
+     * Resolve the emote ID to a Identifier by inspecting EmoteHolder list and current animation.
      * Falls back to null if cannot resolve.
      */
-    private static ResourceLocation resolveEmoteId(Object emotePlayer) {
+    private static Identifier resolveEmoteId(Object emotePlayer) {
         Object anim = getCurrentAnimation(emotePlayer);
         if (anim == null) return null;
 
@@ -121,17 +121,18 @@ public final class MarallyzenFpvController {
         String name = resolveNameFromAnimation(anim);
 
         // Try match against EmoteHolder.list to get UUID/name
-        ResourceLocation fromHolder = resolveFromEmoteHolder(anim, uuid, name);
+        Identifier fromHolder = resolveFromEmoteHolder(anim, uuid, name);
         if (fromHolder != null) return fromHolder;
 
         // If name looks like namespace:path, parse; else if present, assume marallyzen:name
         if (name != null && !name.isBlank()) {
             if (name.contains(":")) {
                 try {
-                    return ResourceLocation.parse(name);
+                    return Identifier.parse(name);
                 } catch (Exception ignored) { }
             } else {
-                return ResourceLocation.fromNamespaceAndPath("marallyzen", sanitizeName(name));
+                Identifier id = safeIdentifier("marallyzen", sanitizeName(name));
+                if (id != null) return id;
             }
         }
 
@@ -201,7 +202,7 @@ public final class MarallyzenFpvController {
     }
 
     @SuppressWarnings("unchecked")
-    private static ResourceLocation resolveFromEmoteHolder(Object anim, UUID uuid, String name) {
+    private static Identifier resolveFromEmoteHolder(Object anim, UUID uuid, String name) {
         try {
             Class<?> holderClass = Class.forName("io.github.kosmx.emotes.main.EmoteHolder");
             Field listField = holderClass.getField("list");
@@ -214,10 +215,11 @@ public final class MarallyzenFpvController {
                 try {
                     Field emoteField = holderClass.getField("emote");
                     Object emoteAnim = emoteField.get(holder);
-                    if (emoteAnim == anim) {
-                        String resolved = extractNameFromHolder(holderClass, holder);
-                        if (resolved != null) return ResourceLocation.fromNamespaceAndPath("marallyzen", sanitizeName(resolved));
-                    }
+                        if (emoteAnim == anim) {
+                            String resolved = extractNameFromHolder(holderClass, holder);
+                            Identifier id = safeIdentifier("marallyzen", sanitizeName(resolved));
+                            if (id != null) return id;
+                        }
                 } catch (Exception ignored) {}
 
                 // Match by UUID
@@ -227,7 +229,8 @@ public final class MarallyzenFpvController {
                         Object holderUuid = getUuid.invoke(holder);
                         if (uuid.equals(holderUuid)) {
                             String resolved = extractNameFromHolder(holderClass, holder);
-                            if (resolved != null) return ResourceLocation.fromNamespaceAndPath("marallyzen", sanitizeName(resolved));
+                            Identifier id = safeIdentifier("marallyzen", sanitizeName(resolved));
+                            if (id != null) return id;
                         }
                     } catch (Exception ignored) {}
                 }
@@ -235,7 +238,7 @@ public final class MarallyzenFpvController {
         } catch (Exception ignored) {}
         // Fallback: if name present, allow
         if (name != null && !name.isBlank()) {
-            return ResourceLocation.fromNamespaceAndPath("marallyzen", sanitizeName(name));
+            return safeIdentifier("marallyzen", sanitizeName(name));
         }
         return null;
     }
@@ -254,4 +257,15 @@ public final class MarallyzenFpvController {
     private static String sanitizeName(String raw) {
         return raw.trim().toLowerCase().replace(' ', '_');
     }
+
+    private static Identifier safeIdentifier(String namespace, String path) {
+        if (path == null || path.isBlank()) return null;
+        try {
+            return Identifier.fromNamespaceAndPath(namespace, path);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 }
+
+

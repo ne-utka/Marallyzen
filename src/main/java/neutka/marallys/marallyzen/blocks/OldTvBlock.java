@@ -2,7 +2,7 @@ package neutka.marallys.marallyzen.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.WrittenBookItem;
@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
 import neutka.marallys.marallyzen.quest.QuestManager;
@@ -42,11 +43,11 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                              Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (stack.getItem() instanceof WrittenBookItem) {
-            if (level.isClientSide) {
-                if (player.hasPermissions(2)) {
+            if (level.isClientSide()) {
+                if (player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer)) {
                     markProtectedByOpClient(level, pos);
                 }
                 neutka.marallys.marallyzen.network.NetworkHelper.sendToServer(
@@ -72,7 +73,7 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
                                     100,
                                     3
                             );
-                            return ItemInteractionResult.CONSUME;
+                            return InteractionResult.CONSUME;
                         }
                     }
                 }
@@ -81,9 +82,9 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
                         true
                 );
             }
-            return ItemInteractionResult.CONSUME;
+            return InteractionResult.CONSUME;
         }
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             BlockState nextState = state.cycle(ON);
             level.setBlock(pos, nextState, 3);
             boolean isOn = nextState.getValue(ON);
@@ -96,14 +97,15 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
                 QuestManager.getInstance().fireCustomEvent(serverPlayer, isOn ? "tv_on" : "tv_off", Map.of());
             }
         }
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
     @Override
     public float getDestroyProgress(BlockState state, Player player, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
         if (player != null) {
             if (level.getBlockEntity(pos) instanceof OldTvBlockEntity tvEntity) {
-                if (tvEntity.isProtectedByOp() && !player.hasPermissions(2)) {
+                if (tvEntity.isProtectedByOp()
+                    && !(player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))) {
                     return 0.0f;
                 }
             }
@@ -112,17 +114,18 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
     }
 
     @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
-        if (!level.isClientSide) {
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, ItemStack stack, boolean willHarvest, FluidState fluid) {
+        if (!level.isClientSide()) {
             if (player != null) {
                 if (level.getBlockEntity(pos) instanceof OldTvBlockEntity tvEntity) {
-                    if (tvEntity.isProtectedByOp() && !player.hasPermissions(2)) {
+                    if (tvEntity.isProtectedByOp()
+                        && !(player instanceof ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))) {
                         return false;
                     }
                 }
             }
         }
-        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+        return super.onDestroyedByPlayer(state, level, pos, player, stack, willHarvest, fluid);
     }
 
     private static void markProtectedByOpClient(Level level, BlockPos pos) {
@@ -155,7 +158,7 @@ public class OldTvBlock extends ModelShapeFacingBlock implements EntityBlock {
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return (lvl, pos, blockState, be) -> {
                 if (be instanceof OldTvBlockEntity tvEntity) {
                     tvEntity.clientTick();

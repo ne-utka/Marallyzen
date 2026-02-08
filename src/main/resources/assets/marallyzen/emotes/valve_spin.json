@@ -1,0 +1,45 @@
+﻿{
+  "name": "valve_spin",
+  "author": "Marallyzen",
+  "description": "Valve spin emote",
+  "emote": {
+    "isLoop": "true",
+    "degrees": true,
+    "beginTick": 0,
+    "endTick": 20,
+    "stopTick": 20,
+    "returnTick": 5,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "LINEAR",
+        "rightArm": {"pitch": -20, "yaw": 10, "roll": 0},
+        "leftArm": {"pitch": -10, "yaw": -10, "roll": 0}
+      },
+      {
+        "tick": 5,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -40, "yaw": 20, "roll": 10},
+        "leftArm": {"pitch": -25, "yaw": -20, "roll": -10}
+      },
+      {
+        "tick": 10,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -30, "yaw": 5, "roll": 0},
+        "leftArm": {"pitch": -15, "yaw": -5, "roll": 0}
+      },
+      {
+        "tick": 15,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -45, "yaw": 25, "roll": 15},
+        "leftArm": {"pitch": -30, "yaw": -25, "roll": -15}
+      },
+      {
+        "tick": 20,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -20, "yaw": 10, "roll": 0},
+        "leftArm": {"pitch": -10, "yaw": -10, "roll": 0}
+      }
+    ]
+  }
+}

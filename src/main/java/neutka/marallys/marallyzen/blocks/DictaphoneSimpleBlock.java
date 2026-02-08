@@ -2,13 +2,12 @@ package neutka.marallys.marallyzen.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
@@ -16,6 +15,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 
 /**
  * Dictaphone simple block that lies flat on the ground.
@@ -51,25 +51,25 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
-                                             Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                          Player player, InteractionHand hand, BlockHitResult hitResult) {
         return handleInteraction(stack, state, level, pos, player, hand, hitResult);
     }
 
     @Override
-    public net.minecraft.world.InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
-                                                                Player player, BlockHitResult hitResult) {
+    public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                            Player player, BlockHitResult hitResult) {
         ItemStack stack = ItemStack.EMPTY;
-        ItemInteractionResult result = handleInteraction(stack, state, level, pos, player, InteractionHand.MAIN_HAND, hitResult);
-        return result == ItemInteractionResult.CONSUME
-            ? net.minecraft.world.InteractionResult.CONSUME
-            : net.minecraft.world.InteractionResult.SUCCESS;
+        InteractionResult result = handleInteraction(stack, state, level, pos, player, InteractionHand.MAIN_HAND, hitResult);
+        return result == InteractionResult.CONSUME
+            ? InteractionResult.CONSUME
+            : InteractionResult.SUCCESS;
     }
 
-    private ItemInteractionResult handleInteraction(ItemStack stack, BlockState state, Level level, BlockPos pos,
-                                                    Player player, InteractionHand hand, BlockHitResult hitResult) {
+    private InteractionResult handleInteraction(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                                Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (stack.getItem() instanceof WrittenBookItem) {
-            if (!level.isClientSide && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
                 var bookContent = stack.get(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT);
                 String scriptName = null;
                 if (bookContent != null && bookContent.title() != null) {
@@ -84,22 +84,22 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
                         serverPlayer,
                         scriptName == null || scriptName.isEmpty() ? "?" : scriptName
                     );
-                    return ItemInteractionResult.CONSUME;
+                    return InteractionResult.CONSUME;
                 }
                 neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.bindScript(
                     pos,
                     level.dimension(),
                     scriptName,
-                    serverPlayer.hasPermissions(2)
+                    PermissionHelper.isOp(serverPlayer)
                 );
                 neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.sendBindNarration(
                     serverPlayer,
                     scriptName
                 );
             }
-            return ItemInteractionResult.CONSUME;
+            return InteractionResult.CONSUME;
         }
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             if (!neutka.marallys.marallyzen.client.ClientDictaphoneManager.isHidden(pos)) {
                 neutka.marallys.marallyzen.client.ClientDictaphoneManager.markHidden(pos.immutable());
             }
@@ -109,7 +109,7 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
             if (neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isNarrationLocked(
                 serverPlayer.getUUID(), level.getGameTime()
             )) {
-                return ItemInteractionResult.CONSUME;
+                return InteractionResult.CONSUME;
             }
             String scriptName = neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.getBoundScript(
                 pos,
@@ -124,13 +124,13 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
                 );
             }
         }
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
     @Override
     public float getDestroyProgress(BlockState state, Player player, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
         if (player != null && level instanceof Level lvl) {
-            if (!player.hasPermissions(2)
+            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer && PermissionHelper.isOp(serverPlayer))
                 && neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isProtectedByOp(pos, lvl.dimension())) {
                 return 0.0f;
             }
@@ -138,14 +138,5 @@ public class DictaphoneSimpleBlock extends ModelShapeFacingBlock {
         return super.getDestroyProgress(state, player, level, pos);
     }
 
-    @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid) {
-        if (!level.isClientSide && player != null) {
-            if (!player.hasPermissions(2)
-                && neutka.marallys.marallyzen.dictaphone.DictaphoneScriptManager.isProtectedByOp(pos, level.dimension())) {
-                return false;
-            }
-        }
-        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
-    }
+    // onDestroyedByPlayer no longer exists in this NeoForge/Minecraft version.
 }

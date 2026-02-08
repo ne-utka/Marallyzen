@@ -1,6 +1,6 @@
 package neutka.marallys.marallyzen.client.fpv;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.emote.ClientEmoteHandler;
@@ -31,18 +31,18 @@ public final class FpvEmoteInvoker {
 
         // Track intent in render context so FPV gating can allow it even if EmoteHolder lookup fails
         // Force marallyzen namespace for SPE_* emotes
-        net.minecraft.resources.ResourceLocation ctxId;
+        net.minecraft.resources.Identifier ctxId;
         if (emoteId.startsWith("SPE_") || emoteId.startsWith("spe_")) {
-            ctxId = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("marallyzen",
+            ctxId = net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen",
                     emoteId.trim().toLowerCase().replace(' ', '_'));
         } else {
-            ctxId = net.minecraft.resources.ResourceLocation.tryParse(emoteId);
+            ctxId = net.minecraft.resources.Identifier.tryParse(emoteId);
             if (ctxId == null) {
-                ctxId = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("marallyzen",
+                ctxId = net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen",
                         emoteId.trim().toLowerCase().replace(' ', '_'));
             } else if (ctxId.getNamespace().equals("minecraft")) {
                 // If parsed as minecraft:*, convert to marallyzen:*
-                ctxId = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("marallyzen", ctxId.getPath());
+                ctxId = net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen", ctxId.getPath());
             }
         }
         // Marallyzen.LOGGER.info("[FPV] FpvEmoteInvoker.play: Setting context emoteId={}, resolved anim={}", ctxId, anim != null ? anim.getClass().getSimpleName() : "null");
@@ -108,7 +108,7 @@ public final class FpvEmoteInvoker {
     }
 
     private static Object resolveAnimation(String emoteId) {
-        ResourceLocation id = ResourceLocation.tryParse(emoteId);
+        Identifier id = Identifier.tryParse(emoteId);
         String path = id != null ? id.getPath() : emoteId;
         UUID uuid = null;
         try { uuid = UUID.fromString(emoteId); } catch (Exception ignored) {}
@@ -150,4 +150,6 @@ public final class FpvEmoteInvoker {
         return null;
     }
 }
+
+
 

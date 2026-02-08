@@ -22,7 +22,7 @@ import java.util.UUID;
  * Handles smooth head and body rotation of NPCs towards nearby players.
  * NPCs will smoothly turn their head and body to look at players within 5 blocks (without walls).
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class NpcLookAtHandler {
     
     private static final double LOOK_AT_RANGE = 5.0; // Maximum distance for head rotation

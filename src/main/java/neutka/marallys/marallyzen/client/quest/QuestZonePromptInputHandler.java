@@ -9,7 +9,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.QuestZoneTeleportRequestPacket;
 
-@EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class QuestZonePromptInputHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {

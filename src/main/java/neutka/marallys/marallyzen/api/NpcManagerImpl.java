@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.api;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
@@ -22,12 +22,12 @@ class NpcManagerImpl implements INpcManager {
     }
 
     @Override
-    public void registerNpc(String npcId, String name, ResourceLocation entityType,
+    public void registerNpc(String npcId, String name, Identifier entityType,
                            BlockPos spawnPos, List<BlockPos> waypoints, Map<String, String> metadata) {
         NpcData data = new NpcData(npcId);
         data.setName(name);
 
-        // Convert ResourceLocation to EntityType if needed
+        // Convert Identifier to EntityType if needed
         // For now, we'll store it as string in metadata
         if (entityType != null) {
             metadata.put("entityType", entityType.toString());
@@ -75,6 +75,8 @@ class NpcManagerImpl implements INpcManager {
                 .toList());
     }
 }
+
+
 
 
 

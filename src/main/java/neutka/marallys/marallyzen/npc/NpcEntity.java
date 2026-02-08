@@ -8,7 +8,8 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 public class NpcEntity extends PathfinderMob {
     public static final EntityDataAccessor<String> NPC_ID =
@@ -51,20 +52,16 @@ public class NpcEntity extends PathfinderMob {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        tag.putString("NpcId", getNpcId());
-        tag.putString("AppearanceId", getAppearanceId());
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putString("NpcId", getNpcId());
+        output.putString("AppearanceId", getAppearanceId());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.contains("NpcId")) {
-            setNpcId(tag.getString("NpcId"));
-        }
-        if (tag.contains("AppearanceId")) {
-            setAppearanceId(tag.getString("AppearanceId"));
-        }
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        input.getString("NpcId").ifPresent(this::setNpcId);
+        input.getString("AppearanceId").ifPresent(this::setAppearanceId);
     }
 }

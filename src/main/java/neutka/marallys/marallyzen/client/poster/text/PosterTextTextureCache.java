@@ -1,6 +1,6 @@
 package neutka.marallys.marallyzen.client.poster.text;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,18 +9,18 @@ import java.util.Map;
 
 /**
  * Singleton cache for poster text textures.
- * Maps PosterTextKey to ResourceLocation.
+ * Maps PosterTextKey to Identifier.
  * Textures are not recreated if they already exist.
  */
 public class PosterTextTextureCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(PosterTextTextureCache.class);
-    private static final Map<PosterTextKey, ResourceLocation> cache = new HashMap<>();
+    private static final Map<PosterTextKey, Identifier> cache = new HashMap<>();
     
     /**
      * Gets or creates a texture for the given PosterTextData.
      * Returns existing texture if available, otherwise creates a new one.
      */
-    public static ResourceLocation getOrCreate(PosterTextData data) {
+    public static Identifier getOrCreate(PosterTextData data) {
         LOGGER.warn("========== PosterTextTextureCache.getOrCreate() CALLED ==========");
         LOGGER.warn("Data: {}", data);
         if (data != null) {
@@ -40,7 +40,7 @@ public class PosterTextTextureCache {
         LOGGER.warn("PosterTextTextureCache: Key={}", key);
         
         // Check cache first
-        ResourceLocation existing = cache.get(key);
+        Identifier existing = cache.get(key);
         if (existing != null) {
             LOGGER.warn("PosterTextTextureCache: Found cached texture {} for key {}", existing, key);
             return existing;
@@ -48,7 +48,7 @@ public class PosterTextTextureCache {
         
         LOGGER.warn("PosterTextTextureCache: Cache miss, creating new texture...");
         // Create new texture
-        ResourceLocation texture = PosterTextTextureBuilder.buildTexture(data);
+        Identifier texture = PosterTextTextureBuilder.buildTexture(data);
         if (texture != null) {
             cache.put(key, texture);
             LOGGER.warn("PosterTextTextureCache: Created and cached texture {} for key {}", texture, key);
@@ -76,6 +76,9 @@ public class PosterTextTextureCache {
         return cache.size();
     }
 }
+
+
+
 
 
 

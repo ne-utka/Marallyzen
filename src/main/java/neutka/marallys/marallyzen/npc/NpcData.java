@@ -2,7 +2,7 @@ package neutka.marallys.marallyzen.npc;
 
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 
 import java.util.*;
@@ -16,16 +16,15 @@ public class NpcData {
     private String name;
     private EntityType<?> entityType;
     private BlockPos spawnPos;
-    private ResourceLocation geckolibModel; // Optional: path to GeckoLib model
-    private ResourceLocation geckolibAnimation; // Optional: path to GeckoLib animation
-    private ResourceLocation geckolibTexture; // Optional: path to GeckoLib texture
+    private Identifier geckolibModel; // Optional: path to GeckoLib model
+    private Identifier geckolibAnimation; // Optional: path to GeckoLib animation
+    private Identifier geckolibTexture; // Optional: path to GeckoLib texture
     private String geckolibExpression; // Optional: default expression animation name
     private String geckolibTalkExpression; // Optional: talk expression animation name
     private String skinTexture; // Optional: player skin texture
     private String skinSignature; // Optional: player skin signature
     private String skinModel; // Optional: skin model type - "default" (Steve) or "slim" (Alex)
     private String dialogScript; // Optional: Denizen script to run on click
-    private String cutscene; // Optional: cutscene name to play (can be triggered from scripts)
     private String defaultAnimation; // Optional: default emote animation to play when idle (e.g., "SPE_Idle")
     private List<Waypoint> waypoints; // Optional: movement waypoints
     private boolean waypointsLoop = true; // Whether waypoints should loop
@@ -80,27 +79,27 @@ public class NpcData {
         this.spawnPos = spawnPos;
     }
 
-    public ResourceLocation getGeckolibModel() {
+    public Identifier getGeckolibModel() {
         return geckolibModel;
     }
 
-    public void setGeckolibModel(ResourceLocation geckolibModel) {
+    public void setGeckolibModel(Identifier geckolibModel) {
         this.geckolibModel = geckolibModel;
     }
 
-    public ResourceLocation getGeckolibAnimation() {
+    public Identifier getGeckolibAnimation() {
         return geckolibAnimation;
     }
 
-    public void setGeckolibAnimation(ResourceLocation geckolibAnimation) {
+    public void setGeckolibAnimation(Identifier geckolibAnimation) {
         this.geckolibAnimation = geckolibAnimation;
     }
 
-    public ResourceLocation getGeckolibTexture() {
+    public Identifier getGeckolibTexture() {
         return geckolibTexture;
     }
 
-    public void setGeckolibTexture(ResourceLocation geckolibTexture) {
+    public void setGeckolibTexture(Identifier geckolibTexture) {
         this.geckolibTexture = geckolibTexture;
     }
 
@@ -150,14 +149,6 @@ public class NpcData {
 
     public void setDialogScript(String dialogScript) {
         this.dialogScript = dialogScript;
-    }
-
-    public String getCutscene() {
-        return cutscene;
-    }
-
-    public void setCutscene(String cutscene) {
-        this.cutscene = cutscene;
     }
 
     public String getDefaultAnimation() {
@@ -508,3 +499,5 @@ public class NpcData {
         }
     }
 }
+
+

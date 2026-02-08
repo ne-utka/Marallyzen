@@ -9,7 +9,7 @@ import com.denizenscript.denizencore.tags.ObjectTagProcessor;
 import com.denizenscript.denizencore.tags.TagContext;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -47,7 +47,7 @@ public class ItemTag implements ObjectTag {
     @Override
     public String identifySimple() {
         Item item = stack.getItem();
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        Identifier key = BuiltInRegistries.ITEM.getKey(item);
         return key != null ? key.toString() : "unknown";
     }
 
@@ -69,11 +69,11 @@ public class ItemTag implements ObjectTag {
         if (string.startsWith("i@")) {
             string = string.substring("i@".length());
         }
-        ResourceLocation key = ResourceLocation.tryParse(string);
+        Identifier key = Identifier.tryParse(string);
         if (key == null) {
-            key = ResourceLocation.tryBuild("minecraft", string);
+            key = Identifier.tryBuild("minecraft", string);
         }
-        Item item = BuiltInRegistries.ITEM.get(key);
+        Item item = BuiltInRegistries.ITEM.getValue(key);
         if (item == null) {
             return null;
         }
@@ -115,3 +115,5 @@ public class ItemTag implements ObjectTag {
         });
     }
 }
+
+

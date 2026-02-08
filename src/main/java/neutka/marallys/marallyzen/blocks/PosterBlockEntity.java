@@ -1,6 +1,7 @@
 package neutka.marallys.marallyzen.blocks;
 
 import net.minecraft.core.BlockPos;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -8,6 +9,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.Nullable;
 
 public class PosterBlockEntity extends BlockEntity {
@@ -26,84 +29,58 @@ public class PosterBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
         if (posterText != null && !posterText.isEmpty()) {
-            tag.putString("PosterText", posterText);
+            output.putString("PosterText", posterText);
         }
         if (posterTitle != null && !posterTitle.isEmpty()) {
-            tag.putString("PosterTitle", posterTitle);
+            output.putString("PosterTitle", posterTitle);
         }
         if (posterAuthor != null && !posterAuthor.isEmpty()) {
-            tag.putString("PosterAuthor", posterAuthor);
+            output.putString("PosterAuthor", posterAuthor);
         }
         if (posterBackText != null && !posterBackText.isEmpty()) {
-            tag.putString("PosterBackText", posterBackText);
+            output.putString("PosterBackText", posterBackText);
         }
         if (posterCreatedAt > 0) {
-            tag.putLong("PosterCreatedAt", posterCreatedAt);
+            output.putLong("PosterCreatedAt", posterCreatedAt);
         }
-        tag.putBoolean("ProtectedByOp", protectedByOp);
+        output.putBoolean("ProtectedByOp", protectedByOp);
         // Always save variant, even if "default", to ensure it persists
         String variantToSave = oldposterVariant != null ? oldposterVariant : "default";
-        tag.putString("OldposterVariant", variantToSave);
+        output.putString("OldposterVariant", variantToSave);
         if (targetPlayerName != null && !targetPlayerName.isEmpty()) {
-            tag.putString("TargetPlayerName", targetPlayerName);
+            output.putString("TargetPlayerName", targetPlayerName);
         }
         // Save list of names for band variant
         if (targetPlayerNames != null && !targetPlayerNames.isEmpty()) {
-            net.minecraft.nbt.ListTag namesList = new net.minecraft.nbt.ListTag();
+            var namesList = output.list("TargetPlayerNames", Codec.STRING);
             for (String name : targetPlayerNames) {
                 if (name != null && !name.isEmpty()) {
-                    namesList.add(net.minecraft.nbt.StringTag.valueOf(name));
+                    namesList.add(name);
                 }
-            }
-            if (!namesList.isEmpty()) {
-                tag.put("TargetPlayerNames", namesList);
             }
         }
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        if (tag.contains("PosterText")) {
-            posterText = tag.getString("PosterText");
-        }
-        if (tag.contains("PosterTitle")) {
-            posterTitle = tag.getString("PosterTitle");
-        }
-        if (tag.contains("PosterAuthor")) {
-            posterAuthor = tag.getString("PosterAuthor");
-        }
-        if (tag.contains("PosterBackText")) {
-            posterBackText = tag.getString("PosterBackText");
-        }
-        if (tag.contains("PosterCreatedAt")) {
-            posterCreatedAt = tag.getLong("PosterCreatedAt");
-        }
-        protectedByOp = tag.getBoolean("ProtectedByOp");
-        if (tag.contains("OldposterVariant")) {
-            oldposterVariant = tag.getString("OldposterVariant");
-        } else {
-            oldposterVariant = "default";
-        }
-        if (tag.contains("TargetPlayerName")) {
-            targetPlayerName = tag.getString("TargetPlayerName");
-        } else {
-            targetPlayerName = "";
-        }
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        posterText = input.getString("PosterText").orElse("");
+        posterTitle = input.getString("PosterTitle").orElse("");
+        posterAuthor = input.getString("PosterAuthor").orElse("");
+        posterBackText = input.getString("PosterBackText").orElse("");
+        posterCreatedAt = input.getLong("PosterCreatedAt").orElse(0L);
+        protectedByOp = input.getBooleanOr("ProtectedByOp", false);
+        oldposterVariant = input.getString("OldposterVariant").orElse("default");
+        targetPlayerName = input.getString("TargetPlayerName").orElse("");
         // Load list of names for band variant
         targetPlayerNames.clear();
-        if (tag.contains("TargetPlayerNames", net.minecraft.nbt.Tag.TAG_LIST)) {
-            net.minecraft.nbt.ListTag namesList = tag.getList("TargetPlayerNames", net.minecraft.nbt.Tag.TAG_STRING);
-            for (int i = 0; i < namesList.size(); i++) {
-                String name = namesList.getString(i);
-                if (name != null && !name.isEmpty()) {
-                    targetPlayerNames.add(name);
-                }
-            }
-        }
+        var namesList = input.listOrEmpty("TargetPlayerNames", Codec.STRING);
+        namesList.stream()
+            .filter(name -> name != null && !name.isEmpty())
+            .forEach(targetPlayerNames::add);
     }
 
     @Nullable

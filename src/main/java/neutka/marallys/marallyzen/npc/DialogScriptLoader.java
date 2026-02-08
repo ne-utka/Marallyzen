@@ -26,34 +26,9 @@ public class DialogScriptLoader {
             int defaultDuration,                        // Default duration for all messages if not specified per case
             Map<String, Integer> nextSteps,             // Map: optionId -> next step number (0 = no next step)
             Map<String, DialogOptions> nestedDialogs,   // Map: caseId -> nested dialog options from nested choose blocks
-            Map<String, ScreenFadeData> screenFades,    // Map: optionId -> screen fade data
-            Map<String, EyesCloseData> eyesCloses,      // Map: optionId -> eyes close cutscene data
             Map<String, ItemEquipData> itemEquips,      // Map: optionId -> item equip data (mainhand/offhand)
             Map<String, AudioData> audioData,           // Map: optionId -> audio playback data (single audio, deprecated)
             Map<String, List<AudioData>> audioDataList  // Map: optionId -> list of audio playback data (multiple audio support)
-    ) { }
-    
-    /**
-     * Data class for screen fade cutscene parameters.
-     */
-    public record ScreenFadeData(
-            int fadeOutTicks,
-            int blackScreenTicks,
-            int fadeInTicks,
-            String titleText,
-            String subtitleText,
-            boolean blockPlayerInput,
-            String soundId  // ResourceLocation ID of sound (e.g., "minecraft:block.anvil.land")
-    ) { }
-    
-    /**
-     * Data class for eyes close cutscene parameters.
-     */
-    public record EyesCloseData(
-            int closeDurationTicks,
-            int blackDurationTicks,
-            int openDurationTicks,
-            boolean lockPlayer
     ) { }
     
     /**
@@ -108,8 +83,6 @@ public class DialogScriptLoader {
                     cached.defaultDuration(),
                     new LinkedHashMap<>(cached.nextSteps()),
                     nestedDialogsCopy,
-                    new LinkedHashMap<>(cached.screenFades()),
-                    new LinkedHashMap<>(cached.eyesCloses()),
                     new LinkedHashMap<>(cached.itemEquips()),
                     new LinkedHashMap<>(cached.audioData()),
                     cached.audioDataList() != null ? new LinkedHashMap<>(cached.audioDataList()) : new LinkedHashMap<>()
@@ -152,8 +125,6 @@ public class DialogScriptLoader {
                     optionData.defaultDuration(),
                     new LinkedHashMap<>(optionData.nextSteps()),
                     nestedDialogsCopy,
-                    new LinkedHashMap<>(optionData.screenFades()),
-                    new LinkedHashMap<>(optionData.eyesCloses()),
                     new LinkedHashMap<>(optionData.itemEquips()),
                     new LinkedHashMap<>(optionData.audioData()),
                     optionData.audioDataList() != null ? new LinkedHashMap<>(optionData.audioDataList()) : new LinkedHashMap<>()
@@ -186,8 +157,6 @@ public class DialogScriptLoader {
         Map<String, Integer> narrateDurations = new LinkedHashMap<>();
         Map<String, Integer> nextSteps = new LinkedHashMap<>();
         Map<String, DialogOptions> nestedDialogs = new LinkedHashMap<>();
-        Map<String, ScreenFadeData> screenFades = new LinkedHashMap<>();
-        Map<String, EyesCloseData> eyesCloses = new LinkedHashMap<>();
         Map<String, ItemEquipData> itemEquips = new LinkedHashMap<>();
         Map<String, AudioData> audioData = new LinkedHashMap<>();
         Map<String, List<AudioData>> audioDataList = new LinkedHashMap<>(); // For multiple audio support
@@ -198,7 +167,7 @@ public class DialogScriptLoader {
         
         if (!stepMatcher.find()) {
             // Step not found, return empty options
-            return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, 100, nextSteps, nestedDialogs, screenFades, eyesCloses, itemEquips, audioData, audioDataList);
+            return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, 100, nextSteps, nestedDialogs, itemEquips, audioData, audioDataList);
         }
         
         String stepContent = stepMatcher.group(1);
@@ -221,7 +190,7 @@ public class DialogScriptLoader {
         }
         
         if (options == null || options.isEmpty()) {
-            return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, defaultDuration, nextSteps, nestedDialogs, screenFades, eyesCloses, itemEquips, audioData, audioDataList);
+            return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, defaultDuration, nextSteps, nestedDialogs, itemEquips, audioData, audioDataList);
         }
         
         // Optional: define emotes:<list[emote1|emote2|...]>
@@ -333,8 +302,6 @@ public class DialogScriptLoader {
             List<String> expressions = parseExpressionsList(caseContent);
             int duration = parseNarrateDuration(caseContent);
             int nextStep = parseNextStep(caseContent);
-            ScreenFadeData screenFade = parseScreenFade(caseContent);
-            EyesCloseData eyesClose = parseEyesClose(caseContent);
             ItemEquipData itemEquip = parseItemEquip(caseContent);
             List<AudioData> audioList = parseAudioCommands(caseContent);
             AudioData audio = audioList.isEmpty() ? null : audioList.get(0); // For backward compatibility
@@ -367,16 +334,6 @@ public class DialogScriptLoader {
             if (nextStep > 0) {
                 nextSteps.put(currentCase.caseId(), nextStep);
                 Marallyzen.LOGGER.info("DialogScriptLoader: Case '{}' has next step {}", currentCase.caseId(), nextStep);
-            }
-            if (screenFade != null) {
-                screenFades.put(currentCase.caseId(), screenFade);
-                Marallyzen.LOGGER.info("DialogScriptLoader: Case '{}' has screen fade: fadeOut={}t, blackScreen={}t, fadeIn={}t, title='{}'", 
-                        currentCase.caseId(), screenFade.fadeOutTicks(), screenFade.blackScreenTicks(), screenFade.fadeInTicks(), screenFade.titleText());
-            }
-            if (eyesClose != null) {
-                eyesCloses.put(currentCase.caseId(), eyesClose);
-                Marallyzen.LOGGER.info("DialogScriptLoader: Case '{}' has eyes close: close={}t, black={}t, open={}t, lock={}", 
-                        currentCase.caseId(), eyesClose.closeDurationTicks(), eyesClose.blackDurationTicks(), eyesClose.openDurationTicks(), eyesClose.lockPlayer());
             }
             if (itemEquip != null) {
                 itemEquips.put(currentCase.caseId(), itemEquip);
@@ -434,7 +391,7 @@ public class DialogScriptLoader {
             }
         }
         
-        return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, defaultDuration, nextSteps, nestedDialogs, screenFades, eyesCloses, itemEquips, audioData, audioDataList);
+        return new DialogOptions(optionTexts, optionEmotes, optionExpressions, narrateMessages, narrateDurations, defaultDuration, nextSteps, nestedDialogs, itemEquips, audioData, audioDataList);
     }
     
     /**
@@ -469,146 +426,6 @@ public class DialogScriptLoader {
         }
         return messages;
     }
-    
-    /**
-     * Parses screenfade command from case content.
-     * Looks for lines like: - screenfade fade_out:1s black_screen:5s fade_in:1s title:"..." subtitle:"..." block_input:false
-     * 
-     * @param caseContent The case content to parse
-     * @return ScreenFadeData if found, null otherwise
-     */
-    private static ScreenFadeData parseScreenFade(String caseContent) {
-        // Pattern to match screenfade command with all parameters
-        // Example: - screenfade fade_out:1s black_screen:5s fade_in:1s title:"30 минут спустя" subtitle:"11 августа 2024 г." block_input:false
-        Pattern screenFadePattern = Pattern.compile("-\\s+screenfade\\s+(.*?)(?=\\n|$)");
-        Matcher matcher = screenFadePattern.matcher(caseContent);
-        
-        if (!matcher.find()) {
-            return null;
-        }
-        
-        String paramsStr = matcher.group(1);
-        
-        // Parse individual parameters
-        int fadeOutTicks = 20; // Default: 1 second
-        int blackScreenTicks = 100; // Default: 5 seconds
-        int fadeInTicks = 20; // Default: 1 second
-        String titleText = null;
-        String subtitleText = null;
-        boolean blockPlayerInput = false;
-        String soundId = null;
-        
-        // Parse fade_out
-        Pattern fadeOutPattern = Pattern.compile("fade_out:([^\\s]+)");
-        Matcher fadeOutMatcher = fadeOutPattern.matcher(paramsStr);
-        if (fadeOutMatcher.find()) {
-            fadeOutTicks = parseDurationToTicks(fadeOutMatcher.group(1));
-        }
-        
-        // Parse black_screen
-        Pattern blackScreenPattern = Pattern.compile("black_screen:([^\\s]+)");
-        Matcher blackScreenMatcher = blackScreenPattern.matcher(paramsStr);
-        if (blackScreenMatcher.find()) {
-            blackScreenTicks = parseDurationToTicks(blackScreenMatcher.group(1));
-        }
-        
-        // Parse fade_in
-        Pattern fadeInPattern = Pattern.compile("fade_in:([^\\s]+)");
-        Matcher fadeInMatcher = fadeInPattern.matcher(paramsStr);
-        if (fadeInMatcher.find()) {
-            fadeInTicks = parseDurationToTicks(fadeInMatcher.group(1));
-        }
-        
-        // Parse title (can contain spaces, so match quoted string)
-        Pattern titlePattern = Pattern.compile("title:\"([^\"]+)\"");
-        Matcher titleMatcher = titlePattern.matcher(paramsStr);
-        if (titleMatcher.find()) {
-            titleText = titleMatcher.group(1);
-        }
-        
-        // Parse subtitle (can contain spaces, so match quoted string)
-        Pattern subtitlePattern = Pattern.compile("subtitle:\"([^\"]+)\"");
-        Matcher subtitleMatcher = subtitlePattern.matcher(paramsStr);
-        if (subtitleMatcher.find()) {
-            subtitleText = subtitleMatcher.group(1);
-        }
-        
-        // Parse block_input
-        Pattern blockInputPattern = Pattern.compile("block_input:(true|false)");
-        Matcher blockInputMatcher = blockInputPattern.matcher(paramsStr);
-        if (blockInputMatcher.find()) {
-            blockPlayerInput = Boolean.parseBoolean(blockInputMatcher.group(1));
-        }
-        
-        // Parse sound (can be quoted or unquoted ResourceLocation)
-        // Pattern matches: sound:"minecraft:block.anvil.land" or sound:minecraft:block.anvil.land
-        Pattern soundPattern = Pattern.compile("sound:(?:\"([^\"]+)\"|([^\\s]+))");
-        Matcher soundMatcher = soundPattern.matcher(paramsStr);
-        if (soundMatcher.find()) {
-            soundId = soundMatcher.group(1) != null ? soundMatcher.group(1) : soundMatcher.group(2);
-        }
-        
-        return new ScreenFadeData(fadeOutTicks, blackScreenTicks, fadeInTicks, titleText, subtitleText, blockPlayerInput, soundId);
-    }
-    
-    /**
-     * Parses eyescutscene command from case content.
-     * Looks for lines like: - eyescutscene close_duration:1s black_duration:5s open_duration:1s lock_player:true
-     * 
-     * @param caseContent The case content to parse
-     * @return EyesCloseData if found, null otherwise
-     */
-    private static EyesCloseData parseEyesClose(String caseContent) {
-        // Pattern to match eyescutscene command with all parameters
-        Pattern eyesClosePattern = Pattern.compile("-\\s+eyescutscene\\s+(.*?)(?=\\n|$)");
-        Matcher matcher = eyesClosePattern.matcher(caseContent);
-        
-        if (!matcher.find()) {
-            return null;
-        }
-        
-        String paramsStr = matcher.group(1);
-        
-        // Default values
-        int closeDurationTicks = 20;  // 1 second
-        int blackDurationTicks = 100; // 5 seconds
-        int openDurationTicks = 20;   // 1 second
-        boolean lockPlayer = true;
-        
-        // Parse close_duration
-        Pattern closePattern = Pattern.compile("close_duration:(\\d+[st]?)");
-        Matcher closeMatcher = closePattern.matcher(paramsStr);
-        if (closeMatcher.find()) {
-            closeDurationTicks = parseDurationToTicks(closeMatcher.group(1));
-        }
-        
-        // Parse black_duration
-        Pattern blackPattern = Pattern.compile("black_duration:(\\d+[st]?)");
-        Matcher blackMatcher = blackPattern.matcher(paramsStr);
-        if (blackMatcher.find()) {
-            blackDurationTicks = parseDurationToTicks(blackMatcher.group(1));
-        }
-        
-        // Parse open_duration
-        Pattern openPattern = Pattern.compile("open_duration:(\\d+[st]?)");
-        Matcher openMatcher = openPattern.matcher(paramsStr);
-        if (openMatcher.find()) {
-            openDurationTicks = parseDurationToTicks(openMatcher.group(1));
-        }
-        
-        // Parse lock_player
-        Pattern lockPattern = Pattern.compile("lock_player:(true|false)");
-        Matcher lockMatcher = lockPattern.matcher(paramsStr);
-        if (lockMatcher.find()) {
-            lockPlayer = Boolean.parseBoolean(lockMatcher.group(1));
-        }
-        
-        Marallyzen.LOGGER.info("DialogScriptLoader: Parsed eyescutscene - close={}t, black={}t, open={}t, lock={}", 
-                closeDurationTicks, blackDurationTicks, openDurationTicks, lockPlayer);
-        
-        return new EyesCloseData(closeDurationTicks, blackDurationTicks, openDurationTicks, lockPlayer);
-    }
-    
     /**
      * Parses giveitem command from case content.
      * Looks for lines like: - giveitem marallyzen:locator mainhand
@@ -766,69 +583,7 @@ public class DialogScriptLoader {
             return 20;
         }
     }
-    
-    /**
-     * Parses initial screen fade from step content (before choose statement).
-     * These are screen fades that should be shown when dialog first opens (after initial narration).
-     * 
-     * @param dialogScriptName The name of the dialog script
-     * @param stepNumber The step number (usually 1 for initial dialog)
-     * @return ScreenFadeData if found, null otherwise
-     */
-    public static ScreenFadeData parseInitialScreenFade(String dialogScriptName, int stepNumber) {
-        try {
-            File scriptsFolder = DenizenService.getScriptsFolder();
-            File scriptFile = new File(scriptsFolder, dialogScriptName + ".dsc");
-            
-            if (!scriptFile.exists()) {
-                return null;
-            }
-            
-            String content = readFile(scriptFile);
-            
-            // Find the specific step block
-            Pattern stepPattern = Pattern.compile("\\s+" + stepNumber + "\\s*:\\s*\\n(.*?)(?=\\s+\\d+\\s*:|\\s+requirements:|\\Z)", Pattern.DOTALL);
-            Matcher stepMatcher = stepPattern.matcher(content);
-            
-            if (!stepMatcher.find()) {
-                return null;
-            }
-            
-            String stepContent = stepMatcher.group(1);
-            
-            // Find the click trigger block
-            Pattern clickTriggerPattern = Pattern.compile("click\\s+trigger:\\s*\\n\\s*script:\\s*\\n(.*?)(?=\\s+-\\s+define|\\s+-\\s+choose|\\Z)", Pattern.DOTALL);
-            Matcher clickTriggerMatcher = clickTriggerPattern.matcher(stepContent);
-            
-            if (!clickTriggerMatcher.find()) {
-                // Try alternative pattern
-                clickTriggerPattern = Pattern.compile("click\\s+trigger:.*?script:.*?\\n(.*?)(?=\\s+-\\s+define|\\s+-\\s+choose|\\Z)", Pattern.DOTALL);
-                clickTriggerMatcher = clickTriggerPattern.matcher(stepContent);
-            }
-            
-            if (!clickTriggerMatcher.find()) {
-                return null;
-            }
-            
-            String scriptContent = clickTriggerMatcher.group(1);
-            
-            // Extract content before the first "define options" or "choose" statement
-            Pattern stopPattern = Pattern.compile("(define\\s+options|choose)");
-            Matcher stopMatcher = stopPattern.matcher(scriptContent);
-            int stopIndex = scriptContent.length();
-            if (stopMatcher.find()) {
-                stopIndex = stopMatcher.start();
-            }
-            
-            String initialContent = scriptContent.substring(0, stopIndex);
-            
-            // Parse screenfade from initial content
-            return parseScreenFade(initialContent);
-        } catch (Exception e) {
-            Marallyzen.LOGGER.error("Failed to parse initial screen fade for script '{}' step {}", dialogScriptName, stepNumber, e);
-            return null;
-        }
-    }
+
     
     /**
      * Parses initial narrate messages and duration from step content (before choose statement).
@@ -1123,8 +878,6 @@ public class DialogScriptLoader {
         Map<String, Integer> nestedNarrateDurations = new LinkedHashMap<>();
         Map<String, Integer> nestedNextSteps = new LinkedHashMap<>();
         Map<String, DialogOptions> nestedNestedDialogs = new LinkedHashMap<>();
-        Map<String, ScreenFadeData> nestedScreenFades = new LinkedHashMap<>();
-        Map<String, EyesCloseData> nestedEyesCloses = new LinkedHashMap<>();
         Map<String, ItemEquipData> nestedItemEquips = new LinkedHashMap<>();
         Map<String, AudioData> nestedAudioData = new LinkedHashMap<>(); // For backward compatibility
         Map<String, List<AudioData>> nestedAudioDataList = new LinkedHashMap<>(); // For multiple audio support
@@ -1159,8 +912,6 @@ public class DialogScriptLoader {
             List<String> expressions = parseExpressionsList(nestedCaseContent);
             int duration = parseNarrateDuration(nestedCaseContent);
             int nextStep = parseNextStep(nestedCaseContent);
-            ScreenFadeData screenFade = parseScreenFade(nestedCaseContent);
-            EyesCloseData eyesClose = parseEyesClose(nestedCaseContent);
             ItemEquipData itemEquip = parseItemEquip(nestedCaseContent);
             List<AudioData> nestedAudioList = parseAudioCommands(nestedCaseContent);
             AudioData audio = nestedAudioList.isEmpty() ? null : nestedAudioList.get(0); // For backward compatibility
@@ -1180,12 +931,6 @@ public class DialogScriptLoader {
             }
             if (nextStep > 0) {
                 nestedNextSteps.put(currentCase.caseId(), nextStep);
-            }
-            if (screenFade != null) {
-                nestedScreenFades.put(currentCase.caseId(), screenFade);
-            }
-            if (eyesClose != null) {
-                nestedEyesCloses.put(currentCase.caseId(), eyesClose);
             }
             if (itemEquip != null) {
                 nestedItemEquips.put(currentCase.caseId(), itemEquip);
@@ -1216,7 +961,7 @@ public class DialogScriptLoader {
         }
         
         return new DialogOptions(nestedOptionTexts, nestedOptionEmotes, nestedOptionExpressions, nestedNarrateMessages, 
-                nestedNarrateDurations, defaultDuration, nestedNextSteps, nestedNestedDialogs, nestedScreenFades, nestedEyesCloses, nestedItemEquips, nestedAudioData, nestedAudioDataList);
+                nestedNarrateDurations, defaultDuration, nestedNextSteps, nestedNestedDialogs, nestedItemEquips, nestedAudioData, nestedAudioDataList);
     }
     
     /**
@@ -1288,3 +1033,9 @@ public class DialogScriptLoader {
         dialogCache.clear();
     }
 }
+
+
+
+
+
+

@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.api;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 
@@ -34,7 +34,7 @@ public interface INpcManager {
      * @param waypoints List of waypoint positions
      * @param metadata Additional metadata
      */
-    void registerNpc(String npcId, String name, ResourceLocation entityType,
+    void registerNpc(String npcId, String name, Identifier entityType,
                     BlockPos spawnPos, List<BlockPos> waypoints, Map<String, String> metadata);
 
     /**
@@ -83,6 +83,8 @@ public interface INpcManager {
      */
     List<String> getAllNpcIds();
 }
+
+
 
 
 

@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.denizen.util;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 
 public final class DenizenSoundResolver {
@@ -12,17 +12,19 @@ public final class DenizenSoundResolver {
         if (input == null || input.isEmpty()) {
             return null;
         }
-        ResourceLocation id;
+        Identifier id;
         if (input.contains(":")) {
-            id = ResourceLocation.tryParse(input.toLowerCase());
+            id = Identifier.tryParse(input.toLowerCase());
         }
         else {
             String name = input.toLowerCase().replace('_', '.');
-            id = ResourceLocation.tryParse("minecraft:" + name);
+            id = Identifier.tryParse("minecraft:" + name);
         }
         if (id == null) {
             return null;
         }
-        return BuiltInRegistries.SOUND_EVENT.get(id);
+        return BuiltInRegistries.SOUND_EVENT.getValue(id);
     }
 }
+
+

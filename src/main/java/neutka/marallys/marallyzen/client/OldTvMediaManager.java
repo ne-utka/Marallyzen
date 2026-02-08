@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.util.StringUtil;
@@ -81,7 +81,7 @@ public final class OldTvMediaManager {
         return true;
     }
 
-    public static ResourceLocation getTexture(BlockPos pos, net.minecraft.resources.ResourceKey<Level> dimension, long gameTime) {
+    public static Identifier getTexture(BlockPos pos, net.minecraft.resources.ResourceKey<Level> dimension, long gameTime) {
         ensureLoaded();
         String key = buildKey(dimension, pos);
         String mediaName = bindings.get(key);
@@ -170,7 +170,7 @@ public final class OldTvMediaManager {
     }
 
     private static String buildKey(net.minecraft.resources.ResourceKey<Level> dimension, BlockPos pos) {
-        return dimension.location() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ();
+        return dimension.identifier() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ();
     }
 
     private static String normalizeMediaName(String name) {
@@ -211,8 +211,9 @@ public final class OldTvMediaManager {
         }
         TextureManager textures = Minecraft.getInstance().getTextureManager();
         var image = com.mojang.blaze3d.platform.NativeImage.read(new BufferedInputStream(Files.newInputStream(file)));
-        DynamicTexture texture = new DynamicTexture(image);
-        ResourceLocation id = textures.register("tv/" + sanitize(mediaName), texture);
+        DynamicTexture texture = new DynamicTexture(() -> "marallyzen_tv_" + sanitize(mediaName), image);
+        Identifier id = Identifier.fromNamespaceAndPath(Marallyzen.MODID, "tv/" + sanitize(mediaName));
+        textures.register(id, texture);
         return new Media(false, List.of(id), 1, null);
     }
 
@@ -233,12 +234,14 @@ public final class OldTvMediaManager {
         }
         int ticksPerFrame = Math.max(1, 20 / meta.fps);
         TextureManager textures = Minecraft.getInstance().getTextureManager();
-        List<ResourceLocation> ids = new ArrayList<>();
+        List<Identifier> ids = new ArrayList<>();
         int index = 0;
         for (Path frame : frames) {
             var image = com.mojang.blaze3d.platform.NativeImage.read(new BufferedInputStream(Files.newInputStream(frame)));
-            DynamicTexture texture = new DynamicTexture(image);
-            ResourceLocation id = textures.register("tv/" + sanitize(mediaName) + "/" + index, texture);
+            int frameIndex = index;
+            DynamicTexture texture = new DynamicTexture(() -> "marallyzen_tv_" + sanitize(mediaName) + "_" + frameIndex, image);
+            Identifier id = Identifier.fromNamespaceAndPath(Marallyzen.MODID, "tv/" + sanitize(mediaName) + "/" + frameIndex);
+            textures.register(id, texture);
             ids.add(id);
             index++;
         }
@@ -298,6 +301,10 @@ public final class OldTvMediaManager {
 
     private record MediaMeta(int fps, String soundId) {}
 
-    private record Media(boolean animated, List<ResourceLocation> frames, int ticksPerFrame, String soundId) {}
+    private record Media(boolean animated, List<Identifier> frames, int ticksPerFrame, String soundId) {}
 }
+
+
+
+
 

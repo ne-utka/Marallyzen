@@ -47,7 +47,7 @@ public final class RadioPlaybackManager {
     }
 
     private static void startSession(ServerPlayer player, BlockPos pos, String stationName) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         if (level == null) {
             return;
         }
@@ -86,7 +86,7 @@ public final class RadioPlaybackManager {
         if (player == null || session == null || !session.enabled) {
             return;
         }
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         if (level == null) {
             return;
         }
@@ -153,10 +153,10 @@ public final class RadioPlaybackManager {
         session.timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (player.server == null) {
+                if (player.level().getServer() == null) {
                     return;
                 }
-                player.server.execute(() -> playNext(player, session));
+                player.level().getServer().execute(() -> playNext(player, session));
             }
         }, delayMs);
     }

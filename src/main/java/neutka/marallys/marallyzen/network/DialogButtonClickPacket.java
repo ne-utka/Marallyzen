@@ -101,8 +101,6 @@ public record DialogButtonClickPacket(String dialogId, String buttonId, UUID npc
                 // Check if there's a nested dialog or next step to open after narrate completes
                 var nestedDialog = dialogOptions.nestedDialogs() != null ? dialogOptions.nestedDialogs().get(packet.buttonId()) : null;
                 Integer nextStep = dialogOptions.nextSteps().get(packet.buttonId());
-                var screenFade = dialogOptions.screenFades() != null ? dialogOptions.screenFades().get(packet.buttonId()) : null;
-                var eyesClose = dialogOptions.eyesCloses() != null ? dialogOptions.eyesCloses().get(packet.buttonId()) : null;
                 var itemEquip = dialogOptions.itemEquips() != null ? dialogOptions.itemEquips().get(packet.buttonId()) : null;
                 var audioData = dialogOptions.audioData() != null ? dialogOptions.audioData().get(packet.buttonId()) : null;
                 var audioDataList = dialogOptions.audioDataList() != null ? dialogOptions.audioDataList().get(packet.buttonId()) : null;
@@ -129,14 +127,14 @@ public record DialogButtonClickPacket(String dialogId, String buttonId, UUID npc
                                 duration, audioDataList.size(), dialogOptions.narrateDurations().getOrDefault(packet.buttonId(), dialogOptions.defaultDuration()));
                     }
                 }
-                neutka.marallys.marallyzen.Marallyzen.LOGGER.info("DialogButtonClickPacket: Button '{}' clicked, hasNested={}, nextStep: {}, hasScreenFade: {}, hasEyesClose: {}, hasItemEquip: {}, hasAudio: {} ({} file(s))", 
-                        packet.buttonId(), nestedDialog != null, nextStep, screenFade != null, eyesClose != null, itemEquip != null, 
+                neutka.marallys.marallyzen.Marallyzen.LOGGER.info("DialogButtonClickPacket: Button '{}' clicked, hasNested={}, nextStep: {}, hasItemEquip: {}, hasAudio: {} ({} file(s))", 
+                        packet.buttonId(), nestedDialog != null, nextStep, itemEquip != null, 
                         audioDataList != null && !audioDataList.isEmpty(), audioDataList != null ? audioDataList.size() : 0);
                 
                 // Execute item equip command if present
                 if (itemEquip != null && npcEntity instanceof net.minecraft.world.entity.LivingEntity livingEntity) {
                     try {
-                        net.minecraft.resources.ResourceLocation itemLocation = net.minecraft.resources.ResourceLocation.parse(itemEquip.itemId());
+                        net.minecraft.resources.Identifier itemLocation = net.minecraft.resources.Identifier.parse(itemEquip.itemId());
                         net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(itemLocation).ifPresentOrElse(
                                 item -> {
                                     net.minecraft.world.item.ItemStack itemStack = new net.minecraft.world.item.ItemStack(item);
@@ -449,28 +447,7 @@ public record DialogButtonClickPacket(String dialogId, String buttonId, UUID npc
                     };
                 }
                 
-                // If there's a cutscene (screen fade or eyes close), chain it: narration → cutscene → final callback
-                // Otherwise, just use final callback directly
-                if (eyesClose != null) {
-                    // Chain: narration → eyes close → final callback
-                    final Runnable finalCallback = finalCallbackRef[0];
-                    Runnable narrationCompleteCallback = () -> {
-                        neutka.marallys.marallyzen.Marallyzen.LOGGER.info("DialogButtonClickPacket: Narration complete, starting eyes close cutscene for button '{}'", packet.buttonId());
-                        neutka.marallys.marallyzen.npc.NpcNarrateHandler.scheduleEyesCloseAfterNarration(player, eyesClose, serverLevel, finalCallback);
-                    };
-                    onComplete = narrationCompleteCallback;
-                } else if (screenFade != null) {
-                    // Chain: narration → screen fade → final callback
-                    final Runnable finalCallback = finalCallbackRef[0];
-                    Runnable narrationCompleteCallback = () -> {
-                        neutka.marallys.marallyzen.Marallyzen.LOGGER.info("DialogButtonClickPacket: Narration complete, starting screen fade for button '{}'", packet.buttonId());
-                        neutka.marallys.marallyzen.npc.NpcNarrateHandler.scheduleScreenFadeAfterNarration(player, screenFade, serverLevel, finalCallback);
-                    };
-                    onComplete = narrationCompleteCallback;
-                } else {
-                    // No cutscene - use final callback directly
-                    onComplete = finalCallbackRef[0];
-                }
+                onComplete = finalCallbackRef[0];
                 
                 neutka.marallys.marallyzen.npc.NpcNarrateHandler.scheduleNarrateMessages(
                         player, narrateMessages, narrateExpressions, duration, npcName, npcEntity.getUUID(), serverLevel, onComplete);
@@ -597,3 +574,6 @@ public record DialogButtonClickPacket(String dialogId, String buttonId, UUID npc
     }
     
 }
+
+
+

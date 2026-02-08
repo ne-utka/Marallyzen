@@ -754,7 +754,7 @@ public class ClientPosterManager {
                                 }
                                 posterBe.setChanged();
                                 // Force mark chunk as dirty to ensure it's saved
-                                serverLevel.getChunkAt(pos).setUnsaved(true);
+                                serverLevel.getChunkAt(pos).markUnsaved();
                                 LOGGER.warn("ClientPosterManager.clearAll: Saved variant '{}' to SERVER BlockEntity at {} before clearing (chunk marked dirty)", variant, pos);
                             }
                         }

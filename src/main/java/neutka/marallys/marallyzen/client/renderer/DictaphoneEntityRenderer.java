@@ -4,12 +4,15 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,7 +23,7 @@ import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.client.ClientDictaphoneManager;
 import neutka.marallys.marallyzen.entity.DictaphoneEntity;
 
-public class DictaphoneEntityRenderer extends EntityRenderer<DictaphoneEntity> {
+public class DictaphoneEntityRenderer extends EntityRenderer<DictaphoneEntity, DictaphoneEntityRenderer.RenderState> {
     public DictaphoneEntityRenderer(EntityRendererProvider.Context context) {
         super(context);
     }
@@ -50,14 +53,36 @@ public class DictaphoneEntityRenderer extends EntityRenderer<DictaphoneEntity> {
         return t * t * (3.0f - 2.0f * t);
     }
 
-    @Override
-    public ResourceLocation getTextureLocation(DictaphoneEntity entity) {
-        return ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone.png");
+    public Identifier getTextureLocation(DictaphoneEntity entity) {
+        return Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone.png");
     }
 
     @Override
-    public void render(DictaphoneEntity entity, float entityYaw, float partialTick,
-                       PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+    public RenderState createRenderState() {
+        return new RenderState();
+    }
+
+    @Override
+    public void extractRenderState(DictaphoneEntity entity, RenderState state, float partialTick) {
+        super.extractRenderState(entity, state, partialTick);
+        state.entity = entity;
+        state.partialTick = partialTick;
+    }
+
+    @Override
+    public void submit(RenderState state, PoseStack poseStack, SubmitNodeCollector renderTasks, CameraRenderState cameraState) {
+        DictaphoneEntity entity = state.entity;
+        if (entity == null) {
+            return;
+        }
+        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+        renderDictaphone(entity, state.partialTick, poseStack, bufferSource, state.lightCoords);
+        bufferSource.endBatch();
+        super.submit(state, poseStack, renderTasks, cameraState);
+    }
+
+    private void renderDictaphone(DictaphoneEntity entity, float partialTick, PoseStack poseStack,
+                                  MultiBufferSource.BufferSource bufferSource, int packedLight) {
         DictaphoneEntity.State state = entity.getCurrentState();
         Vec3 start = entity.getStartPosition();
         Vec3 target = entity.getTargetPosition();
@@ -125,7 +150,7 @@ public class DictaphoneEntityRenderer extends EntityRenderer<DictaphoneEntity> {
                 poseStack.mulPose(Axis.XP.rotationDegrees(swayX));
                 poseStack.mulPose(Axis.YP.rotationDegrees(swayY));
             }
-            poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+            poseStack.mulPose(Minecraft.getInstance().gameRenderer.getMainCamera().rotation());
             poseStack.mulPose(Axis.YP.rotationDegrees(180.0f));
             // Rotate so the top face points toward the camera.
             float rotT = 1.0f;
@@ -161,6 +186,12 @@ public class DictaphoneEntityRenderer extends EntityRenderer<DictaphoneEntity> {
         );
 
         poseStack.popPose();
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+    }
+
+    public static final class RenderState extends EntityRenderState {
+        private DictaphoneEntity entity;
+        private float partialTick;
     }
 }
+
+

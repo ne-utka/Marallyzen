@@ -16,10 +16,7 @@ public interface IMarallyzenAPI {
      */
     IDialogManager getDialogManager();
 
-    /**
-     * Get the cutscene manager for cinematic camera control.
-     */
-    ICutsceneManager getCutsceneManager();
+    // Cutscene API removed.
 
     /**
      * Get the script manager for executing Denizen scripts.

@@ -1,12 +1,10 @@
 package neutka.marallys.marallyzen.client.emote;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import neutka.marallys.marallyzen.Marallyzen;
-import neutka.marallys.marallyzen.client.cutscene.editor.CutsceneRecorder;
-import neutka.marallys.marallyzen.replay.client.ReplayClientRecorder;
-import neutka.marallys.marallyzen.replay.client.ReplayEmoteStateTracker;
+import neutka.marallys.marallyzen.util.EmoteConfigUtil;
 
 import java.io.InputStream;
 import java.util.HashSet;
@@ -17,7 +15,6 @@ import java.util.UUID;
  * Handler for playing Emotecraft emotes on NPCs using IPlayerEntity.emotecraft$playEmote().
  * Works only with entities that implement IPlayerEntity (Player, RemotePlayer via Emotecraft mixin).
  */
-@net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
 public final class ClientEmoteHandler {
     private static final Set<String> LEGACY_EMOTE_LOGGED = new HashSet<>();
 
@@ -249,6 +246,11 @@ public final class ClientEmoteHandler {
                 }
             }
             
+            Object configEmote = loadFromConfigEmotes(emoteId);
+            if (configEmote != null) {
+                return configEmote;
+            }
+
             Object modAssetEmote = loadFromModAssets(emoteId);
             if (modAssetEmote != null) {
                 return modAssetEmote;
@@ -274,6 +276,10 @@ public final class ClientEmoteHandler {
                     if (!emoteDir.exists() || !emoteDir.isDirectory()) {
                         // Try "run/emotes" if we're in project root
                         emoteDir = new java.io.File("run/emotes");
+                    }
+                    if (!emoteDir.exists() || !emoteDir.isDirectory()) {
+                        java.nio.file.Path configDir = EmoteConfigUtil.getConfigEmoteDir();
+                        emoteDir = configDir.toFile();
                     }
                     if (!emoteDir.exists() || !emoteDir.isDirectory()) {
                         // Try absolute path: go up one level if we're in run/
@@ -955,17 +961,6 @@ public final class ClientEmoteHandler {
             return;
         }
 
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.setActive(entityId, emoteId);
-        }
-
-        if (record) {
-            CutsceneRecorder recorder = CutsceneRecorder.getInstance();
-            if (recorder != null && recorder.isRecording()) {
-                recorder.recordEmoteEvent(entity, emoteId);
-            }
-        }
-
         // Play emote on entity
         playEmoteOnNpc(entity, emote);
     }
@@ -980,17 +975,6 @@ public final class ClientEmoteHandler {
             return;
         }
 
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.setActive(entity.getUUID(), emoteId);
-        }
-
-        if (record) {
-            CutsceneRecorder recorder = CutsceneRecorder.getInstance();
-            if (recorder != null && recorder.isRecording()) {
-                recorder.recordEmoteEvent(entity, emoteId);
-            }
-        }
-
         playEmoteOnNpc(entity, emote);
     }
 
@@ -1003,9 +987,6 @@ public final class ClientEmoteHandler {
         if (entity == null) {
             Marallyzen.LOGGER.warn("ClientEmoteHandler: Entity not found for UUID {} (stop)", entityId);
             return;
-        }
-        if (ReplayClientRecorder.getInstance().isRecording()) {
-            ReplayEmoteStateTracker.clear(entityId);
         }
         stop(entity);
     }
@@ -1181,10 +1162,53 @@ public final class ClientEmoteHandler {
         return null;
     }
 
+    private static Object loadFromConfigEmotes(String emoteId) {
+        if (emoteId == null || emoteId.isEmpty()) {
+            return null;
+        }
+        String resourceName = resolveResourceName(emoteId);
+        if (resourceName == null) {
+            return null;
+        }
+        try {
+            java.nio.file.Path emotePath = EmoteConfigUtil.getConfigEmoteDir().resolve(resourceName);
+            java.io.File emoteFile = emotePath.toFile();
+            if (!emoteFile.exists() || !emoteFile.isFile()) {
+                return null;
+            }
+            Class<?> serializerClass = Class.forName("io.github.kosmx.emotes.server.serializer.UniversalEmoteSerializer");
+            try (InputStream stream = new java.io.FileInputStream(emoteFile)) {
+                java.lang.reflect.Method readDataMethod = serializerClass.getMethod("readData", InputStream.class, String.class);
+                Object result = readDataMethod.invoke(null, stream, emoteFile.getName());
+                java.util.Map<String, Object> emotes = null;
+                if (result instanceof java.util.Map) {
+                    @SuppressWarnings("unchecked")
+                    java.util.Map<String, Object> map = (java.util.Map<String, Object>) result;
+                    emotes = map;
+                } else if (result instanceof java.util.Collection) {
+                    java.util.Collection<?> collection = (java.util.Collection<?>) result;
+                    emotes = new java.util.HashMap<>();
+                    int index = 0;
+                    for (Object item : collection) {
+                        emotes.put("emote_" + index++, item);
+                    }
+                }
+                if (emotes != null && !emotes.isEmpty()) {
+                    Object animation = emotes.values().iterator().next();
+                    logLegacyEmote("config_emotes", emoteId, resourceName, animation);
+                    return animation;
+                }
+            }
+        } catch (Exception e) {
+            Marallyzen.LOGGER.debug("ClientEmoteHandler: Failed to load emote from config: {}", e.getMessage());
+        }
+        return null;
+    }
+
     private static String resolveResourceName(String emoteId) {
         String path = emoteId;
         try {
-            ResourceLocation id = ResourceLocation.tryParse(emoteId);
+            Identifier id = Identifier.tryParse(emoteId);
             if (id != null) {
                 path = id.getPath();
             }
@@ -1200,3 +1224,5 @@ public final class ClientEmoteHandler {
         return path;
     }
 }
+
+

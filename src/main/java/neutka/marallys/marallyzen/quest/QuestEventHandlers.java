@@ -1,7 +1,7 @@
 package neutka.marallys.marallyzen.quest;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -12,7 +12,7 @@ import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class QuestEventHandlers {
 
     @SubscribeEvent
@@ -49,7 +49,7 @@ public class QuestEventHandlers {
             return;
         }
         var entityType = event.getEntity().getType();
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
         if (id != null) {
             QuestManager.getInstance().onEntityKilled(player, id.toString());
         }
@@ -64,7 +64,7 @@ public class QuestEventHandlers {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id != null) {
             QuestManager.getInstance().onItemUse(player, id.toString());
         }
@@ -79,9 +79,11 @@ public class QuestEventHandlers {
         if (stack.isEmpty()) {
             return;
         }
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id != null) {
             QuestManager.getInstance().onItemPickup(player, id.toString());
         }
     }
 }
+
+

@@ -18,7 +18,7 @@ import neutka.marallys.marallyzen.util.NarrationIcons;
 
 import java.util.List;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public final class DecoratedPotCarryClient {
     private static boolean wasCarrying = false;
 

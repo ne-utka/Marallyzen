@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.loading.FMLPaths;
 import neutka.marallys.marallyzen.Marallyzen;
@@ -172,7 +172,7 @@ public final class NpcStateStore {
     public record NpcState(ResourceKey<Level> dimension, double x, double y, double z, float yaw, float pitch) {
         JsonObject toJson() {
             JsonObject obj = new JsonObject();
-            obj.addProperty("dimension", dimension.location().toString());
+            obj.addProperty("dimension", dimension.identifier().toString());
             obj.addProperty("x", x);
             obj.addProperty("y", y);
             obj.addProperty("z", z);
@@ -185,7 +185,7 @@ public final class NpcStateStore {
             if (obj == null || !obj.has("dimension")) {
                 return null;
             }
-            ResourceLocation dimId = ResourceLocation.parse(obj.get("dimension").getAsString());
+            Identifier dimId = Identifier.parse(obj.get("dimension").getAsString());
             ResourceKey<Level> dimension = ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, dimId);
             double x = obj.has("x") ? obj.get("x").getAsDouble() : 0.0;
             double y = obj.has("y") ? obj.get("y").getAsDouble() : 0.0;
@@ -196,3 +196,7 @@ public final class NpcStateStore {
         }
     }
 }
+
+
+
+

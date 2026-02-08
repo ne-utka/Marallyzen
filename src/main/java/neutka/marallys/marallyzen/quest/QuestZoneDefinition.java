@@ -3,7 +3,7 @@ package neutka.marallys.marallyzen.quest;
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 
 public class QuestZoneDefinition {
@@ -102,7 +102,7 @@ public class QuestZoneDefinition {
         String dimensionStr = QuestJsonUtils.getString(obj, "dimension", "minecraft:overworld");
         ResourceKey<Level> dimension = ResourceKey.create(
                 net.minecraft.core.registries.Registries.DIMENSION,
-                ResourceLocation.parse(dimensionStr)
+                Identifier.parse(dimensionStr)
         );
 
         if (shape == Shape.SPHERE) {
@@ -133,3 +133,5 @@ public class QuestZoneDefinition {
         );
     }
 }
+
+

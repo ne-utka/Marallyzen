@@ -10,7 +10,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.client.narration.NarrationManager;
 
-@EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(value = Dist.CLIENT)
 public final class OldTvBindHandler {
     private OldTvBindHandler() {
     }

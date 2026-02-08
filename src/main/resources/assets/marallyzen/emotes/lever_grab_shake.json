@@ -1,0 +1,40 @@
+﻿{
+  "name": "lever_grab_shake",
+  "author": "Marallyzen",
+  "description": "Lever grab + shake emote",
+  "emote": {
+    "isLoop": "true",
+    "degrees": true,
+    "beginTick": 0,
+    "endTick": 20,
+    "stopTick": 20,
+    "returnTick": 5,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "LINEAR",
+        "rightArm": {"pitch": -35, "yaw": 5, "roll": 0}
+      },
+      {
+        "tick": 5,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -55, "yaw": 8, "roll": 0}
+      },
+      {
+        "tick": 10,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -42, "yaw": 3, "roll": 0}
+      },
+      {
+        "tick": 15,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -58, "yaw": 10, "roll": 0}
+      },
+      {
+        "tick": 20,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -35, "yaw": 5, "roll": 0}
+      }
+    ]
+  }
+}

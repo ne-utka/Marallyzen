@@ -3,17 +3,21 @@ package neutka.marallys.marallyzen.client.gui;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
-import org.lwjgl.opengl.GL11;
+import com.mojang.serialization.JsonOps;
+import com.google.gson.JsonParser;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
+import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
-import neutka.marallys.marallyzen.client.gui.NoDepthTextBufferSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,6 +77,11 @@ public class DialogHud {
     private static final int BACKGROUND_SWITCH_DURATION_TICKS = 4; // 0.2 seconds at 20 TPS (fast Bedrock switch)
     private static final float BACKGROUND_PADDING_X = 3.42f; // Horizontal padding of background from text (reduced by 10% then 5%: 4.0 * 0.9 * 0.95)
     private static final float BACKGROUND_PADDING_Y = 0.855f; // Vertical padding of background from text (reduced by 10% then 5%: 1.0 * 0.9 * 0.95)
+    private static final float BACKGROUND_CORNER_RADIUS = 2.0f;
+    private static final float ROUNDED_BG_TEX_SIZE = 64.0f;
+    private static final float ROUNDED_BG_CORNER_PX = 10.0f;
+    private static final Identifier ROUNDED_BG_TEXTURE =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
     
     // Legacy constants (kept for compatibility, will be replaced)
     private static final float ANIMATION_SPEED = 0.1f; // How fast the dialog appears
@@ -426,9 +435,10 @@ public class DialogHud {
         double npcZ = npcEntity.getZ();
         
         // Get camera (player) position
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        Vec3 camPos = camera.position();
+        double camX = camPos.x;
+        double camY = camPos.y;
+        double camZ = camPos.z;
         
         // Calculate distance from camera
         double dx = npcX - camX;
@@ -483,8 +493,8 @@ public class DialogHud {
         poseStack.translate(offsetX, offsetY, offsetZ);
         
         // Make dialog face camera (billboard effect) - same as NpcTalkIconRenderer
-        float cameraYaw = camera.getYRot();
-        float cameraPitch = camera.getXRot();
+        float cameraYaw = camera.yRot();
+        float cameraPitch = camera.xRot();
         poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(cameraPitch));
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f)); // Fix text orientation
@@ -509,7 +519,7 @@ public class DialogHud {
         
         // Get render buffer and font
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        MultiBufferSource textSource = new NoDepthTextBufferSource(bufferSource);
+        MultiBufferSource textSource = bufferSource;
         Font font = mc.font;
         Matrix4f baseMatrix = poseStack.last().pose(); // Base matrix before any option-specific transformations
         
@@ -518,9 +528,6 @@ public class DialogHud {
         // Increased offset to position text higher (reduced by 10% then 5%: 16.0 * 0.9 * 0.95)
         float startY = PADDING_PIXELS + 13.68f; // Add extra 13.68 pixels above
         
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
         // Render options with background fill for selected option
         float currentY = startY;
         for (int i = 0; i < options.size(); i++) {
@@ -557,7 +564,7 @@ public class DialogHud {
                 float textCenterY = currentY + OPTION_HEIGHT_PIXELS / 2 - 4 + textHeight / 2;
                 
                 // Center background on text center: bgY + bgHeight/2 = textCenterY
-                float bgY = textCenterY - bgHeight / 2;
+                float bgY = textCenterY - bgHeight / 2 - 1.0f;
                 
                 // Apply horizontal offset for currently selected option
                 float bgX = -BACKGROUND_PADDING_X + (isSelected ? SELECTED_HORIZONTAL_OFFSET : 0.0f);
@@ -567,7 +574,7 @@ public class DialogHud {
                 int bgAlpha = (int)(backgroundAlpha * 120); // ~47% of 255, same as proximity
                 int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
                 
-                fillRect(baseMatrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+                fillRoundedRect(baseMatrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
             }
             
             // Bedrock-style micro-pulse: subtle scale bump that fades out
@@ -619,7 +626,6 @@ public class DialogHud {
         }
         
         bufferSource.endBatch();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         poseStack.popPose();
     }
     
@@ -628,11 +634,11 @@ public class DialogHud {
      * Simplified version for highlighting selected options.
      */
     private void fillRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
-                         float x, float y, float width, float height, int color) {
+                          float x, float y, float width, float height, int color) {
         // Use text see-through render type so background doesn't z-fight or get depth-culled.
         com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
                 NoDepthTextRenderType.textNoDepth(
-                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
                 )
         );
         
@@ -682,11 +688,100 @@ public class DialogHud {
                 .setUv2(lightU, lightV)
                 .setNormal(normalX, normalY, normalZ);
         vertexConsumer.addVertex(matrix, left, top, z)
-                .setColor(r, g, b, a)
-                .setUv(0.0f, 0.0f)
-                .setUv1(overlayU, overlayV)
-                .setUv2(lightU, lightV)
-                .setNormal(normalX, normalY, normalZ);
+            .setColor(r, g, b, a)
+            .setUv(0.0f, 0.0f)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(normalX, normalY, normalZ);
+    }
+
+    private void fillRoundedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                 float x, float y, float width, float height, float radius, int color) {
+        if (radius <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+        fillTexturedRect(matrix, bufferSource, x, y, width, height, color);
+    }
+
+    private void fillTexturedRect(Matrix4f matrix, MultiBufferSource.BufferSource bufferSource,
+                                  float x, float y, float width, float height, int color) {
+        float corner = Math.min(Math.max(BACKGROUND_CORNER_RADIUS, 0.0f), Math.min(width, height) / 2.0f);
+        if (corner <= 0.0f) {
+            fillRect(matrix, bufferSource, x, y, width, height, color);
+            return;
+        }
+
+        com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer = bufferSource.getBuffer(
+            NoDepthTextRenderType.textNoDepth(ROUNDED_BG_TEXTURE)
+        );
+
+        int a = (color >> 24) & 0xFF;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+
+        int light = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
+        int overlay = net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY;
+        int lightU = light & 0xFFFF;
+        int lightV = (light >> 16) & 0xFFFF;
+        int overlayU = overlay & 0xFFFF;
+        int overlayV = (overlay >> 16) & 0xFFFF;
+
+        float z = 0.01f;
+        float uCorner = ROUNDED_BG_CORNER_PX / ROUNDED_BG_TEX_SIZE;
+
+        float x0 = x;
+        float x1 = x + corner;
+        float x2 = x + width - corner;
+        float x3 = x + width;
+        float y0 = y;
+        float y1 = y + corner;
+        float y2 = y + height - corner;
+        float y3 = y + height;
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y0, x1, y1, 0.0f, 0.0f, uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y0, x2, y1, uCorner, 0.0f, 1.0f - uCorner, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y0, x3, y1, 1.0f - uCorner, 0.0f, 1.0f, uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y1, x1, y2, 0.0f, uCorner, uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y1, x2, y2, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y1, x3, y2, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+
+        drawTexturedQuad(vertexConsumer, matrix, x0, y2, x1, y3, 0.0f, 1.0f - uCorner, uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x1, y2, x2, y3, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+        drawTexturedQuad(vertexConsumer, matrix, x2, y2, x3, y3, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, r, g, b, a, z, overlayU, overlayV, lightU, lightV);
+    }
+
+    private void drawTexturedQuad(com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer, Matrix4f matrix,
+                                  float left, float top, float right, float bottom,
+                                  float u0, float v0, float u1, float v1,
+                                  int r, int g, int b, int a, float z,
+                                  int overlayU, int overlayV, int lightU, int lightV) {
+        vertexConsumer.addVertex(matrix, left, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, bottom, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v1)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, right, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u1, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
+        vertexConsumer.addVertex(matrix, left, top, z)
+            .setColor(r, g, b, a)
+            .setUv(u0, v0)
+            .setUv1(overlayU, overlayV)
+            .setUv2(lightU, lightV)
+            .setNormal(0.0f, 0.0f, -1.0f);
     }
     
     /**
@@ -741,8 +836,8 @@ public class DialogHud {
                     Minecraft mc = Minecraft.getInstance();
                     if (mc.level != null) {
                         net.minecraft.core.RegistryAccess registryAccess = mc.level.registryAccess();
-                        // Try to parse as JSON Component
-                        Component parsedComponent = Component.Serializer.fromJson(componentText, registryAccess);
+                        var json = JsonParser.parseString(componentText);
+                        Component parsedComponent = ComponentSerialization.CODEC.parse(JsonOps.INSTANCE, json).result().orElse(null);
                         if (parsedComponent != null) {
                             color = findFirstColorInComponent(parsedComponent);
                         }
@@ -852,4 +947,9 @@ public class DialogHud {
         }
     }
 }
+
+
+
+
+
 

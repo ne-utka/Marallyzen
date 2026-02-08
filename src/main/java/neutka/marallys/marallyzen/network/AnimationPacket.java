@@ -3,8 +3,6 @@ package neutka.marallys.marallyzen.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
@@ -49,7 +47,7 @@ public record AnimationPacket(UUID entityUuid, String animationName, int radius)
 
     public static void handle(AnimationPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.Marallyzen.LOGGER.info("AnimationPacket: Received emote '{}' for entity UUID {}", 
                         packet.animationName(), packet.entityUuid());
                 neutka.marallys.marallyzen.client.emote.ClientEmoteHandler.handle(
@@ -60,4 +58,5 @@ public record AnimationPacket(UUID entityUuid, String animationName, int radius)
         });
     }
 }
+
 

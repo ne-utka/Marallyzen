@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.npc;
 import com.google.gson.JsonParseException;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import neutka.marallys.marallyzen.util.ComponentUtil;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -294,7 +295,7 @@ public class NpcProximityHandler {
         text = text.trim();
         if (text.startsWith("{") || text.startsWith("[")) {
             try {
-                return Component.Serializer.fromJson(text, level.registryAccess());
+                return ComponentUtil.fromJson(text, level.registryAccess()).orElse(Component.empty());
             } catch (JsonParseException e) {
                 // If JSON parsing fails, treat as plain text
                 Marallyzen.LOGGER.debug("Failed to parse text as JSON, using plain text: " + text, e);
@@ -616,4 +617,3 @@ public class NpcProximityHandler {
         updatePlayerProximityOverlay(player, npcEntity, npcData, serverLevel);
     }
 }
-

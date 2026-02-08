@@ -1,11 +1,11 @@
 package neutka.marallys.marallyzen.client.fpv;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import neutka.marallys.marallyzen.Marallyzen;
 
 /**
@@ -121,12 +121,15 @@ public class EmoteFpvInterpreter {
 
     private void updateTargets(AbstractClientPlayer player) {
         EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
-        PlayerRenderer renderer = (PlayerRenderer) dispatcher.getRenderer(player);
-        PlayerModel<AbstractClientPlayer> model = renderer.getModel();
+        AvatarRenderer renderer = (AvatarRenderer) dispatcher.getRenderer(player);
+        var model = renderer.getModel();
+        if (!(model instanceof PlayerModel playerModel)) {
+            return;
+        }
 
         // Read head rotation (radians)
-        ModelPart head = model.getHead();
-        ModelPart body = model.body;
+        ModelPart head = playerModel.getHead();
+        ModelPart body = playerModel.body;
         
         // Shift previous
         this.headPitchPrev = this.headPitch;

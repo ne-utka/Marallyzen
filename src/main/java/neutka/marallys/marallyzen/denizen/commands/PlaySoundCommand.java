@@ -65,7 +65,7 @@ public class PlaySoundCommand extends AbstractCommand {
         }
         for (PlayerTag target : targets) {
             ServerPlayer player = target.getPlayer();
-            player.playNotifySound(sound, SoundSource.PLAYERS, volume, pitch);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), sound, SoundSource.PLAYERS, volume, pitch);
         }
     }
 }

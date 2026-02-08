@@ -5,8 +5,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.neoforged.fml.loading.FMLPaths;
 
@@ -77,8 +78,10 @@ public class NpcLoader {
 
             if (json.has("entityType")) {
                 String entityTypeStr = json.get("entityType").getAsString();
-                ResourceLocation entityTypeLoc = ResourceLocation.parse(entityTypeStr);
-                EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(entityTypeLoc);
+                Identifier entityTypeLoc = Identifier.parse(entityTypeStr);
+                EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(entityTypeLoc)
+                        .map(Holder.Reference::value)
+                        .orElse(null);
                 if (entityType != null) {
                     data.setEntityType(entityType);
                 } else {
@@ -98,13 +101,13 @@ public class NpcLoader {
             if (json.has("geckolib")) {
                 JsonObject geckolib = json.getAsJsonObject("geckolib");
                 if (geckolib.has("model")) {
-                    data.setGeckolibModel(ResourceLocation.parse(geckolib.get("model").getAsString()));
+                    data.setGeckolibModel(Identifier.parse(geckolib.get("model").getAsString()));
                 }
                 if (geckolib.has("animation")) {
-                    data.setGeckolibAnimation(ResourceLocation.parse(geckolib.get("animation").getAsString()));
+                    data.setGeckolibAnimation(Identifier.parse(geckolib.get("animation").getAsString()));
                 }
                 if (geckolib.has("texture")) {
-                    data.setGeckolibTexture(ResourceLocation.parse(geckolib.get("texture").getAsString()));
+                    data.setGeckolibTexture(Identifier.parse(geckolib.get("texture").getAsString()));
                 }
                 if (geckolib.has("expression")) {
                     data.setGeckolibExpression(geckolib.get("expression").getAsString());
@@ -134,10 +137,6 @@ public class NpcLoader {
                 data.setDialogScript(json.get("dialogScript").getAsString());
             }
 
-            // Load cutscene
-            if (json.has("cutscene")) {
-                data.setCutscene(json.get("cutscene").getAsString());
-            }
 
             // Load default animation
             if (json.has("defaultAnimation")) {
@@ -306,7 +305,7 @@ public class NpcLoader {
             json.addProperty("name", data.getName());
         }
         if (data.getEntityType() != null) {
-            ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(data.getEntityType());
+            Identifier typeId = BuiltInRegistries.ENTITY_TYPE.getKey(data.getEntityType());
             if (typeId != null) {
                 json.addProperty("entityType", typeId.toString());
             }
@@ -353,9 +352,6 @@ public class NpcLoader {
         }
         if (data.getDialogScript() != null) {
             json.addProperty("dialogScript", data.getDialogScript());
-        }
-        if (data.getCutscene() != null) {
-            json.addProperty("cutscene", data.getCutscene());
         }
         if (data.getDefaultAnimation() != null) {
             json.addProperty("defaultAnimation", data.getDefaultAnimation());
@@ -459,5 +455,7 @@ public class NpcLoader {
         return value != null ? value.trim() : null;
     }
 }
+
+
 
 

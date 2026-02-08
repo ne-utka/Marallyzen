@@ -11,7 +11,7 @@ public final class NpcWorldPolicy {
         if (level == null) {
             return false;
         }
-        var key = level.dimension().location();
+        var key = level.dimension().identifier();
         return Marallyzen.MODID.equals(key.getNamespace()) && key.getPath().startsWith("instance/");
     }
 
@@ -19,3 +19,6 @@ public final class NpcWorldPolicy {
         return !isInstanceLevel(level);
     }
 }
+
+
+

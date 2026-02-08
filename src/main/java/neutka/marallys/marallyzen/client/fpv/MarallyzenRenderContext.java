@@ -8,7 +8,7 @@ import neutka.marallys.marallyzen.Marallyzen;
  */
 public final class MarallyzenRenderContext {
     private static boolean fpvEmoteEnabled = false;
-    private static net.minecraft.resources.ResourceLocation currentEmoteId = null;
+    private static net.minecraft.resources.Identifier currentEmoteId = null;
     private static boolean headMovementEnabled = true; // Default: enabled
 
     private MarallyzenRenderContext() {}
@@ -27,7 +27,7 @@ public final class MarallyzenRenderContext {
         }
     }
 
-    public static void setCurrentEmoteId(net.minecraft.resources.ResourceLocation id) {
+    public static void setCurrentEmoteId(net.minecraft.resources.Identifier id) {
         // Marallyzen.LOGGER.info("[FPV] MarallyzenRenderContext.setCurrentEmoteId: {} -> {}", currentEmoteId, id);
         currentEmoteId = id;
         
@@ -40,7 +40,7 @@ public final class MarallyzenRenderContext {
         }
     }
 
-    public static net.minecraft.resources.ResourceLocation getCurrentEmoteId() {
+    public static net.minecraft.resources.Identifier getCurrentEmoteId() {
         return currentEmoteId;
     }
 
@@ -53,4 +53,6 @@ public final class MarallyzenRenderContext {
         headMovementEnabled = enabled;
     }
 }
+
+
 

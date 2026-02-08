@@ -31,9 +31,10 @@ public record QuestAudioPacket(String filePath, float volume) implements CustomP
 
     public static void handle(QuestAudioPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            if (ClientOnly.isClient(context)) {
                 neutka.marallys.marallyzen.client.QuestAudioPlayer.play(packet.filePath(), packet.volume());
             }
         });
     }
 }
+

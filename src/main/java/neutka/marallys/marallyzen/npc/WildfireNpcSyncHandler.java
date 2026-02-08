@@ -6,7 +6,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.minecraft.server.level.ServerPlayer;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public final class WildfireNpcSyncHandler {
     private WildfireNpcSyncHandler() {
     }

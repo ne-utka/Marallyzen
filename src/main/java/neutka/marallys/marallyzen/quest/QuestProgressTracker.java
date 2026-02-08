@@ -37,7 +37,7 @@ public class QuestProgressTracker {
                         stepAdvanced = true;
                     }
                     Marallyzen.LOGGER.info("QuestProgress: {} step '{}' completed by {} (event={})",
-                            instance.questId(), step.id(), player.getGameProfile().getName(), event.type());
+                            instance.questId(), step.id(), player.getGameProfile().name(), event.type());
                 }
                 boolean shouldSync = shouldSync(step, updated, stepCompleted);
                 return new ProgressResult(true, stepAdvanced, shouldSync);

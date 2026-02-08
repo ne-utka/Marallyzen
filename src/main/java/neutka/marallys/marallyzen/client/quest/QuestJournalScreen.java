@@ -408,8 +408,10 @@ public class QuestJournalScreen extends Screen {
         return true;
     }
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean isFocused) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (layout.tabActive != null && layout.tabActive.contains((int) mouseX, (int) mouseY)) {
             if (activeTab != Tab.ACTIVE) {
                 activeTab = Tab.ACTIVE;
@@ -440,7 +442,7 @@ public class QuestJournalScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, isFocused);
     }
 
     @Override

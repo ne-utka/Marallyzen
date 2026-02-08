@@ -4,7 +4,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.SkinManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class NpcSkinCache {
     private static final NpcSkinCache INSTANCE = new NpcSkinCache();
-    private static final ResourceLocation DEFAULT_SKIN = ResourceLocation.withDefaultNamespace("textures/entity/steve.png");
+    private static final Identifier DEFAULT_SKIN = Identifier.withDefaultNamespace("textures/entity/steve.png");
 
     private final Map<String, SkinEntry> skins = new ConcurrentHashMap<>();
 
@@ -34,16 +34,19 @@ public class NpcSkinCache {
         }
 
         GameProfile profile = new GameProfile(stableUuid(npcId), npcId);
-        profile.getProperties().put("textures", new Property("textures", texture, signature));
+        profile.properties().put("textures", new Property("textures", texture, signature));
         SkinManager skinManager = Minecraft.getInstance().getSkinManager();
-        skinManager.getOrLoad(profile).thenAccept(skin -> {
-            if (skin != null) {
-                entry.texture = skin.texture();
+        skinManager.get(profile).thenAccept(optionalSkin -> {
+            if (optionalSkin != null && optionalSkin.isPresent()) {
+                var skin = optionalSkin.get();
+                if (skin != null && skin.body() != null) {
+                    entry.texture = skin.body().texturePath();
+                }
             }
         });
     }
 
-    public ResourceLocation getSkin(String npcId) {
+    public Identifier getSkin(String npcId) {
         SkinEntry entry = npcId != null ? skins.get(npcId) : null;
         if (entry == null || entry.texture == null) {
             return DEFAULT_SKIN;
@@ -61,7 +64,9 @@ public class NpcSkinCache {
     }
 
     private static class SkinEntry {
-        private ResourceLocation texture;
+        private Identifier texture;
         private String model;
     }
 }
+
+

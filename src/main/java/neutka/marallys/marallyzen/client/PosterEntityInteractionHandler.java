@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * Handles player interactions with PosterEntity.
  * Allows flipping posterfull and paperposterfull posters when right-clicked in VIEWING state.
  */
-@EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class PosterEntityInteractionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(PosterEntityInteractionHandler.class);
     
@@ -30,7 +30,7 @@ public class PosterEntityInteractionHandler {
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPlayerInteractBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (!event.getEntity().level().isClientSide) {
+        if (!event.getEntity().level().isClientSide()) {
             return;
         }
         
@@ -63,7 +63,7 @@ public class PosterEntityInteractionHandler {
         }
         
         // Only handle on client side
-        if (!event.getEntity().level().isClientSide) {
+        if (!event.getEntity().level().isClientSide()) {
             return;
         }
         

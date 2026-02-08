@@ -70,3 +70,4 @@ public record PosterInteractPacket(BlockPos blockPos) implements CustomPacketPay
         });
     }
 }
+

@@ -24,7 +24,7 @@ import neutka.marallys.marallyzen.denizen.objects.PlayerTag;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public final class CommandScriptRegistry {
     private CommandScriptRegistry() {
     }

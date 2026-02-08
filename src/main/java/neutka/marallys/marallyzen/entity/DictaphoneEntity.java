@@ -5,12 +5,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 public class DictaphoneEntity extends Entity {
@@ -93,7 +96,7 @@ public class DictaphoneEntity extends Entity {
         this.startPosition = blockCenter;
 
         Vec3 targetPos = blockCenter;
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
             if (minecraft.player != null) {
                 Vec3 playerEyePos = minecraft.player.getEyePosition();
@@ -104,7 +107,7 @@ public class DictaphoneEntity extends Entity {
                 this.facePitch = (float) (-Math.toDegrees(Math.atan2(direction.y, horiz)));
             } else if (state.hasProperty(HorizontalDirectionalBlock.FACING)) {
                 Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
-                Vec3 forward = Vec3.atLowerCornerOf(facing.getNormal()).scale(1.5);
+                Vec3 forward = Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(1.5);
                 targetPos = blockCenter.add(forward);
                 this.faceYaw = switch (facing) {
                     case EAST -> 90.0f;
@@ -142,107 +145,108 @@ public class DictaphoneEntity extends Entity {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
+    protected void addAdditionalSaveData(ValueOutput output) {
         if (originPos != null) {
-            tag.putInt("OriginX", originPos.getX());
-            tag.putInt("OriginY", originPos.getY());
-            tag.putInt("OriginZ", originPos.getZ());
+            output.putInt("OriginX", originPos.getX());
+            output.putInt("OriginY", originPos.getY());
+            output.putInt("OriginZ", originPos.getZ());
         }
-        tag.putInt("State", getCurrentState().getId());
-        tag.putInt("AnimationStartTick", getAnimationStartTick());
-        tag.putInt("ReturnAnimationStartTick", getReturnAnimationStartTick());
+        output.putInt("State", getCurrentState().getId());
+        output.putInt("AnimationStartTick", getAnimationStartTick());
+        output.putInt("ReturnAnimationStartTick", getReturnAnimationStartTick());
 
         if (startPosition != null) {
-            tag.putDouble("StartX", startPosition.x);
-            tag.putDouble("StartY", startPosition.y);
-            tag.putDouble("StartZ", startPosition.z);
+            output.putDouble("StartX", startPosition.x);
+            output.putDouble("StartY", startPosition.y);
+            output.putDouble("StartZ", startPosition.z);
         }
         Vec3 target = getTargetPosition();
         if (target != null) {
-            tag.putDouble("TargetX", target.x);
-            tag.putDouble("TargetY", target.y);
-            tag.putDouble("TargetZ", target.z);
+            output.putDouble("TargetX", target.x);
+            output.putDouble("TargetY", target.y);
+            output.putDouble("TargetZ", target.z);
         }
         if (returnStartPosition != null) {
-            tag.putDouble("ReturnStartX", returnStartPosition.x);
-            tag.putDouble("ReturnStartY", returnStartPosition.y);
-            tag.putDouble("ReturnStartZ", returnStartPosition.z);
+            output.putDouble("ReturnStartX", returnStartPosition.x);
+            output.putDouble("ReturnStartY", returnStartPosition.y);
+            output.putDouble("ReturnStartZ", returnStartPosition.z);
         }
 
         if (originalBlockState != null && level() != null) {
-            var result = net.minecraft.world.level.block.state.BlockState.CODEC.encodeStart(
-                net.minecraft.nbt.NbtOps.INSTANCE, originalBlockState);
-            result.result().ifPresent(nbt -> tag.put("BlockState", nbt));
+            output.store("BlockState", net.minecraft.world.level.block.state.BlockState.CODEC, originalBlockState);
         }
-        tag.putFloat("FaceYaw", this.faceYaw);
-        tag.putFloat("FacePitch", this.facePitch);
+        output.putFloat("FaceYaw", this.faceYaw);
+        output.putFloat("FacePitch", this.facePitch);
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        if (tag.contains("OriginX") && tag.contains("OriginY") && tag.contains("OriginZ")) {
-            BlockPos loadedPos = new BlockPos(
-                tag.getInt("OriginX"),
-                tag.getInt("OriginY"),
-                tag.getInt("OriginZ")
-            );
+    protected void readAdditionalSaveData(ValueInput input) {
+        var originX = input.getInt("OriginX");
+        var originY = input.getInt("OriginY");
+        var originZ = input.getInt("OriginZ");
+        if (originX.isPresent() && originY.isPresent() && originZ.isPresent()) {
+            BlockPos loadedPos = new BlockPos(originX.get(), originY.get(), originZ.get());
             this.originPos = loadedPos;
             this.entityData.set(DATA_ORIGIN_POS, loadedPos);
         }
-        if (tag.contains("State")) {
-            this.currentState = State.fromId(tag.getInt("State"));
+
+        input.getInt("State").ifPresent(stateId -> {
+            this.currentState = State.fromId(stateId);
             this.entityData.set(DATA_STATE, this.currentState.getId());
-        }
-        if (tag.contains("AnimationStartTick")) {
-            this.animationStartTick = tag.getInt("AnimationStartTick");
+        });
+
+        input.getInt("AnimationStartTick").ifPresent(tick -> {
+            this.animationStartTick = tick;
             if (this.animationStartTick >= 0) {
                 this.entityData.set(DATA_ANIMATION_START_TICK, this.animationStartTick);
             }
-        }
-        if (tag.contains("ReturnAnimationStartTick")) {
-            this.returnAnimationStartTick = tag.getInt("ReturnAnimationStartTick");
+        });
+
+        input.getInt("ReturnAnimationStartTick").ifPresent(tick -> {
+            this.returnAnimationStartTick = tick;
             if (this.returnAnimationStartTick >= 0) {
                 this.entityData.set(DATA_RETURN_ANIMATION_START_TICK, this.returnAnimationStartTick);
             }
+        });
+
+        double startX = input.getDoubleOr("StartX", Double.NaN);
+        double startY = input.getDoubleOr("StartY", Double.NaN);
+        double startZ = input.getDoubleOr("StartZ", Double.NaN);
+        if (!Double.isNaN(startX) && !Double.isNaN(startY) && !Double.isNaN(startZ)) {
+            this.startPosition = new Vec3(startX, startY, startZ);
         }
-        if (tag.contains("StartX") && tag.contains("StartY") && tag.contains("StartZ")) {
-            this.startPosition = new Vec3(
-                tag.getDouble("StartX"),
-                tag.getDouble("StartY"),
-                tag.getDouble("StartZ")
-            );
-        }
-        if (tag.contains("TargetX") && tag.contains("TargetY") && tag.contains("TargetZ")) {
-            this.targetPosition = new Vec3(
-                tag.getDouble("TargetX"),
-                tag.getDouble("TargetY"),
-                tag.getDouble("TargetZ")
-            );
+
+        double targetX = input.getDoubleOr("TargetX", Double.NaN);
+        double targetY = input.getDoubleOr("TargetY", Double.NaN);
+        double targetZ = input.getDoubleOr("TargetZ", Double.NaN);
+        if (!Double.isNaN(targetX) && !Double.isNaN(targetY) && !Double.isNaN(targetZ)) {
+            this.targetPosition = new Vec3(targetX, targetY, targetZ);
             this.entityData.set(DATA_TARGET_X, (float) this.targetPosition.x);
             this.entityData.set(DATA_TARGET_Y, (float) this.targetPosition.y);
             this.entityData.set(DATA_TARGET_Z, (float) this.targetPosition.z);
         }
-        if (tag.contains("FaceYaw")) {
-            this.faceYaw = tag.getFloat("FaceYaw");
+
+        float faceYaw = input.getFloatOr("FaceYaw", Float.NaN);
+        if (!Float.isNaN(faceYaw)) {
+            this.faceYaw = faceYaw;
             this.entityData.set(DATA_FACE_YAW, this.faceYaw);
         }
-        if (tag.contains("FacePitch")) {
-            this.facePitch = tag.getFloat("FacePitch");
+
+        float facePitch = input.getFloatOr("FacePitch", Float.NaN);
+        if (!Float.isNaN(facePitch)) {
+            this.facePitch = facePitch;
             this.entityData.set(DATA_FACE_PITCH, this.facePitch);
         }
-        if (tag.contains("ReturnStartX") && tag.contains("ReturnStartY") && tag.contains("ReturnStartZ")) {
-            this.returnStartPosition = new Vec3(
-                tag.getDouble("ReturnStartX"),
-                tag.getDouble("ReturnStartY"),
-                tag.getDouble("ReturnStartZ")
-            );
+
+        double returnX = input.getDoubleOr("ReturnStartX", Double.NaN);
+        double returnY = input.getDoubleOr("ReturnStartY", Double.NaN);
+        double returnZ = input.getDoubleOr("ReturnStartZ", Double.NaN);
+        if (!Double.isNaN(returnX) && !Double.isNaN(returnY) && !Double.isNaN(returnZ)) {
+            this.returnStartPosition = new Vec3(returnX, returnY, returnZ);
         }
 
-        if (tag.contains("BlockState") && level() != null) {
-            var result = net.minecraft.world.level.block.state.BlockState.CODEC.decode(
-                net.minecraft.nbt.NbtOps.INSTANCE, tag.get("BlockState"));
-            result.result().ifPresent(pair -> this.originalBlockState = pair.getFirst());
-        }
+        input.read("BlockState", net.minecraft.world.level.block.state.BlockState.CODEC)
+            .ifPresent(state -> this.originalBlockState = state);
     }
 
     public void setClientOnly(boolean clientOnly) {
@@ -254,7 +258,7 @@ public class DictaphoneEntity extends Entity {
     }
 
     public void startReturningClient() {
-        if (!level().isClientSide || !isClientOnly) {
+        if (!level().isClientSide() || !isClientOnly) {
             return;
         }
         if (getCurrentState() != State.RETURNING) {
@@ -321,7 +325,7 @@ public class DictaphoneEntity extends Entity {
         super.tick();
         this.currentState = getCurrentState();
 
-        if (!level().isClientSide || !isClientOnly) {
+        if (!level().isClientSide() || !isClientOnly) {
             return;
         }
         switch (currentState) {
@@ -377,7 +381,7 @@ public class DictaphoneEntity extends Entity {
     private void transitionToViewingClient() {
         this.currentState = State.VIEWING;
         this.entityData.set(DATA_STATE, State.VIEWING.getId());
-        if (level().isClientSide && isClientOnly) {
+        if (level().isClientSide() && isClientOnly) {
             BlockPos origin = getOriginPos();
             if (origin != null) {
             }
@@ -400,5 +404,11 @@ public class DictaphoneEntity extends Entity {
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
         return true;
+    }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        // Client-only visual entity; ignore damage.
+        return false;
     }
 }

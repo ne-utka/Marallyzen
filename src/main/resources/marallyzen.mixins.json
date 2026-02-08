@@ -3,21 +3,20 @@
     "minVersion": "0.8",
     "refmap": "marallyzen.refmap.json",
     "package":  "neutka.marallys.marallyzen.mixin",
-    "compatibilityLevel":  "JAVA_17",
-    "mixins":  [
-                   "common.LevelMixin",
-                   "common.BlockEntityMixin",
-                   "common.ServerLevelParticlesMixin"
-               ],
-    "client":  [
-                   "client.BlockHideRenderMixin",
-                   "client.ClientLevelBlockHideMixin",
-                   "client.MinecraftScreenMixin",
-                   "client.PosterBlockEntityRenderMixin",
-                   "client.ReplayHandlerMixin",
-                   "client.ScreenRenderMixin",
-                   "client.TabListNpcFilterMixin"
-               ],
+    "compatibilityLevel":  "JAVA_21",
+    "plugin": "neutka.marallys.marallyzen.mixin.MarallyzenMixinPlugin",
+    "mixins": [
+        "common.LeverBlockMixin"
+    ],
+    "client": [
+        "client.BlockHideRenderMixin",
+        "client.CameraMixin",
+        "client.ClientLevelBlockHideMixin",
+        "client.DecoratedPotRendererMixin",
+        "client.MouseHandlerMixin",
+        "client.PosterBlockEntityRenderMixin",
+        "client.TabListNpcFilterMixin"
+    ],
     "injectors":  {
                       "defaultRequire":  0
                   }

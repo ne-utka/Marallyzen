@@ -11,8 +11,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.util.PermissionHelper;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class InstanceRestrictionHandler {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
@@ -80,7 +81,7 @@ public class InstanceRestrictionHandler {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        if (InstanceSessionManager.getInstance().isPlayerRestricted(player) && !player.hasPermissions(2)) {
+        if (InstanceSessionManager.getInstance().isPlayerRestricted(player) && !PermissionHelper.isOp(player)) {
             event.setCanceled(true);
         }
     }
@@ -120,7 +121,10 @@ public class InstanceRestrictionHandler {
         if (player == null) {
             return false;
         }
-        var key = player.level().dimension().location();
+        var key = player.level().dimension().identifier();
         return Marallyzen.MODID.equals(key.getNamespace()) && key.getPath().startsWith("instance/");
     }
 }
+
+
+

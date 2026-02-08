@@ -2,19 +2,21 @@ package neutka.marallys.marallyzen.entity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
@@ -79,11 +81,17 @@ public class PosterEntity extends Entity {
     
     // Pre-rendered text texture (client-only)
     @org.jetbrains.annotations.Nullable
-    private net.minecraft.resources.ResourceLocation textTexture = null;
+    private net.minecraft.resources.Identifier textTexture = null;
     
     // Pre-rendered text texture for back side (client-only)
     @org.jetbrains.annotations.Nullable
-    private net.minecraft.resources.ResourceLocation textTextureBack = null;
+    private net.minecraft.resources.Identifier textTextureBack = null;
+    
+    // Raw text data for direct rendering fallback (client-only)
+    @org.jetbrains.annotations.Nullable
+    private neutka.marallys.marallyzen.client.poster.text.PosterTextData frontTextData = null;
+    @org.jetbrains.annotations.Nullable
+    private neutka.marallys.marallyzen.client.poster.text.PosterTextData backTextData = null;
 
     public void setPosterText(String text) { this.posterText = text; }
     public String getPosterText() { return posterText != null ? posterText : ""; }
@@ -98,7 +106,7 @@ public class PosterEntity extends Entity {
      * Sets the text texture for this poster.
      * Called when text data is available to create a pre-rendered texture.
      */
-    public void setTextTexture(@org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceLocation texture) {
+    public void setTextTexture(@org.jetbrains.annotations.Nullable net.minecraft.resources.Identifier texture) {
         this.textTexture = texture;
     }
     
@@ -107,7 +115,7 @@ public class PosterEntity extends Entity {
      * Returns null if no text texture is set.
      */
     @org.jetbrains.annotations.Nullable
-    public net.minecraft.resources.ResourceLocation getTextTexture() {
+    public net.minecraft.resources.Identifier getTextTexture() {
         return textTexture;
     }
     
@@ -116,7 +124,7 @@ public class PosterEntity extends Entity {
      * Returns null if no back texture is set.
      */
     @org.jetbrains.annotations.Nullable
-    public net.minecraft.resources.ResourceLocation getTextTextureBack() {
+    public net.minecraft.resources.Identifier getTextTextureBack() {
         return textTextureBack;
     }
     
@@ -131,6 +139,8 @@ public class PosterEntity extends Entity {
         LOGGER.warn("========== PosterEntity.setText() CALLED ==========");
         LOGGER.warn("Front Data: {}", frontData);
         LOGGER.warn("Back Data: {}", backData);
+        this.frontTextData = frontData;
+        this.backTextData = backData;
         this.textTexture = neutka.marallys.marallyzen.client.poster.text.PosterTextTextureCache.getOrCreate(frontData);
         if (backData != null) {
             this.textTextureBack = neutka.marallys.marallyzen.client.poster.text.PosterTextTextureCache.getOrCreate(backData);
@@ -154,6 +164,16 @@ public class PosterEntity extends Entity {
      */
     public void setText(neutka.marallys.marallyzen.client.poster.text.PosterTextData data) {
         setText(data, null);
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public neutka.marallys.marallyzen.client.poster.text.PosterTextData getFrontTextData() {
+        return frontTextData;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public neutka.marallys.marallyzen.client.poster.text.PosterTextData getBackTextData() {
+        return backTextData;
     }
 
     public enum State {
@@ -220,10 +240,10 @@ public class PosterEntity extends Entity {
             } else {
                 // No player found, move forward from facing direction
                 Direction facing = originalBlockState.getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING);
-                Vec3 forward = Vec3.atLowerCornerOf(facing.getNormal()).scale(1.5);
+                Vec3 forward = Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(1.5);
                 targetPos = blockCenter.add(forward);
             }
-        } else if (level().isClientSide) {
+        } else if (level().isClientSide()) {
             // Client-side: use local player's position
             net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
             if (minecraft.player != null) {
@@ -234,7 +254,7 @@ public class PosterEntity extends Entity {
             } else {
                 // No player found, move forward from facing direction
                 Direction facing = originalBlockState.getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING);
-                Vec3 forward = Vec3.atLowerCornerOf(facing.getNormal()).scale(1.5);
+                Vec3 forward = Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(1.5);
                 targetPos = blockCenter.add(forward);
             }
         }
@@ -270,13 +290,12 @@ public class PosterEntity extends Entity {
     }
     
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        if (tag.contains("OriginX") && tag.contains("OriginY") && tag.contains("OriginZ")) {
-            BlockPos loadedPos = new BlockPos(
-                tag.getInt("OriginX"),
-                tag.getInt("OriginY"),
-                tag.getInt("OriginZ")
-            );
+    protected void readAdditionalSaveData(ValueInput input) {
+        var originX = input.getInt("OriginX");
+        var originY = input.getInt("OriginY");
+        var originZ = input.getInt("OriginZ");
+        if (originX.isPresent() && originY.isPresent() && originZ.isPresent()) {
+            BlockPos loadedPos = new BlockPos(originX.get(), originY.get(), originZ.get());
             this.originPos = loadedPos;
             // Also sync to entityData if value is valid
             if (!loadedPos.equals(BlockPos.ZERO)) {
@@ -286,37 +305,34 @@ public class PosterEntity extends Entity {
         } else {
             LOGGER.warn("[CLIENT] readAdditionalSaveData: originPos not found in NBT!");
         }
-        this.posterNumber = tag.getInt("PosterNumber");
+        this.posterNumber = input.getIntOr("PosterNumber", 1);
         this.entityData.set(DATA_POSTER_NUMBER, posterNumber);
         
-        if (tag.contains("State")) {
-            this.currentState = State.fromId(tag.getInt("State"));
+        input.getInt("State").ifPresent(stateId -> {
+            this.currentState = State.fromId(stateId);
             this.entityData.set(DATA_STATE, currentState.getId());
-        }
+        });
         
-        if (tag.contains("AnimationStartTick")) {
-            int tick = tag.getInt("AnimationStartTick");
+        input.getInt("AnimationStartTick").ifPresent(tick -> {
             this.animationStartTick = tick;
             // Also sync to entityData if value is valid
             if (tick >= 0) {
                 this.entityData.set(DATA_ANIMATION_START_TICK, tick);
             }
-        }
+        });
         
         // Restore start and target positions
-        if (tag.contains("StartX") && tag.contains("StartY") && tag.contains("StartZ")) {
-            this.startPosition = new Vec3(
-                tag.getDouble("StartX"),
-                tag.getDouble("StartY"),
-                tag.getDouble("StartZ")
-            );
+        double startX = input.getDoubleOr("StartX", Double.NaN);
+        double startY = input.getDoubleOr("StartY", Double.NaN);
+        double startZ = input.getDoubleOr("StartZ", Double.NaN);
+        if (!Double.isNaN(startX) && !Double.isNaN(startY) && !Double.isNaN(startZ)) {
+            this.startPosition = new Vec3(startX, startY, startZ);
         }
-        if (tag.contains("TargetX") && tag.contains("TargetY") && tag.contains("TargetZ")) {
-            Vec3 loadedTarget = new Vec3(
-                tag.getDouble("TargetX"),
-                tag.getDouble("TargetY"),
-                tag.getDouble("TargetZ")
-            );
+        double targetX = input.getDoubleOr("TargetX", Double.NaN);
+        double targetY = input.getDoubleOr("TargetY", Double.NaN);
+        double targetZ = input.getDoubleOr("TargetZ", Double.NaN);
+        if (!Double.isNaN(targetX) && !Double.isNaN(targetY) && !Double.isNaN(targetZ)) {
+            Vec3 loadedTarget = new Vec3(targetX, targetY, targetZ);
             this.targetPosition = loadedTarget;
             // Also sync to entityData if value is valid (convert double to float)
             this.entityData.set(DATA_TARGET_X, (float)loadedTarget.x);
@@ -325,64 +341,59 @@ public class PosterEntity extends Entity {
         }
         
         // Restore return animation state
-        if (tag.contains("ReturnStartX") && tag.contains("ReturnStartY") && tag.contains("ReturnStartZ")) {
-            this.returnStartPosition = new Vec3(
-                tag.getDouble("ReturnStartX"),
-                tag.getDouble("ReturnStartY"),
-                tag.getDouble("ReturnStartZ")
-            );
+        double returnX = input.getDoubleOr("ReturnStartX", Double.NaN);
+        double returnY = input.getDoubleOr("ReturnStartY", Double.NaN);
+        double returnZ = input.getDoubleOr("ReturnStartZ", Double.NaN);
+        if (!Double.isNaN(returnX) && !Double.isNaN(returnY) && !Double.isNaN(returnZ)) {
+            this.returnStartPosition = new Vec3(returnX, returnY, returnZ);
         }
-        if (tag.contains("ReturnAnimationStartTick")) {
-            int tick = tag.getInt("ReturnAnimationStartTick");
+        input.getInt("ReturnAnimationStartTick").ifPresent(tick -> {
             this.returnAnimationStartTick = tick;
             // Also sync to entityData if value is valid
             if (tick >= 0) {
                 this.entityData.set(DATA_RETURN_ANIMATION_START_TICK, tick);
             }
-        }
+        });
         
         // Restore BlockState if available
-        if (tag.contains("BlockState") && level() != null) {
-            var result = BlockState.CODEC.decode(net.minecraft.nbt.NbtOps.INSTANCE, tag.get("BlockState"));
-            result.result().ifPresent(pair -> this.originalBlockState = pair.getFirst());
-        }
+        input.read("BlockState", BlockState.CODEC)
+            .ifPresent(state -> this.originalBlockState = state);
     }
     
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
+    protected void addAdditionalSaveData(ValueOutput output) {
         if (originPos != null) {
-            tag.putInt("OriginX", originPos.getX());
-            tag.putInt("OriginY", originPos.getY());
-            tag.putInt("OriginZ", originPos.getZ());
+            output.putInt("OriginX", originPos.getX());
+            output.putInt("OriginY", originPos.getY());
+            output.putInt("OriginZ", originPos.getZ());
         }
-        tag.putInt("PosterNumber", posterNumber);
-        tag.putInt("State", currentState.getId());
-        tag.putInt("AnimationStartTick", animationStartTick);
+        output.putInt("PosterNumber", posterNumber);
+        output.putInt("State", currentState.getId());
+        output.putInt("AnimationStartTick", animationStartTick);
         
         // Save start and target positions
         if (startPosition != null) {
-            tag.putDouble("StartX", startPosition.x);
-            tag.putDouble("StartY", startPosition.y);
-            tag.putDouble("StartZ", startPosition.z);
+            output.putDouble("StartX", startPosition.x);
+            output.putDouble("StartY", startPosition.y);
+            output.putDouble("StartZ", startPosition.z);
         }
         if (targetPosition != null) {
-            tag.putDouble("TargetX", targetPosition.x);
-            tag.putDouble("TargetY", targetPosition.y);
-            tag.putDouble("TargetZ", targetPosition.z);
+            output.putDouble("TargetX", targetPosition.x);
+            output.putDouble("TargetY", targetPosition.y);
+            output.putDouble("TargetZ", targetPosition.z);
         }
         
         // Save return animation state
         if (returnStartPosition != null) {
-            tag.putDouble("ReturnStartX", returnStartPosition.x);
-            tag.putDouble("ReturnStartY", returnStartPosition.y);
-            tag.putDouble("ReturnStartZ", returnStartPosition.z);
+            output.putDouble("ReturnStartX", returnStartPosition.x);
+            output.putDouble("ReturnStartY", returnStartPosition.y);
+            output.putDouble("ReturnStartZ", returnStartPosition.z);
         }
-        tag.putInt("ReturnAnimationStartTick", returnAnimationStartTick);
+        output.putInt("ReturnAnimationStartTick", returnAnimationStartTick);
         
         // Save BlockState
         if (originalBlockState != null && level() != null) {
-            var result = BlockState.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, originalBlockState);
-            result.result().ifPresent(nbt -> tag.put("BlockState", nbt));
+            output.store("BlockState", BlockState.CODEC, originalBlockState);
         }
     }
     
@@ -475,7 +486,7 @@ public class PosterEntity extends Entity {
         entityData.set(DATA_FLIPPED, flipped);
         targetFlipped = flipped;
         // Start animation
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             flipAnimationStartTick = this.tickCount;
             level().playLocalSound(
                 getX(),
@@ -497,7 +508,7 @@ public class PosterEntity extends Entity {
      * Returns interpolated value during animation using ease-in-out for smoothness.
      */
     public float getFlipRotation(float partialTick) {
-        if (!level().isClientSide) {
+        if (!level().isClientSide()) {
             return isFlipped() ? 180.0f : 0.0f;
         }
         
@@ -593,7 +604,7 @@ public class PosterEntity extends Entity {
     // Setter for client-side animation start (used when animation start time is not synced)
     // Allows setting if not set yet, or if current animation hasn't started (too early) or already finished
     public void setAnimationStartTick(int tick) {
-        if (level().isClientSide && this.currentState == State.FLYING_OUT) {
+        if (level().isClientSide() && this.currentState == State.FLYING_OUT) {
             if (this.animationStartTick < 0) {
                 // Not set yet, set it
                 this.animationStartTick = tick;
@@ -610,7 +621,7 @@ public class PosterEntity extends Entity {
     
     // Setter for return animation start tick (used when animation start time is not synced)
     public void setReturnAnimationStartTick(int tick) {
-        if (level().isClientSide && this.returnAnimationStartTick < 0 && this.currentState == State.RETURNING) {
+        if (level().isClientSide() && this.returnAnimationStartTick < 0 && this.currentState == State.RETURNING) {
             this.returnAnimationStartTick = tick;
         }
     }
@@ -637,7 +648,7 @@ public class PosterEntity extends Entity {
         // Always sync currentState from synced data
         this.currentState = getCurrentState();
         
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             // Client-side: update sway animation and ensure positions are initialized IMMEDIATELY
             // Position animation is handled in renderer for maximum smoothness
             if (currentState == State.VIEWING) {
@@ -979,4 +990,12 @@ public class PosterEntity extends Entity {
     public boolean shouldRenderAtSqrDistance(double distance) {
         return true; // Always render
     }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        // Visual entity; ignore damage.
+        return false;
+    }
 }
+
+

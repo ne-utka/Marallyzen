@@ -1,0 +1,30 @@
+﻿{
+  "name": "lever_down",
+  "author": "Marallyzen",
+  "description": "Lever down emote",
+  "emote": {
+    "isLoop": "false",
+    "degrees": true,
+    "beginTick": 0,
+    "endTick": 16,
+    "stopTick": 17,
+    "returnTick": 16,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "LINEAR",
+        "rightArm": {"pitch": -40, "yaw": 5, "roll": 0}
+      },
+      {
+        "tick": 8,
+        "easing": "OUTQUAD",
+        "rightArm": {"pitch": -75, "yaw": 12, "roll": 0}
+      },
+      {
+        "tick": 16,
+        "easing": "INOUTQUAD",
+        "rightArm": {"pitch": -60, "yaw": 8, "roll": 0}
+      }
+    ]
+  }
+}

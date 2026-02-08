@@ -5,7 +5,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public final class MarallyzenEntityAttributes {
     private MarallyzenEntityAttributes() {
     }

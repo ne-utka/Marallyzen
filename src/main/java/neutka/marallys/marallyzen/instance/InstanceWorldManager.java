@@ -4,10 +4,9 @@ import com.mojang.serialization.Dynamic;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.progress.LoggerChunkProgressListener;
 import net.minecraft.world.RandomSequences;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
@@ -65,7 +64,7 @@ public class InstanceWorldManager {
         ResourceKey<Level> instanceKey = buildInstanceKey(worldName);
         Holder<DimensionType> instanceType = overworld.dimensionTypeRegistration();
         LevelStem stem = new LevelStem(instanceType, overworld.getChunkSource().getGenerator());
-        Marallyzen.LOGGER.info("InstanceWorldManager: pre-register stem {} from {}", instanceKey.location(), path);
+        Marallyzen.LOGGER.info("InstanceWorldManager: pre-register stem {} from {}", instanceKey.identifier(), path);
         ensureLevelStemRegistered(server, instanceKey, stem);
     }
 
@@ -100,7 +99,7 @@ public class InstanceWorldManager {
             Dynamic<?> dataTag = access.getDataTag();
             WorldDataConfiguration dataConfig = LevelStorageSource.readDataConfig(dataTag);
             var registryAccess = server.registryAccess();
-            Registry<LevelStem> levelStemRegistry = registryAccess.registryOrThrow(Registries.LEVEL_STEM);
+            Registry<LevelStem> levelStemRegistry = registryAccess.lookupOrThrow(Registries.LEVEL_STEM);
             LevelDataAndDimensions dataAndDims = LevelStorageSource.getLevelDataAndDimensions(
                     dataTag,
                     dataConfig,
@@ -121,7 +120,8 @@ public class InstanceWorldManager {
             ensureWorldDataDimensions(dataAndDims, worldData, instanceKey, stem);
             ensureDimensionStorageLayout(worldPath, instanceKey);
             long seed = worldData.worldGenOptions().seed();
-            RandomSequences randomSequences = new RandomSequences(seed);
+            RandomSequences randomSequences = new RandomSequences();
+            randomSequences.setSeedDefaults((int) seed, true, true);
             Executor executor = server;
             ServerLevel level = new ServerLevel(
                     server,
@@ -130,7 +130,6 @@ public class InstanceWorldManager {
                     levelData,
                     instanceKey,
                     stem,
-                    LoggerChunkProgressListener.create(0),
                     false,
                     seed,
                     java.util.List.of(),
@@ -176,7 +175,7 @@ public class InstanceWorldManager {
         try {
             unregisterLevel(server, key);
         } catch (IllegalAccessException e) {
-            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to unregister level {}", key.location(), e);
+            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to unregister level {}", key.identifier(), e);
         }
         LevelStorageSource.LevelStorageAccess access = accessByLevel.remove(key);
         if (access != null) {
@@ -206,7 +205,7 @@ public class InstanceWorldManager {
             }
         }
         for (ServerLevel level : server.getAllLevels()) {
-            ResourceLocation id = level.dimension().location();
+            Identifier id = level.dimension().identifier();
             if (id != null && (id.toString().equals(worldName) || id.getPath().equals(worldName))) {
                 return level;
             }
@@ -221,9 +220,9 @@ public class InstanceWorldManager {
         if (!worldName.contains(":")) {
             return null;
         }
-        ResourceLocation id;
+        Identifier id;
         try {
-            id = ResourceLocation.parse(worldName);
+            id = Identifier.parse(worldName);
         } catch (Exception ignored) {
             id = null;
         }
@@ -269,7 +268,7 @@ public class InstanceWorldManager {
     public static ResourceKey<Level> buildInstanceKeyFromWorldName(String worldName) {
         String safe = worldName == null ? "" : worldName.toLowerCase().replaceAll("[^a-z0-9_./-]", "_");
         String path = "instance/" + safe;
-        return ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, path));
+        return ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(Marallyzen.MODID, path));
     }
 
     private void ensureDimensionStorageLayout(Path worldRoot, ResourceKey<Level> levelKey) {
@@ -280,7 +279,7 @@ public class InstanceWorldManager {
         if (!Files.exists(srcRegion)) {
             return;
         }
-        ResourceLocation id = levelKey.location();
+        Identifier id = levelKey.identifier();
         Path dimRoot = worldRoot.resolve("dimensions").resolve(id.getNamespace()).resolve(id.getPath());
         copyDirIfMissingOrEmpty(srcRegion, dimRoot.resolve("region"));
         copyDirIfMissingOrEmpty(worldRoot.resolve("poi"), dimRoot.resolve("poi"));
@@ -336,13 +335,13 @@ public class InstanceWorldManager {
         if (server == null || levelKey == null || stem == null) {
             return;
         }
-        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.location());
+        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.identifier());
         try {
             var registryAccess = server.registryAccess();
-            Registry<LevelStem> stemRegistry = registryAccess.registryOrThrow(Registries.LEVEL_STEM);
+            Registry<LevelStem> stemRegistry = registryAccess.lookupOrThrow(Registries.LEVEL_STEM);
             ensureStemInRegistry(stemRegistry, stemKey, stem);
         } catch (Exception e) {
-            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to register level stem {}", levelKey.location(), e);
+            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to register level stem {}", levelKey.identifier(), e);
         }
     }
 
@@ -354,8 +353,8 @@ public class InstanceWorldManager {
             return;
         }
         try {
-            Registry.register(registry, stemKey.location(), stem);
-            Marallyzen.LOGGER.info("InstanceWorldManager: registered stem {}", stemKey.location());
+            Registry.register(registry, stemKey.identifier(), stem);
+            Marallyzen.LOGGER.info("InstanceWorldManager: registered stem {}", stemKey.identifier());
             return;
         } catch (IllegalStateException frozen) {
             if (!isRegistryFrozen(registry)) {
@@ -365,8 +364,8 @@ public class InstanceWorldManager {
                 throw frozen;
             }
             try {
-                Registry.register(registry, stemKey.location(), stem);
-                Marallyzen.LOGGER.info("InstanceWorldManager: registered stem {}", stemKey.location());
+                Registry.register(registry, stemKey.identifier(), stem);
+                Marallyzen.LOGGER.info("InstanceWorldManager: registered stem {}", stemKey.identifier());
             } finally {
                 setRegistryFrozen(registry, true);
             }
@@ -377,14 +376,14 @@ public class InstanceWorldManager {
         if (levelKey == null || stem == null) {
             return;
         }
-        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.location());
+        ResourceKey<LevelStem> stemKey = ResourceKey.create(Registries.LEVEL_STEM, levelKey.identifier());
         boolean injected = false;
         injected |= tryInjectStemIntoHost(dataAndDims, stemKey, stem);
         injected |= tryInjectStemIntoHost(worldData, stemKey, stem);
         if (injected) {
-            Marallyzen.LOGGER.info("InstanceWorldManager: injected world dimensions entry {}", stemKey.location());
+            Marallyzen.LOGGER.info("InstanceWorldManager: injected world dimensions entry {}", stemKey.identifier());
         } else {
-            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to inject world dimensions entry {}", stemKey.location());
+            Marallyzen.LOGGER.warn("InstanceWorldManager: failed to inject world dimensions entry {}", stemKey.identifier());
         }
     }
 
@@ -402,10 +401,10 @@ public class InstanceWorldManager {
             return false;
         }
         visited.add(host);
-        if (host instanceof Registry<?> registry && registry.get(stemKey.location()) == null) {
+        if (host instanceof Registry<?> registry && registry.get(stemKey.identifier()) == null) {
             try {
                 ensureStemInRegistry((Registry<LevelStem>) registry, stemKey, stem);
-                return registry.get(stemKey.location()) != null;
+                return registry.get(stemKey.identifier()) != null;
             } catch (Exception ignored) {
                 return false;
             }
@@ -588,3 +587,7 @@ public class InstanceWorldManager {
         throw new IllegalStateException("InstanceWorldManager: unable to locate levels map");
     }
 }
+
+
+
+

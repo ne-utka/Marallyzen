@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class SimpleBlockPromptHudRenderer {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
@@ -19,19 +19,15 @@ public class SimpleBlockPromptHudRenderer {
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
-            return;
-        }
-
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterParticles event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             return;
         }
 
-        Camera camera = event.getCamera();
+        Camera camera = mc.gameRenderer.getMainCamera();
         PoseStack poseStack = event.getPoseStack();
-        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(false);
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         SimpleBlockPromptHud.getInstance().renderInWorld(poseStack, camera, partialTick);
     }
 }

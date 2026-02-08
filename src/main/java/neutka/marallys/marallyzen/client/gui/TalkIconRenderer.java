@@ -5,10 +5,11 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import org.joml.Matrix4f;
@@ -27,7 +28,7 @@ import java.util.UUID;
 /**
  * Renders a small floating "talk" icon above NPCs that have dialogs.
  */
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 @SuppressWarnings("removal") // bus enum marked for removal, kept for current Forge event bus usage
 public class TalkIconRenderer {
 
@@ -35,7 +36,7 @@ public class TalkIconRenderer {
     private static final float TEXT_SCALE = 0.015f; // Convert pixels to world units (blocks) - Reduced by 25%: 0.02 * 0.75
     private static final float BOB_AMPLITUDE = 0.1f; // Blocks
     private static final float BOB_SPEED = 0.08f; // Radians per tick
-    private static final ResourceLocation ICON_TEXTURE = ResourceLocation.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/npcpoint.png");
+    private static final Identifier ICON_TEXTURE = Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/npcpoint.png");
 
     public record TalkIcon(int argbColor, boolean visible) { }
 
@@ -53,23 +54,22 @@ public class TalkIconRenderer {
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
-            return;
-        }
-
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterEntities event) {
+        // Disabled: hide floating NPC talk icons.
+        return;
+        /*
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
             return;
         }
 
-        Camera camera = event.getCamera();
+        Camera camera = mc.gameRenderer.getMainCamera();
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(false);
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        double camX = camera.position().x;
+        double camY = camera.position().y;
+        double camZ = camera.position().z;
         long gameTime = mc.level.getGameTime();
 
         // Remove icons whose entities no longer exist
@@ -92,6 +92,7 @@ public class TalkIconRenderer {
         }
 
         bufferSource.endBatch();
+        */
     }
 
     private static void renderIcon(PoseStack poseStack,
@@ -116,8 +117,8 @@ public class TalkIconRenderer {
         poseStack.translate(x, y + yOffset, z);
 
         // Billboard to camera
-        poseStack.mulPose(Axis.YP.rotationDegrees(-camera.getYRot()));
-        poseStack.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
+        poseStack.mulPose(Axis.YP.rotationDegrees(-camera.yRot()));
+        poseStack.mulPose(Axis.XP.rotationDegrees(camera.xRot()));
         poseStack.mulPose(Axis.ZP.rotationDegrees(180.0f));
 
         poseStack.scale(TEXT_SCALE, TEXT_SCALE, TEXT_SCALE);
@@ -139,7 +140,7 @@ public class TalkIconRenderer {
                                            MultiBufferSource.BufferSource bufferSource,
                                            float left, float top, float right, float bottom,
                                            int color) {
-        var vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(ICON_TEXTURE));
+        var vertexConsumer = bufferSource.getBuffer(RenderTypes.entityTranslucent(ICON_TEXTURE));
 
         int a = (color >> 24) & 0xFF;
         int r = (color >> 16) & 0xFF;
@@ -194,4 +195,11 @@ public class TalkIconRenderer {
         return null;
     }
 }
+
+
+
+
+
+
+
 

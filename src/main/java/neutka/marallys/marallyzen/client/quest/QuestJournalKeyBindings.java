@@ -10,18 +10,22 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.client.settings.KeyModifier;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 import neutka.marallys.marallyzen.Marallyzen;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class QuestJournalKeyBindings {
+    private static final KeyMapping.Category CATEGORY =
+        KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Marallyzen.MODID, "marallyzen"));
+
     public static final KeyMapping OPEN_JOURNAL = new KeyMapping(
         "key.marallyzen.quest_journal",
         KeyConflictContext.IN_GAME,
         KeyModifier.NONE,
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_J,
-        "key.categories.marallyzen"
+        CATEGORY
     );
     public static final KeyMapping EXIT_INSTANCE = new KeyMapping(
         "key.marallyzen.instance_exit",
@@ -29,7 +33,7 @@ public class QuestJournalKeyBindings {
         KeyModifier.NONE,
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_H,
-        "key.categories.marallyzen"
+        CATEGORY
     );
 
     @SubscribeEvent
@@ -39,7 +43,7 @@ public class QuestJournalKeyBindings {
     }
 }
 
-@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 class QuestJournalKeyBindingsHandler {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
@@ -64,3 +68,5 @@ class QuestJournalKeyBindingsHandler {
         mc.setScreen(new QuestJournalScreen());
     }
 }
+
+

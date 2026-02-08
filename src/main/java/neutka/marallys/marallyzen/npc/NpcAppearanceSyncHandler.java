@@ -8,7 +8,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.NpcAppearancePacket;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public final class NpcAppearanceSyncHandler {
     private NpcAppearanceSyncHandler() {
     }

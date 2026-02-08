@@ -8,7 +8,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import neutka.marallys.marallyzen.denizen.storage.MarallyzenFlagStore;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public class MarallyzenDenizenEvents {
     private static int npcStateSaveTicks;
     private static final int NPC_STATE_SAVE_INTERVAL = 200;

@@ -1,10 +1,9 @@
 package neutka.marallys.marallyzen.npc;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -12,14 +11,16 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animatable.manager.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.animation.object.LoopType;
+import software.bernie.geckolib.animation.object.PlayState;
+import software.bernie.geckolib.animation.state.AnimationTest;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
@@ -63,7 +64,7 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
     @Override
     public void tick() {
         super.tick();
-        if (!level().isClientSide) {
+        if (!level().isClientSide()) {
             return;
         }
         blinkCooldown--;
@@ -81,27 +82,27 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
         return this.entityData.get(NPC_ID);
     }
 
-    public void setGeckolibModel(ResourceLocation model) {
+    public void setGeckolibModel(Identifier model) {
         this.entityData.set(GEO_MODEL, model != null ? model.toString() : "");
     }
 
-    public ResourceLocation getGeckolibModel() {
+    public Identifier getGeckolibModel() {
         return parseResource(this.entityData.get(GEO_MODEL));
     }
 
-    public void setGeckolibAnimation(ResourceLocation animation) {
+    public void setGeckolibAnimation(Identifier animation) {
         this.entityData.set(GEO_ANIMATION, animation != null ? animation.toString() : "");
     }
 
-    public ResourceLocation getGeckolibAnimation() {
+    public Identifier getGeckolibAnimation() {
         return parseResource(this.entityData.get(GEO_ANIMATION));
     }
 
-    public void setGeckolibTexture(ResourceLocation texture) {
+    public void setGeckolibTexture(Identifier texture) {
         this.entityData.set(GEO_TEXTURE, texture != null ? texture.toString() : "");
     }
 
-    public ResourceLocation getGeckolibTexture() {
+    public Identifier getGeckolibTexture() {
         return parseResource(this.entityData.get(GEO_TEXTURE));
     }
 
@@ -123,36 +124,36 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "main", 0, this::mainPredicate));
-        controllers.add(new AnimationController<>(this, "blink", 0, this::blinkPredicate));
+        controllers.add(new AnimationController<GeckoNpcEntity>("main", 0, this::mainPredicate));
+        controllers.add(new AnimationController<GeckoNpcEntity>("blink", 0, this::blinkPredicate));
     }
 
-    private <T extends GeoEntity> PlayState mainPredicate(AnimationState<T> state) {
+    private PlayState mainPredicate(AnimationTest<GeckoNpcEntity> state) {
         String expression = getExpression();
         if (expression != null && !expression.isBlank()) {
             if ("idle_interact".equalsIgnoreCase(expression)) {
                 String cycle = ((this.tickCount / IDLE_INTERACT_SWAP_TICKS) % 2 == 0) ? "idle" : "interact";
                 if ("interact".equalsIgnoreCase(cycle)) {
-                    state.getController().setAnimation(RawAnimation.begin()
-                            .then("interact", Animation.LoopType.PLAY_ONCE));
+                    state.controller().setAnimation(RawAnimation.begin()
+                            .then("interact", LoopType.PLAY_ONCE));
                 } else {
-                    state.getController().setAnimation(RawAnimation.begin().thenLoop("idle"));
+                    state.controller().setAnimation(RawAnimation.begin().thenLoop("idle"));
                 }
                 return PlayState.CONTINUE;
             }
             if (!"idle".equalsIgnoreCase(expression)) {
-                state.getController().setAnimation(RawAnimation.begin().thenLoop(expression));
+                state.controller().setAnimation(RawAnimation.begin().thenLoop(expression));
                 return PlayState.CONTINUE;
             }
         }
-        String fallbackAnimation = isMoving() ? "walk" : "idle";
-        state.getController().setAnimation(RawAnimation.begin().thenLoop(fallbackAnimation));
+        String fallbackAnimation = state.isMoving() ? "walk" : "idle";
+        state.controller().setAnimation(RawAnimation.begin().thenLoop(fallbackAnimation));
         return PlayState.CONTINUE;
     }
 
-    private <T extends GeoEntity> PlayState blinkPredicate(AnimationState<T> state) {
+    private PlayState blinkPredicate(AnimationTest<GeckoNpcEntity> state) {
         if (consumeBlink()) {
-            state.getController().setAnimation(RawAnimation.begin().then("blink", Animation.LoopType.PLAY_ONCE));
+            state.controller().setAnimation(RawAnimation.begin().then("blink", LoopType.PLAY_ONCE));
             return PlayState.CONTINUE;
         }
         return PlayState.STOP;
@@ -168,43 +169,35 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        tag.putString("NpcId", getNpcId());
-        tag.putString("GeckoModel", this.entityData.get(GEO_MODEL));
-        tag.putString("GeckoAnimation", this.entityData.get(GEO_ANIMATION));
-        tag.putString("GeckoTexture", this.entityData.get(GEO_TEXTURE));
-        tag.putString("Expression", getExpression());
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putString("NpcId", getNpcId());
+        output.putString("GeckoModel", this.entityData.get(GEO_MODEL));
+        output.putString("GeckoAnimation", this.entityData.get(GEO_ANIMATION));
+        output.putString("GeckoTexture", this.entityData.get(GEO_TEXTURE));
+        output.putString("Expression", getExpression());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.contains("NpcId")) {
-            setNpcId(tag.getString("NpcId"));
-        }
-        if (tag.contains("GeckoModel")) {
-            this.entityData.set(GEO_MODEL, tag.getString("GeckoModel"));
-        }
-        if (tag.contains("GeckoAnimation")) {
-            this.entityData.set(GEO_ANIMATION, tag.getString("GeckoAnimation"));
-        }
-        if (tag.contains("GeckoTexture")) {
-            this.entityData.set(GEO_TEXTURE, tag.getString("GeckoTexture"));
-        }
-        if (tag.contains("Expression")) {
-            setExpression(tag.getString("Expression"));
-        }
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        input.getString("NpcId").ifPresent(this::setNpcId);
+        input.getString("GeckoModel").ifPresent(value -> this.entityData.set(GEO_MODEL, value));
+        input.getString("GeckoAnimation").ifPresent(value -> this.entityData.set(GEO_ANIMATION, value));
+        input.getString("GeckoTexture").ifPresent(value -> this.entityData.set(GEO_TEXTURE, value));
+        input.getString("Expression").ifPresent(this::setExpression);
     }
 
-    private static ResourceLocation parseResource(String raw) {
+    private static Identifier parseResource(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
         try {
-            return ResourceLocation.parse(raw);
+            return Identifier.parse(raw);
         } catch (Exception e) {
             return null;
         }
     }
 }
+
+

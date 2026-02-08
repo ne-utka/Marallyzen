@@ -13,7 +13,7 @@ import neutka.marallys.marallyzen.Marallyzen;
 
 import java.util.Set;
 
-@EventBusSubscriber(modid = Marallyzen.MODID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Marallyzen.MODID)
 public final class NpcSpawner {
     private static volatile boolean bootstrapped = false;
 
@@ -117,7 +117,7 @@ public final class NpcSpawner {
         int minZ = chunkPos.getMinBlockZ();
         int maxX = chunkPos.getMaxBlockX() + 1;
         int maxZ = chunkPos.getMaxBlockZ() + 1;
-        AABB box = new AABB(minX, level.getMinBuildHeight(), minZ, maxX, level.getMaxBuildHeight(), maxZ);
+        AABB box = new AABB(minX, level.getMinY(), minZ, maxX, level.getMaxY(), maxZ);
         for (NpcEntity entity : level.getEntitiesOfClass(NpcEntity.class, box)) {
             registerExistingEntity(level, registry, entity, true, true);
         }
@@ -128,8 +128,8 @@ public final class NpcSpawner {
 
     public static void registerAllExisting(ServerLevel level, NpcRegistry registry) {
         AABB box = new AABB(
-                -3.0E7, level.getMinBuildHeight(), -3.0E7,
-                3.0E7, level.getMaxBuildHeight(), 3.0E7
+                -3.0E7, level.getMinY(), -3.0E7,
+                3.0E7, level.getMaxY(), 3.0E7
         );
         for (NpcEntity entity : level.getEntitiesOfClass(NpcEntity.class, box)) {
             registerExistingEntity(level, registry, entity, true, true);
@@ -372,7 +372,7 @@ public final class NpcSpawner {
         int minZ = chunkPos.getMinBlockZ();
         int maxX = chunkPos.getMaxBlockX() + 1;
         int maxZ = chunkPos.getMaxBlockZ() + 1;
-        AABB box = new AABB(minX, level.getMinBuildHeight(), minZ, maxX, level.getMaxBuildHeight(), maxZ);
+        AABB box = new AABB(minX, level.getMinY(), minZ, maxX, level.getMaxY(), maxZ);
         for (GeckoNpcEntity entity : level.getEntitiesOfClass(GeckoNpcEntity.class, box)) {
             if (matchesNpcId(registry, entity, npcId)) {
                 return entity;
