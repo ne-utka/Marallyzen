@@ -68,17 +68,8 @@ public class DecoratedPotCarryEntity extends Entity {
     public static final float LANDING_SPEED_THRESHOLD = 0.02f;
     public static final int LANDING_GRACE_TICKS = 5;
     public static final String ROTATION_TAG = "marallyzen_pot_yaw";
-    public static final AABB POT_BOUNDS_RAW = Blocks.DECORATED_POT.defaultBlockState()
-        .getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)
-        .bounds();
-    public static final AABB POT_BOUNDS = new AABB(
-        POT_BOUNDS_RAW.minX,
-        POT_BOUNDS_RAW.minY,
-        POT_BOUNDS_RAW.minZ,
-        POT_BOUNDS_RAW.maxX,
-        POT_BOUNDS_RAW.maxY,
-        POT_BOUNDS_RAW.maxZ
-    );
+    // Fallback bounds (used when level is unavailable).
+    public static final AABB POT_BOUNDS = new AABB(0.125, 0.0, 0.125, 0.875, 0.875, 0.875);
     public static final float COLLISION_WIDTH = (float) (POT_BOUNDS.maxX - POT_BOUNDS.minX);
     public static final float COLLISION_HEIGHT = (float) (POT_BOUNDS.maxY - POT_BOUNDS.minY);
     public static final double COLLISION_EPS = 0.05;
@@ -212,6 +203,10 @@ public class DecoratedPotCarryEntity extends Entity {
             wasOnGround = onGround();
             wasHorizontalCollision = horizontalCollision;
         }
+        this.refreshDimensions();
+        if (mode != Mode.CARRIED) {
+            updatePotBoundingBox();
+        }
     }
 
     @Override
@@ -233,6 +228,10 @@ public class DecoratedPotCarryEntity extends Entity {
                 this.blocksBuilding = true;
                 this.setNoGravity(true);
                 this.setDeltaMovement(Vec3.ZERO);
+            }
+            this.refreshDimensions();
+            if (mode != Mode.CARRIED) {
+                updatePotBoundingBox();
             }
         }
     }
@@ -749,6 +748,20 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     private void tickResting() {
+        // Keep solid collision while resting (server-side).
+        if (this.noPhysics) {
+            this.noPhysics = false;
+        }
+        if (!this.blocksBuilding) {
+            this.blocksBuilding = true;
+        }
+        if (!this.isNoGravity()) {
+            this.setNoGravity(true);
+        }
+        if (!this.getDeltaMovement().equals(Vec3.ZERO)) {
+            this.setDeltaMovement(Vec3.ZERO);
+        }
+        updatePotBoundingBox();
     }
 
     private void settle() {
@@ -870,20 +883,67 @@ public class DecoratedPotCarryEntity extends Entity {
     }
 
     public EntityDimensions getDimensions(Pose pose) {
-        AABB b = POT_BOUNDS;
+        AABB b = resolvePotBounds();
         return EntityDimensions.fixed(
             (float) (b.maxX - b.minX),
             (float) (b.maxY - b.minY)
         );
     }
 
-    public boolean canBeCollidedWith() {
+    private AABB resolvePotBounds() {
+        Level level = level();
+        if (level != null) {
+            BlockState state = getStoredBlockState();
+            if (state == null || state.isAir()) {
+                state = Blocks.DECORATED_POT.defaultBlockState();
+            }
+            BlockPos pos = BlockPos.containing(getX(), getY(), getZ());
+            var shape = state.getCollisionShape(level, pos);
+            if (!shape.isEmpty()) {
+                return shape.bounds();
+            }
+            var outline = state.getShape(level, pos);
+            if (!outline.isEmpty()) {
+                return outline.bounds();
+            }
+        }
+        return POT_BOUNDS;
+    }
+
+    private void updatePotBoundingBox() {
+        AABB local = resolvePotBounds();
+        AABB world = new AABB(
+            getX() + local.minX,
+            getY() + local.minY,
+            getZ() + local.minZ,
+            getX() + local.maxX,
+            getY() + local.maxY,
+            getZ() + local.maxZ
+        );
+        setBoundingBox(world);
+    }
+
+    @Override
+    public void setPos(double x, double y, double z) {
+        super.setPos(x, y, z);
+        if (getMode() != Mode.CARRIED) {
+            updatePotBoundingBox();
+        }
+    }
+
+    @Override
+    public boolean canBeCollidedWith(Entity entity) {
         return !isRemoved() && getMode() != Mode.CARRIED;
     }
 
     @Override
-    public boolean isPushable() {
+    public boolean canCollideWith(Entity entity) {
         return getMode() != Mode.CARRIED;
+    }
+
+    @Override
+    public boolean isPushable() {
+        return getMode() == Mode.THROWN;
     }
 
     @Override
