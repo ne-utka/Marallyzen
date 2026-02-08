@@ -13,8 +13,8 @@ import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.lever.LeverQteClient;
 import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 import neutka.marallys.marallyzen.client.quest.QuestJournalScreen;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.util.ARGB;
+import net.minecraft.client.renderer.RenderPipelines;
 
 /**
  * Renders the narration overlay as a Bedrock-style semi-transparent panel at the bottom of the screen.
@@ -154,52 +154,56 @@ public class NarrationOverlayRenderer {
         if (width <= 0 || height <= 0) {
             return;
         }
-        int corner = Math.min(ROUNDED_BG_RADIUS_PX, Math.min(width, height) / 2);
-        if (corner <= 0) {
+
+        float corner = Math.min(Math.max(ROUNDED_BG_RADIUS_PX, 0.0f), Math.min(width, height) / 2.0f);
+        if (corner <= 0.0f) {
             guiGraphics.fill(x, y, x + width, y + height, color);
             return;
         }
 
-        int cornerPx = corner;
-        int tex = ROUNDED_BG_TEX_SIZE;
-        float uCorner = (float) ROUNDED_BG_CORNER_PX / (float) ROUNDED_BG_TEX_SIZE;
-        int colorArgb = color;
+        fillTexturedRect(guiGraphics, x, y, width, height, Math.round(corner), color);
+    }
 
+    private static void fillTexturedRect(GuiGraphics guiGraphics,
+                                         int x, int y, int width, int height, int corner, int color) {
+        float uCorner = (float) ROUNDED_BG_CORNER_PX / (float) ROUNDED_BG_TEX_SIZE;
         int x0 = x;
-        int x1 = x + cornerPx;
-        int x2 = x + width - cornerPx;
+        int x1 = x + corner;
+        int x2 = x + width - corner;
         int x3 = x + width;
         int y0 = y;
-        int y1 = y + cornerPx;
-        int y2 = y + height - cornerPx;
+        int y1 = y + corner;
+        int y2 = y + height - corner;
         int y3 = y + height;
 
-        // Top row
-        blitSlice(guiGraphics, x0, y0, cornerPx, cornerPx, 0.0f, 0.0f, uCorner, uCorner, tex, colorArgb);
-        blitSlice(guiGraphics, x1, y0, x2 - x1, cornerPx, uCorner, 0.0f, 1.0f - uCorner, uCorner, tex, colorArgb);
-        blitSlice(guiGraphics, x2, y0, x3 - x2, cornerPx, 1.0f - uCorner, 0.0f, 1.0f, uCorner, tex, colorArgb);
+        // Avoid overlap to prevent dark seams from double-blending.
+        int overlap = 0;
 
-        // Middle row
-        blitSlice(guiGraphics, x0, y1, cornerPx, y2 - y1, 0.0f, uCorner, uCorner, 1.0f - uCorner, tex, colorArgb);
-        blitSlice(guiGraphics, x1, y1, x2 - x1, y2 - y1, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, tex, colorArgb);
-        blitSlice(guiGraphics, x2, y1, x3 - x2, y2 - y1, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, tex, colorArgb);
+        blitSlice(guiGraphics, x0, y0, corner + overlap, corner + overlap, 0.0f, 0.0f, uCorner, uCorner, color);
+        blitSlice(guiGraphics, x1, y0, (x2 - x1) + overlap, corner + overlap, uCorner, 0.0f, 1.0f - uCorner, uCorner, color);
+        blitSlice(guiGraphics, x2 - overlap, y0, (x3 - x2) + overlap, corner + overlap, 1.0f - uCorner, 0.0f, 1.0f, uCorner, color);
 
-        // Bottom row
-        blitSlice(guiGraphics, x0, y2, cornerPx, y3 - y2, 0.0f, 1.0f - uCorner, uCorner, 1.0f, tex, colorArgb);
-        blitSlice(guiGraphics, x1, y2, x2 - x1, y3 - y2, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, tex, colorArgb);
-        blitSlice(guiGraphics, x2, y2, x3 - x2, y3 - y2, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, tex, colorArgb);
+        blitSlice(guiGraphics, x0, y1, corner + overlap, (y2 - y1) + overlap, 0.0f, uCorner, uCorner, 1.0f - uCorner, color);
+        blitSlice(guiGraphics, x1, y1, (x2 - x1) + overlap, (y2 - y1) + overlap, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, color);
+        blitSlice(guiGraphics, x2 - overlap, y1, (x3 - x2) + overlap, (y2 - y1) + overlap, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, color);
+
+        blitSlice(guiGraphics, x0, y2 - overlap, corner + overlap, (y3 - y2) + overlap, 0.0f, 1.0f - uCorner, uCorner, 1.0f, color);
+        blitSlice(guiGraphics, x1, y2 - overlap, (x2 - x1) + overlap, (y3 - y2) + overlap, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, color);
+        blitSlice(guiGraphics, x2 - overlap, y2 - overlap, (x3 - x2) + overlap, (y3 - y2) + overlap, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, color);
     }
 
     private static void blitSlice(GuiGraphics guiGraphics, int x, int y, int w, int h,
-                                  float u0, float v0, float u1, float v1, int texSize, int color) {
+                                  float u0, float v0, float u1, float v1, int color) {
         if (w <= 0 || h <= 0) {
             return;
         }
-        float u = u0 * texSize;
-        float v = v0 * texSize;
-        float uSize = (u1 - u0) * texSize;
-        float vSize = (v1 - v0) * texSize;
-        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, ROUNDED_BG_TEXTURE, x, y, u, v, w, h, texSize, texSize, color);
+        int tex = ROUNDED_BG_TEX_SIZE;
+        int u = Math.round(u0 * tex);
+        int v = Math.round(v0 * tex);
+        int uSize = Math.round((u1 - u0) * tex);
+        int vSize = Math.round((v1 - v0) * tex);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, ROUNDED_BG_TEXTURE, x, y, u, v, w, h,
+            uSize, vSize, tex, tex, color);
     }
 }
 
