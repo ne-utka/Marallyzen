@@ -9,8 +9,6 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.state.CameraRenderState;
@@ -334,7 +332,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
             // coplanar "back face" quad (which causes z-fighting and mirrored artifacts).
             renderQuad(vertexConsumer, matrix, packedLight, false);
             
-            // Render text on BOTH sides (direct rendering fallback for 1.21.11).
+            // Render text on BOTH sides. Prefer direct text for legacy-accurate layout.
             net.minecraft.resources.Identifier frontTexture = entity.getTextTexture();
             net.minecraft.resources.Identifier backTexture = entity.getTextTextureBack();
             var frontTextData = entity.getFrontTextData();
@@ -342,7 +340,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
             PosterStyle posterStyle = PosterStyle.fromPosterNumber(posterNumber);
             float textOffsetX = posterStyle == PosterStyle.PAPER ? -0.095f : 0.0f;
             
-            if (frontTextData != null || backTextData != null) {
+            if (posterNumber != 11 && (frontTextData != null || backTextData != null)) {
                 if (frontTextData != null) {
                     poseStack.pushPose();
                     poseStack.translate(textOffsetX, 0, -0.01f);
@@ -355,7 +353,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
                     renderPosterText(poseStack, bufferSource, backTextData, false, packedLight);
                     poseStack.popPose();
                 }
-            } else if (frontTexture != null || backTexture != null) {
+            } else if (posterNumber != 11 && (frontTexture != null || backTexture != null)) {
                 if (frontTexture != null) {
                     poseStack.pushPose();
                     poseStack.translate(textOffsetX, 0, -0.01f);
@@ -727,46 +725,153 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
             return;
         }
 
+        // Match legacy layout at 2x scale (110x146 px canvas, margins 12/working 86x122).
+        final int textureWidth = 110;
+        final int textureHeight = 146;
+        int margin = 12;
+        int workingWidth = 86;
+        int workingHeight = 122;
+
+        int titleColor = data.style() == PosterStyle.PAPER ? 0xFF1A1A1A : 0xFF2B1B0E;
+        int textColor = titleColor;
+        int authorColor = data.style() == PosterStyle.PAPER ? 0xFF555555 : titleColor;
+        float titleScale = data.style() == PosterStyle.PAPER ? 1.25f : 1.3f;
+        float authorScale = data.style() == PosterStyle.PAPER ? 0.8f : 0.7f;
+        boolean isAllCaps = data.style() != PosterStyle.PAPER;
+        int textLineHeight = data.style() == PosterStyle.PAPER ? 14 : 13;
+
+        if (data.style() == PosterStyle.PAPER) {
+            margin = 14;
+            workingWidth = 82;
+            workingHeight = 116;
+        }
+
         poseStack.pushPose();
-        // Map poster quad to 55x73 px space.
+        // Map poster quad to 110x146 px space (2x legacy layout).
         poseStack.translate(-0.5f, 0.5f, 0.0f);
-        float scaleX = 1.0f / 55.0f;
-        float scaleY = -1.0f / 73.0f;
+        float scaleX = 1.0f / textureWidth;
+        float scaleY = -1.0f / textureHeight;
         poseStack.scale(scaleX, scaleY, 1.0f);
         if (mirrorHorizontal) {
-            poseStack.translate(55.0f, 0.0f, 0.0f);
+            poseStack.translate(textureWidth, 0.0f, 0.0f);
             poseStack.scale(-1.0f, 1.0f, 1.0f);
         }
 
-        int color = 0xFF1A1A1A;
-        int x = 6;
-        int y = 6;
-        int maxWidth = 43;
-        int maxHeight = 61;
+        int currentY = margin;
+        int centerX = textureWidth / 2;
+        int maxY = margin + workingHeight;
 
-        java.util.List<net.minecraft.util.FormattedCharSequence> lines = new java.util.ArrayList<>();
-        if (data.title() != null && !data.title().isBlank()) {
-            lines.addAll(font.split(net.minecraft.network.chat.Component.literal(data.title()), maxWidth));
-            lines.add(net.minecraft.util.FormattedCharSequence.EMPTY);
+        // TITLE
+        if (data.title() != null && !data.title().isEmpty() && !data.title().equals("Poster")) {
+            String titleText = isAllCaps ? data.title().toUpperCase() : data.title();
+            var titleComponent = net.minecraft.network.chat.Component.literal(titleText)
+                .withStyle(net.minecraft.network.chat.Style.EMPTY.withBold(true));
+            int maxTitleWidth = workingWidth;
+
+            poseStack.pushPose();
+            poseStack.scale(titleScale, titleScale, 1.0f);
+
+            int titleWidth = (int)(font.width(titleComponent) * titleScale);
+            if (titleWidth > maxTitleWidth) {
+                var titleLines = font.split(titleComponent, (int)(maxTitleWidth / titleScale));
+                int titleY = currentY;
+                for (var line : titleLines) {
+                    int lineWidth = (int)(font.width(line) * titleScale);
+                    int titleX = centerX - lineWidth / 2;
+                    poseStack.pushPose();
+                    poseStack.translate(titleX / titleScale, titleY / titleScale, 0);
+                    font.drawInBatch(line, 0, 0, titleColor, false, poseStack.last().pose(), bufferSource,
+                        net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
+                    poseStack.popPose();
+                    titleY += (int)(font.lineHeight * titleScale) + 2;
+                }
+                currentY = titleY;
+            } else {
+                int titleX = centerX - titleWidth / 2;
+                poseStack.pushPose();
+                poseStack.translate(titleX / titleScale, currentY / titleScale, 0);
+                font.drawInBatch(titleComponent, 0, 0, titleColor, false, poseStack.last().pose(), bufferSource,
+                    net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
+                poseStack.popPose();
+                currentY += (int)(font.lineHeight * titleScale) + 4;
+            }
+            poseStack.popPose();
+
+            currentY += 2;
         }
-        if (data.pages() != null) {
+
+        // BODY
+        int authorHeight = 0;
+        if (data.author() != null && !data.author().isEmpty()) {
+            authorHeight = font.lineHeight + margin + 6;
+        }
+        int maxYForText = Math.min(textureHeight - margin - authorHeight, maxY - authorHeight);
+
+        if (data.pages() != null && !data.pages().isEmpty()) {
+            int textY = currentY;
+            int wrapWidth = workingWidth;
+
             for (String page : data.pages()) {
-                if (page == null || page.isBlank()) {
+                if (page == null || page.isEmpty()) {
+                    textY += textLineHeight;
                     continue;
                 }
-                lines.addAll(font.split(net.minecraft.network.chat.Component.literal(page), maxWidth));
-                lines.add(net.minecraft.util.FormattedCharSequence.EMPTY);
+                String[] paragraphs = page.split("\n\n");
+                for (String paragraph : paragraphs) {
+                    if (paragraph.isEmpty()) {
+                        textY += textLineHeight;
+                        continue;
+                    }
+                    String[] lines = paragraph.split("\n");
+                    for (String line : lines) {
+                        if (line.isEmpty()) {
+                            textY += textLineHeight;
+                            continue;
+                        }
+                        var wrappedLines = font.split(net.minecraft.network.chat.Component.literal(line), wrapWidth);
+                        for (var wrappedLine : wrappedLines) {
+                            if (textY + textLineHeight > maxYForText) {
+                                break;
+                            }
+                            int lineWidth = font.width(wrappedLine);
+                            int lineX = centerX - lineWidth / 2;
+                            font.drawInBatch(wrappedLine, lineX, textY, textColor, false, poseStack.last().pose(), bufferSource,
+                                net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
+                            textY += textLineHeight;
+                        }
+                        if (textY > maxYForText) {
+                            break;
+                        }
+                    }
+                    if (textY + textLineHeight > maxYForText) {
+                        break;
+                    }
+                    if (textY <= maxYForText) {
+                        textY += textLineHeight;
+                    }
+                }
             }
         }
 
-        int lineHeight = font.lineHeight;
-        int maxLines = Math.max(0, maxHeight / lineHeight);
-        int count = Math.min(lines.size(), maxLines);
-        Matrix4f matrix = poseStack.last().pose();
-        for (int i = 0; i < count; i++) {
-            var line = lines.get(i);
-            font.drawInBatch(line, x, y + (i * lineHeight), color, false, matrix, bufferSource,
+        // AUTHOR
+        if (data.author() != null && !data.author().isEmpty()) {
+            String authorStr = "— " + data.author();
+            var authorComponent = net.minecraft.network.chat.Component.literal(authorStr);
+            poseStack.pushPose();
+            poseStack.scale(authorScale, authorScale, 1.0f);
+
+            int authorWidth = (int)(font.width(authorComponent) * authorScale);
+            int authorY = textureHeight - margin - 6 - (int)(font.lineHeight * authorScale);
+            int authorX = (data.style() == PosterStyle.PAPER)
+                ? margin + workingWidth - authorWidth
+                : centerX - authorWidth / 2;
+
+            poseStack.pushPose();
+            poseStack.translate(authorX / authorScale, authorY / authorScale, 0);
+            font.drawInBatch(authorComponent, 0, 0, authorColor, false, poseStack.last().pose(), bufferSource,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
+            poseStack.popPose();
+            poseStack.popPose();
         }
 
         poseStack.popPose();

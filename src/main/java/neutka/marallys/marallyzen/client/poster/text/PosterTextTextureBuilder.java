@@ -13,16 +13,13 @@ import org.slf4j.LoggerFactory;
  */
 public class PosterTextTextureBuilder {
     private static final Logger LOGGER = LoggerFactory.getLogger(PosterTextTextureBuilder.class);
-    
+
     // Fixed texture dimensions (2x for better quality)
     // Original: 55x73 px, working area: 43x61 px, margin: 6 px
     // Scaled 2x: 110x146 px, working area: 86x122 px, margin: 12 px
     private static final int TEXTURE_WIDTH = 110;
     private static final int TEXTURE_HEIGHT = 146;
-    private static final int WORKING_WIDTH = 86;
-    private static final int WORKING_HEIGHT = 122;
-    private static final int MARGIN = 12;
-    
+
     /**
      * Builds a texture from PosterTextData.
      * Returns Identifier for the texture, or null if data is empty or style is OLD.
@@ -30,18 +27,18 @@ public class PosterTextTextureBuilder {
     public static Identifier buildTexture(PosterTextData data) {
         LOGGER.warn("========== PosterTextTextureBuilder.buildTexture() CALLED ==========");
         LOGGER.warn("Data: {}", data);
-        
+
         if (data == null || data.isEmpty() || data.style() == PosterStyle.OLD) {
             LOGGER.warn("PosterTextTextureBuilder: Data is null/empty or style is OLD, returning null");
             return null;
         }
-        
+
         net.minecraft.client.gui.Font font = Minecraft.getInstance().font;
         if (font == null) {
             LOGGER.warn("PosterTextTextureBuilder: Font is null, cannot build texture");
             return null;
         }
-        
+
         try {
             LOGGER.warn("PosterTextTextureBuilder: Rendering text to image...");
             NativeImage image = renderTextToImage(data, font);
@@ -49,15 +46,15 @@ public class PosterTextTextureBuilder {
                 LOGGER.warn("PosterTextTextureBuilder: renderTextToImage returned null");
                 return null;
             }
-            
+
             LOGGER.warn("PosterTextTextureBuilder: Creating DynamicTexture...");
             net.minecraft.client.renderer.texture.DynamicTexture dynamicTexture =
                 new net.minecraft.client.renderer.texture.DynamicTexture(() -> "marallyzen_poster_text_" + System.currentTimeMillis(), image);
-            
+
             String textureNamespace = "marallyzen";
             String texturePath = "poster_text_" + System.currentTimeMillis() + "_" + data.hashCode();
             Identifier location = Identifier.parse(textureNamespace + ":" + texturePath);
-            
+
             LOGGER.warn("PosterTextTextureBuilder: Registering texture with TextureManager: {}", location);
             Minecraft.getInstance().getTextureManager().register(location, dynamicTexture);
 
@@ -69,10 +66,10 @@ public class PosterTextTextureBuilder {
             return null;
         }
     }
-    
+
     /**
-     * Renders text into NativeImage using Minecraft Font via character-by-character rendering.
-     * This approach uses Minecraft's font directly to ensure proper spacing and appearance.
+     * Placeholder image. Offscreen font rendering pipeline changed in 1.21.11.
+     * The actual text is rendered directly in PosterEntityRenderer to match legacy layout.
      */
     private static NativeImage renderTextToImage(PosterTextData data, net.minecraft.client.gui.Font font) {
         NativeImage image = new NativeImage(NativeImage.Format.RGBA, TEXTURE_WIDTH, TEXTURE_HEIGHT, false);
@@ -81,9 +78,6 @@ public class PosterTextTextureBuilder {
                 image.setPixel(x, y, 0x00000000);
             }
         }
-        // Offscreen font rendering pipeline changed in 1.21.11. Return a transparent image for now.
         return image;
     }
 }
-
-
