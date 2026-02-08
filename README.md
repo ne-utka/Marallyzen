@@ -1,5 +1,5 @@
 <p align="center">
-      <img src="[Project Logo Url](https://ltdfoto.ru/images/2026/02/08/TEXSTmrl.gif)" width="726">
+      ![Logo](https://github.com/user-attachments/assets/d79b83cf-61e2-4d41-9eda-1e362f9fbdec)
 </p>
 
 ## About
