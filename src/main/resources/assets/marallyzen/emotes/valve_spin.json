@@ -4,7 +4,7 @@
   "description": "Valve spin emote",
   "emote": {
     "isLoop": "true",
-    "degrees": true,
+    "degrees": false,
     "beginTick": 0,
     "endTick": 20,
     "stopTick": 20,
@@ -13,32 +13,32 @@
       {
         "tick": 0,
         "easing": "LINEAR",
-        "rightArm": {"pitch": -20, "yaw": 10, "roll": 0},
-        "leftArm": {"pitch": -10, "yaw": -10, "roll": 0}
+        "rightArm": {"pitch": -0.34906584, "yaw": 0.17453292, "roll": 0},
+        "leftArm": {"pitch": -0.17453292, "yaw": -0.17453292, "roll": 0}
       },
       {
         "tick": 5,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -40, "yaw": 20, "roll": 10},
-        "leftArm": {"pitch": -25, "yaw": -20, "roll": -10}
+        "rightArm": {"pitch": -0.6981317, "yaw": 0.34906584, "roll": 0.17453292},
+        "leftArm": {"pitch": -0.4363323, "yaw": -0.34906584, "roll": -0.17453292}
       },
       {
         "tick": 10,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -30, "yaw": 5, "roll": 0},
-        "leftArm": {"pitch": -15, "yaw": -5, "roll": 0}
+        "rightArm": {"pitch": -0.5235988, "yaw": 0.08726646, "roll": 0},
+        "leftArm": {"pitch": -0.2617994, "yaw": -0.08726646, "roll": 0}
       },
       {
         "tick": 15,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -45, "yaw": 25, "roll": 15},
-        "leftArm": {"pitch": -30, "yaw": -25, "roll": -15}
+        "rightArm": {"pitch": -0.7853982, "yaw": 0.4363323, "roll": 0.2617994},
+        "leftArm": {"pitch": -0.5235988, "yaw": -0.4363323, "roll": -0.2617994}
       },
       {
         "tick": 20,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -20, "yaw": 10, "roll": 0},
-        "leftArm": {"pitch": -10, "yaw": -10, "roll": 0}
+        "rightArm": {"pitch": -0.34906584, "yaw": 0.17453292, "roll": 0},
+        "leftArm": {"pitch": -0.17453292, "yaw": -0.17453292, "roll": 0}
       }
     ]
   }

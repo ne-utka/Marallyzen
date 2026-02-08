@@ -4,7 +4,7 @@
   "description": "Lever down emote",
   "emote": {
     "isLoop": "false",
-    "degrees": true,
+    "degrees": false,
     "beginTick": 0,
     "endTick": 16,
     "stopTick": 17,
@@ -13,17 +13,17 @@
       {
         "tick": 0,
         "easing": "LINEAR",
-        "rightArm": {"pitch": -40, "yaw": 5, "roll": 0}
+        "rightArm": {"pitch": -0.6981317, "yaw": 0.08726646, "roll": 0}
       },
       {
         "tick": 8,
         "easing": "OUTQUAD",
-        "rightArm": {"pitch": -75, "yaw": 12, "roll": 0}
+        "rightArm": {"pitch": -1.3089969, "yaw": 0.20943951, "roll": 0}
       },
       {
         "tick": 16,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -60, "yaw": 8, "roll": 0}
+        "rightArm": {"pitch": -1.0471976, "yaw": 0.13962634, "roll": 0}
       }
     ]
   }

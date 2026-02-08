@@ -4,7 +4,7 @@
   "description": "Lever shake emote",
   "emote": {
     "isLoop": "true",
-    "degrees": true,
+    "degrees": false,
     "beginTick": 0,
     "endTick": 20,
     "stopTick": 20,
@@ -13,27 +13,27 @@
       {
         "tick": 0,
         "easing": "LINEAR",
-        "rightArm": {"pitch": -40, "yaw": 5, "roll": 0}
+        "rightArm": {"pitch": -0.6981317, "yaw": 0.08726646, "roll": 0}
       },
       {
         "tick": 5,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -60, "yaw": 8, "roll": 0}
+        "rightArm": {"pitch": -1.0471976, "yaw": 0.13962634, "roll": 0}
       },
       {
         "tick": 10,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -45, "yaw": 3, "roll": 0}
+        "rightArm": {"pitch": -0.7853982, "yaw": 0.05235988, "roll": 0}
       },
       {
         "tick": 15,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -62, "yaw": 10, "roll": 0}
+        "rightArm": {"pitch": -1.0821041, "yaw": 0.17453292, "roll": 0}
       },
       {
         "tick": 20,
         "easing": "INOUTQUAD",
-        "rightArm": {"pitch": -40, "yaw": 5, "roll": 0}
+        "rightArm": {"pitch": -0.6981317, "yaw": 0.08726646, "roll": 0}
       }
     ]
   }
