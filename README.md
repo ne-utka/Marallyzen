@@ -6,8 +6,6 @@
 
 Marallyzen is a NeoForge Minecraft mod (MC 1.21.1+) focused on roleplay, NPCs, scripted interactions, and cinematic presentation. It bundles a full NPC stack, dialog UI, cutscene system, and DenizenCore scripting so content creators can build quests, scenes, and interactive storytelling without hardcoding logic.
 
-![202601151207 (1) (2)](https://github.com/user-attachments/assets/6bbcd36c-3bff-4a9a-a7a3-f6c670e57b3d)
-
 ## Developers
 
 - **neutka** - ([GitHub Profile Link](https://github.com/ne-utka))
