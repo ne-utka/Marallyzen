@@ -11,6 +11,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.emote.ClientEmoteHandler;
+import neutka.marallys.marallyzen.client.fpv.FpvQteState;
 import neutka.marallys.marallyzen.blocks.InteractiveValveBlockEntity;
 import software.bernie.geckolib.constant.DataTickets;
 
@@ -82,6 +83,7 @@ public final class ValveQteClient {
     }
 
     public static void start(BlockPos valvePos, int sequenceLength, int stepIndex, boolean expectRight, int windowTicks, int shakeLoopTicks, int grabTicks) {
+        FpvQteState.onValveStart();
         ValveQteClient.active = true;
         ValveQteClient.hudVisible = true;
         ValveQteClient.finishing = false;
@@ -126,6 +128,7 @@ public final class ValveQteClient {
     }
 
     public static void finishSuccess(int downTicks, long downStartTick) {
+        FpvQteState.onValveSuccess();
         finishing = true;
         hudVisible = false;
         acceptingInput = false;
@@ -147,6 +150,7 @@ public final class ValveQteClient {
     }
 
     public static void finishFail() {
+        FpvQteState.onValveFail();
         active = false;
         hudVisible = false;
         finishing = false;
@@ -172,6 +176,7 @@ public final class ValveQteClient {
                     pendingDownStartTick = 0L;
                     active = false;
                     finishing = false;
+                    FpvQteState.onQteClosed();
                 }
             }
             return;
@@ -187,6 +192,7 @@ public final class ValveQteClient {
                 pendingDownStartTick = 0L;
                 active = false;
                 finishing = false;
+                FpvQteState.onQteClosed();
             }
         }
         if (pendingValveAnimTicks > 0) {
@@ -267,6 +273,7 @@ public final class ValveQteClient {
         neutka.marallys.marallyzen.client.fpv.MarallyzenRenderContext.setCurrentEmoteId(
             net.minecraft.resources.Identifier.fromNamespaceAndPath("marallyzen", "valve_spin")
         );
+        FpvQteState.onValveInputPulse();
         ClientEmoteHandler.handle(mc.player.getUUID(), "valve_spin", false);
         triggerValveWobbleAnim(shakeLoopTicks, rightClick);
     }

@@ -10,6 +10,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.emote.ClientEmoteHandler;
+import neutka.marallys.marallyzen.client.fpv.FpvQteState;
 import neutka.marallys.marallyzen.blocks.InteractiveLeverBlockEntity;
 import software.bernie.geckolib.constant.DataTickets;
 
@@ -80,6 +81,7 @@ public final class LeverQteClient {
     }
 
     public static void start(BlockPos leverPos, int sequenceLength, int stepIndex, boolean expectRight, int windowTicks, int shakeLoopTicks, int grabTicks) {
+        FpvQteState.onLeverStart();
         LeverQteClient.active = true;
         LeverQteClient.hudVisible = true;
         LeverQteClient.finishing = false;
@@ -123,6 +125,7 @@ public final class LeverQteClient {
     }
 
     public static void finishSuccess(int downTicks, long downStartTick) {
+        FpvQteState.onLeverSuccess();
         finishing = true;
         hudVisible = false;
         successFlashTicks = 12;
@@ -140,6 +143,7 @@ public final class LeverQteClient {
     }
 
     public static void finishFail() {
+        FpvQteState.onLeverFail();
         active = false;
         hudVisible = false;
         finishing = false;
@@ -164,6 +168,7 @@ public final class LeverQteClient {
                     pendingDownStartTick = 0L;
                     active = false;
                     finishing = false;
+                    FpvQteState.onQteClosed();
                 }
             }
             return;
@@ -179,6 +184,7 @@ public final class LeverQteClient {
                 pendingDownStartTick = 0L;
                 active = false;
                 finishing = false;
+                FpvQteState.onQteClosed();
             }
         }
         if (pendingLeverAnimTicks > 0) {

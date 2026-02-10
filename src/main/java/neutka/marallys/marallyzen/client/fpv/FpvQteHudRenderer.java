@@ -1,0 +1,143 @@
+package neutka.marallys.marallyzen.client.fpv;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
+import net.minecraft.util.Util;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.client.lever.LeverQteClient;
+import neutka.marallys.marallyzen.client.valve.ValveQteClient;
+
+@EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
+public final class FpvQteHudRenderer {
+    private static final Identifier LMB_ICON_0 =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/lmb_interact_0.png");
+    private static final Identifier LMB_ICON_1 =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/lmb_interact_1.png");
+    private static final Identifier RMB_ICON_0 =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/rmb_interact_0.png");
+    private static final Identifier RMB_ICON_1 =
+        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/rmb_interact_1.png");
+
+    private static final int ICON_DRAW_SIZE = 48;
+    private static final int ICON_ANIM_MS = 140;
+
+    private FpvQteHudRenderer() {
+    }
+
+    @SubscribeEvent
+    public static void onRenderGuiPre(RenderGuiEvent.Pre event) {
+        if (!isFpvQteActive()) {
+            return;
+        }
+        render(event.getGuiGraphics());
+        event.setCanceled(true);
+    }
+
+    public static boolean isFpvQteActive() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+            return false;
+        }
+        if (!MarallyzenFpvController.shouldApply(mc.player)) {
+            return false;
+        }
+        return LeverQteClient.isHudVisible() || ValveQteClient.isHudVisible();
+    }
+
+    private static void render(GuiGraphics guiGraphics) {
+        Minecraft mc = Minecraft.getInstance();
+        int width = mc.getWindow().getGuiScaledWidth();
+        int height = mc.getWindow().getGuiScaledHeight();
+
+        boolean lever = LeverQteClient.isHudVisible();
+        boolean expectRight = lever ? LeverQteClient.isExpectRight() : ValveQteClient.isExpectRight();
+        int failTicks = lever ? LeverQteClient.getFailFlashTicks() : ValveQteClient.getFailFlashTicks();
+        int failedButton = lever ? LeverQteClient.getFailedButton() : ValveQteClient.getFailedButton();
+        int successTicks = lever ? LeverQteClient.getSuccessFlashTicks() : ValveQteClient.getSuccessFlashTicks();
+
+        int baseY = (height / 2) - (ICON_DRAW_SIZE / 2);
+        float centerX = (width / 2.0f) - (ICON_DRAW_SIZE / 2.0f);
+        float leftX = 24;
+        float rightX = width - 24 - ICON_DRAW_SIZE;
+        float moveFactor = 0.20f;
+        leftX = leftX + (centerX - leftX) * moveFactor;
+        rightX = rightX - (rightX - centerX) * moveFactor;
+
+        FpvQteState.Snapshot qte = FpvQteState.snapshot();
+        float pulse = 0.06f * (1.0f + Mth.sin((Util.getMillis() / 140.0f))) * 0.5f;
+        if (qte.mode() == FpvQteState.Mode.VALVE && qte.spinInputPulse()) {
+            pulse *= 1.5f;
+        }
+        float leftScale = expectRight ? 1.0f : (1.0f + pulse);
+        float rightScale = expectRight ? (1.0f + pulse) : 1.0f;
+
+        float failAlpha = failTicks > 0 ? Mth.clamp(failTicks / 10.0f, 0.0f, 1.0f) : 0.0f;
+        float successAlpha = successTicks > 0 ? Mth.clamp(successTicks / 8.0f, 0.0f, 1.0f) : 0.0f;
+
+        float leftShake = 0.0f;
+        float rightShake = 0.0f;
+        if (failTicks > 0 && failedButton >= 0) {
+            float shake = Mth.sin((Util.getMillis() / 60.0f)) * 1.2f;
+            if (failedButton == 0) {
+                leftShake = shake;
+            } else if (failedButton == 1) {
+                rightShake = shake;
+            }
+        }
+
+        float leftFail = failedButton == 0 ? failAlpha : 0.0f;
+        float rightFail = failedButton == 1 ? failAlpha : 0.0f;
+        boolean leftAnim = !expectRight && leftFail <= 0.0f;
+        boolean rightAnim = expectRight && rightFail <= 0.0f;
+
+        Identifier leftIcon = pickIcon(false, leftAnim);
+        Identifier rightIcon = pickIcon(true, rightAnim);
+        renderIcon(guiGraphics, leftIcon, leftX + leftShake, baseY, leftScale, leftFail, expectRight ? 0.0f : 1.0f, successAlpha);
+        renderIcon(guiGraphics, rightIcon, rightX + rightShake, baseY, rightScale, rightFail, expectRight ? 1.0f : 0.0f, successAlpha);
+    }
+
+    private static void renderIcon(GuiGraphics guiGraphics, Identifier texture, float x, float y,
+                                   float scale, float failAlpha, float active, float successAlpha) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x + ICON_DRAW_SIZE * 0.5f, y + ICON_DRAW_SIZE * 0.5f);
+        guiGraphics.pose().scale(scale, scale);
+        guiGraphics.pose().translate(-ICON_DRAW_SIZE * 0.5f, -ICON_DRAW_SIZE * 0.5f);
+
+        float r = 1.0f;
+        float g = 1.0f;
+        float b = 1.0f;
+        if (failAlpha > 0.0f) {
+            r = 1.0f;
+            g = 0.15f;
+            b = 0.15f;
+        } else if (successAlpha > 0.0f) {
+            r = 0.30f;
+            g = 1.0f;
+            b = 0.45f;
+        } else if (active > 0.0f) {
+            r = 1.0f;
+            g = 0.45f;
+            b = 0.05f;
+        }
+
+        int color = ARGB.color(255, (int) (r * 255.0f), (int) (g * 255.0f), (int) (b * 255.0f));
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0, 0.0f, 0.0f, ICON_DRAW_SIZE, ICON_DRAW_SIZE, ICON_DRAW_SIZE, ICON_DRAW_SIZE, color);
+        guiGraphics.pose().popMatrix();
+    }
+
+    private static Identifier pickIcon(boolean right, boolean animate) {
+        int frame = animate ? (int) ((Util.getMillis() / (long) ICON_ANIM_MS) % 2L) : 0;
+        if (right) {
+            return frame == 0 ? RMB_ICON_0 : RMB_ICON_1;
+        }
+        return frame == 0 ? LMB_ICON_0 : LMB_ICON_1;
+    }
+}
