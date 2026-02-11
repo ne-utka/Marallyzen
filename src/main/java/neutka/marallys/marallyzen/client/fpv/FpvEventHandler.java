@@ -18,19 +18,18 @@ import neutka.marallys.marallyzen.client.valve.ValveInteractionClient;
 public class FpvEventHandler {
 
     private static boolean lastInterpreterActive;
-    private static final FpvPhaseController PHASES = new FpvPhaseController();
+    private static final FpvQteController QTE = new FpvQteController();
 
     @SubscribeEvent
     public static void onClientTickPre(ClientTickEvent.Pre event) {
         forceFirstPersonIfActive();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
-            PHASES.update(null, false);
+            QTE.tick(null, false);
             return;
         }
         boolean active = MarallyzenFpvController.shouldApply(mc.player);
-        PHASES.update(MarallyzenRenderContext.getCurrentEmoteId(), active);
-        FpvQteState.endFrame();
+        QTE.tick(MarallyzenRenderContext.getCurrentEmoteId(), active);
     }
 
     @SubscribeEvent
@@ -127,7 +126,7 @@ public class FpvEventHandler {
         interpreter.setRenderingFpvBody(true);
         try {
             float t = (float) (net.minecraft.util.Util.getMillis() * 0.001);
-            FpvPhaseController.Sample sample = PHASES.sample(t);
+            FpvPhaseController.Sample sample = QTE.sample(t);
             FpvArmsRenderer.renderWorld(event, mc.player, interpreter, sample);
         } finally {
             interpreter.setRenderingFpvBody(false);
