@@ -100,7 +100,7 @@ public class FpvEventHandler {
         EmoteFpvInterpreter interpreter = EmoteFpvInterpreter.getInstance();
         var ctxId = MarallyzenRenderContext.getCurrentEmoteId();
         boolean valveDone = ctxId != null && "valve_done".equalsIgnoreCase(ctxId.getPath());
-        if (!interpreter.isActive() && !valveDone) {
+        if (!shouldRenderFpv(interpreter.isActive(), valveDone)) {
             return;
         }
 
@@ -119,7 +119,7 @@ public class FpvEventHandler {
         EmoteFpvInterpreter interpreter = EmoteFpvInterpreter.getInstance();
         var ctxId = MarallyzenRenderContext.getCurrentEmoteId();
         boolean valveDone = ctxId != null && "valve_done".equalsIgnoreCase(ctxId.getPath());
-        if (!interpreter.isActive() && !valveDone) {
+        if (!shouldRenderFpv(interpreter.isActive(), valveDone)) {
             return;
         }
 
@@ -141,5 +141,13 @@ public class FpvEventHandler {
         if (mc != null && mc.options != null) {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
         }
+    }
+
+    private static boolean shouldRenderFpv(boolean interpreterActive, boolean valveDone) {
+        if (interpreterActive || valveDone) {
+            return true;
+        }
+        FpvQteState.Snapshot qte = FpvQteState.snapshot();
+        return qte.active() || qte.finishing();
     }
 }
