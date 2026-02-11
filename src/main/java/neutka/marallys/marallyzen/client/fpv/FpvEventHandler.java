@@ -54,9 +54,22 @@ public class FpvEventHandler {
             return;
         }
 
+        float baseYaw = mc.player.getViewYRot((float) event.getPartialTick());
+        float basePitch = mc.player.getViewXRot((float) event.getPartialTick());
         EmoteFpvInterpreter interpreter = EmoteFpvInterpreter.getInstance();
         interpreter.update(mc.player);
-        if (!interpreter.isActive()) {
+        boolean interpreterActive = interpreter.isActive();
+        FpvQteState.Snapshot qte = FpvQteState.snapshot();
+        boolean qteActive = qte.active() || qte.finishing();
+        if (!interpreterActive && !qteActive) {
+            lastInterpreterActive = false;
+            return;
+        }
+
+        if (!interpreterActive || !MarallyzenRenderContext.isHeadMovementEnabled()) {
+            event.setYaw(baseYaw);
+            event.setPitch(basePitch);
+            event.setRoll(0.0f);
             lastInterpreterActive = false;
             return;
         }
@@ -66,17 +79,6 @@ public class FpvEventHandler {
         float headPitch = interpreter.getHeadPitch(alpha);
         float headYaw = interpreter.getHeadYaw(alpha);
         float headRoll = interpreter.getHeadRoll(alpha);
-
-        float baseYaw = mc.player.getViewYRot((float) event.getPartialTick());
-        float basePitch = mc.player.getViewXRot((float) event.getPartialTick());
-        boolean headMovementEnabled = MarallyzenRenderContext.isHeadMovementEnabled();
-
-        if (!headMovementEnabled) {
-            event.setYaw(baseYaw);
-            event.setPitch(basePitch);
-            event.setRoll(0.0f);
-            return;
-        }
 
         float pitchRad = (float) Math.toRadians(basePitch);
         float pitchScale = 1.0f - Math.abs(pitchRad) * 0.5f;
