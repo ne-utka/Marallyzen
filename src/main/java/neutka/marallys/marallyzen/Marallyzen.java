@@ -22,6 +22,7 @@ import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcLoader;
 import neutka.marallys.marallyzen.npc.NpcSpawner;
+import neutka.marallys.marallyzen.entity.GoalDisplayEntity;
 import neutka.marallys.marallyzen.items.MarallyzenItems;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.audio.VoiceIntegration;
@@ -77,6 +78,16 @@ public class Marallyzen {
                         net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "decorated_pot")
                     ))
     );
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<GoalDisplayEntity>> GOAL_DISPLAY_ENTITY = ENTITIES.register(
+            "goal_display",
+            () -> EntityType.Builder.<GoalDisplayEntity>of(GoalDisplayEntity::new, MobCategory.MISC)
+                    .sized(0.1f, 0.1f)
+                    .build(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                            net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "goal_display")
+                    ))
+    );
     
 
     public Marallyzen(IEventBus modEventBus, ModContainer modContainer) {
@@ -113,6 +124,7 @@ public class Marallyzen {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().initialize(event.getServer());
+        neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().initialize(event.getServer());
     }
 
     @SubscribeEvent
@@ -129,6 +141,7 @@ public class Marallyzen {
         var registry = NpcClickHandler.getRegistry();
         neutka.marallys.marallyzen.npc.NpcSpawner.resetBootstrap();
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().shutdown();
+        neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().shutdown();
         LOGGER.info("Marallyzen server stopping. Saved {} NPC state(s).", registry.captureNpcStates().size());
     }
 }

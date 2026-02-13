@@ -22,6 +22,7 @@ import neutka.marallys.marallyzen.client.gui.DialogScreen;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlockEntities;
 import neutka.marallys.marallyzen.client.renderer.DecoratedPotCarryEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
+import neutka.marallys.marallyzen.client.renderer.GoalRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveLeverBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
 
@@ -187,6 +188,7 @@ public class MarallyzenClient {
         event.registerEntityRenderer(Marallyzen.POSTER_ENTITY.get(), neutka.marallys.marallyzen.client.renderer.PosterEntityRenderer::new);
         event.registerEntityRenderer(Marallyzen.DICTAPHONE_ENTITY.get(), neutka.marallys.marallyzen.client.renderer.DictaphoneEntityRenderer::new);
         event.registerEntityRenderer(Marallyzen.DECORATED_POT_ENTITY.get(), DecoratedPotCarryEntityRenderer::new);
+        event.registerEntityRenderer(Marallyzen.GOAL_DISPLAY_ENTITY.get(), GoalRenderer::new);
         event.registerBlockEntityRenderer(
                 MarallyzenBlockEntities.OLD_TV_BE.get(),
                 OldTvBlockEntityRenderer::new

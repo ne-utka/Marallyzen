@@ -19,6 +19,7 @@ public class MarallyzenDenizenEvents {
         // Tick NPC AI
         NpcClickHandler.getRegistry().tickAIs();
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().onServerTick();
+        neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().onServerTick();
         npcStateSaveTicks++;
         if (npcStateSaveTicks >= NPC_STATE_SAVE_INTERVAL) {
             npcStateSaveTicks = 0;
