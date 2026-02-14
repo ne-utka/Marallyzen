@@ -31,6 +31,7 @@ import neutka.marallys.marallyzen.client.valve.ValveInteractionClient;
 import neutka.marallys.marallyzen.client.lever.LeverQteClient;
 import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 import net.minecraft.world.level.block.LeverBlock;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 
 public class SimpleBlockPromptHud {
     private static SimpleBlockPromptHud instance;
@@ -213,7 +214,9 @@ public class SimpleBlockPromptHud {
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        if (MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
+            fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        }
 
         float cursorX = 0.0f;
         drawComponent(matrix, textSource, font, icon, cursorX, textY, white);

@@ -22,6 +22,7 @@ import neutka.marallys.marallyzen.client.ClientRadioManager;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 
 public class RadioPromptHud {
     private static RadioPromptHud instance;
@@ -233,7 +234,9 @@ public class RadioPromptHud {
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        if (MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
+            fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        }
         drawText(matrix, textSource, font, title, 0.0f, textY, color);
         return currentY + OPTION_HEIGHT_PIXELS + OPTION_SPACING_PIXELS;
     }
@@ -258,7 +261,7 @@ public class RadioPromptHud {
         float bgX = -BACKGROUND_PADDING_X;
         float textY = lineCenterY - textHeight * 0.5f;
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
-        if (drawBackground) {
+        if (drawBackground && MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
             int bgAlpha = (int) (alpha * 120);
             int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
             fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
@@ -296,7 +299,7 @@ public class RadioPromptHud {
         float bgX = -BACKGROUND_PADDING_X;
         float textY = lineCenterY - textHeight * 0.5f;
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
-        if (drawBackground) {
+        if (drawBackground && MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
             int bgAlpha = (int) (alpha * 120);
             int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
             fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);

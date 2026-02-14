@@ -21,6 +21,7 @@ import neutka.marallys.marallyzen.client.DecoratedPotCarryClient;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity;
 import neutka.marallys.marallyzen.util.NarrationIcons;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 
 public class DecoratedPotPromptHud {
     private static DecoratedPotPromptHud instance;
@@ -188,7 +189,9 @@ public class DecoratedPotPromptHud {
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        if (MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
+            fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
+        }
 
         float cursorX = 0.0f;
         drawComponent(matrix, textSource, font, icon, cursorX, textY, white);

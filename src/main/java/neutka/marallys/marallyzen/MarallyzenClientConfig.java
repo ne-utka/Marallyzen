@@ -15,6 +15,11 @@ public final class MarallyzenClientConfig {
             .translation("marallyzen.configuration.interactiveBlockOutline")
             .define("interactiveBlockOutline", false);
 
+    public static final ModConfigSpec.BooleanValue INTERACTIVE_PROMPT_BACKGROUND = BUILDER
+            .comment("Show dark background for interactive 3D prompts.")
+            .translation("marallyzen.configuration.interactivePromptBackground")
+            .define("interactivePromptBackground", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private MarallyzenClientConfig() {

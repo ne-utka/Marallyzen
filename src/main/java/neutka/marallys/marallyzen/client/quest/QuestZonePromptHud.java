@@ -20,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.instance.InstanceClientState;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 import neutka.marallys.marallyzen.quest.QuestDefinition;
 import neutka.marallys.marallyzen.util.NarrationIcons;
 
@@ -279,7 +280,9 @@ public class QuestZonePromptHud {
         float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
-        fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+        if (MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
+            fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
+        }
 
         float cursorX = 0.0f;
         drawComponent(matrix, textSource, font, icon, cursorX, textY, white);
