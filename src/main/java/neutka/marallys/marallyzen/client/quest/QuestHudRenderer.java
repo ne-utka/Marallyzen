@@ -3,7 +3,9 @@ package neutka.marallys.marallyzen.client.quest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -26,8 +28,14 @@ public class QuestHudRenderer {
     private static final int COLOR_GRAY = 0x9AA0A6;
     private static final int COLOR_YELLOW = 0xFFD166;
     private static final int COLOR_GREEN = 0x66FF66;
+    private static final int SHADOW_OFFSET_X = 1;
+    private static final int SHADOW_OFFSET_Y = 1;
+    private static final int SHADOW_ALPHA = 0x96;
+    private static final float SHADOW_SHADE_FACTOR = 0.24f;
     private static final double ZONE_NEAR_DISTANCE = 64.0;
     private static final int HUD_FADE_TICKS = 8;
+    private static final FontDescription MISSION_TITLE_FONT =
+            new FontDescription.Resource(Identifier.fromNamespaceAndPath(Marallyzen.MODID, "minecraft_dungeons_small"));
 
     private static float hudAlpha = 0.0f;
     private static float previousAlpha = 0.0f;
@@ -56,7 +64,7 @@ public class QuestHudRenderer {
             QuestInstance instance = state.getActiveInstance();
             if (definition != null && instance != null && instance.state() == QuestInstance.State.ACTIVE) {
                 int titleColor = getQuestTitleColor(definition);
-                Component questTitle = QuestTextUtil.resolve(definition.title());
+                Component questTitle = withMissionTitleFont(QuestTextUtil.resolve(definition.title()));
                 lines.add(new HudLine(questTitle, titleColor));
 
                 Component description = QuestTextUtil.resolve(definition.description());
@@ -105,7 +113,7 @@ public class QuestHudRenderer {
                     && farmDef.resolvedCategory() != QuestCategory.DAILY) {
                 continue;
             }
-            Component questTitle = QuestTextUtil.resolve(farmDef.title());
+            Component questTitle = withMissionTitleFont(QuestTextUtil.resolve(farmDef.title()));
             int farmColor = QuestCategoryColors.getColor(farmDef.resolvedCategory());
             if (farmDef.flags().asyncSteps()) {
                 lines.add(new HudLine(questTitle, farmColor));
@@ -178,7 +186,11 @@ public class QuestHudRenderer {
         int textY = y + padding;
         for (int i = 0; i < renderLines.size(); i++) {
             HudLine line = renderLines.get(i);
-            guiGraphics.drawString(mc.font, line.text(), textX, textY + (i * lineHeight), applyAlpha(line.color(), renderAlpha), false);
+            int lineY = textY + (i * lineHeight);
+            int mainColor = applyAlpha(line.color(), renderAlpha);
+            int shadowColor = shadeForShadow(line.color(), renderAlpha);
+            guiGraphics.drawString(mc.font, line.text(), textX + SHADOW_OFFSET_X, lineY + SHADOW_OFFSET_Y, shadowColor, false);
+            guiGraphics.drawString(mc.font, line.text(), textX, lineY, mainColor, false);
         }
     }
 
@@ -189,6 +201,23 @@ public class QuestHudRenderer {
         }
         int scaled = net.minecraft.util.Mth.clamp((int) (baseAlpha * alpha), 0, 255);
         return (scaled << 24) | (color & 0xFFFFFF);
+    }
+
+    private static int shadeForShadow(int color, float alpha) {
+        int rgb = color & 0xFFFFFF;
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+
+        int sr = clamp((int) Math.round(r * SHADOW_SHADE_FACTOR));
+        int sg = clamp((int) Math.round(g * SHADOW_SHADE_FACTOR));
+        int sb = clamp((int) Math.round(b * SHADOW_SHADE_FACTOR));
+        int a = net.minecraft.util.Mth.clamp((int) (SHADOW_ALPHA * alpha), 0, 255);
+        return (a << 24) | (sr << 16) | (sg << 8) | sb;
+    }
+
+    private static int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 
     private static Component dotLine(Component text) {
@@ -202,5 +231,12 @@ public class QuestHudRenderer {
             return COLOR_WHITE;
         }
         return QuestCategoryColors.getColor(definition.resolvedCategory());
+    }
+
+    private static Component withMissionTitleFont(Component input) {
+        if (input == null) {
+            return Component.empty().withStyle(style -> style.withFont(MISSION_TITLE_FONT));
+        }
+        return input.copy().withStyle(style -> style.withFont(MISSION_TITLE_FONT));
     }
 }

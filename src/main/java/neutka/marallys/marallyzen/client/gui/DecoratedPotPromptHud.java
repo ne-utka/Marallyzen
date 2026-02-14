@@ -173,7 +173,6 @@ public class DecoratedPotPromptHud {
         Component icon = NarrationIcons.rmb();
         String spacer = " ";
         String action = ">> ";
-        float textY = -3.0f;
 
         float widthIcon = font.width(icon);
         float widthSpacer = font.width(spacer);
@@ -183,8 +182,10 @@ public class DecoratedPotPromptHud {
         float textHeight = font.lineHeight;
         float bgWidth = totalWidth + BACKGROUND_PADDING_X * 2.0f;
         float bgHeight = textHeight + BACKGROUND_PADDING_Y * 2.0f;
+        float lineCenterY = 4.0f;
+        float textY = lineCenterY - textHeight * 0.5f;
         float bgX = -BACKGROUND_PADDING_X;
-        float bgY = (textY + textHeight / 2.0f) - bgHeight / 2.0f;
+        float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
         fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
@@ -206,7 +207,7 @@ public class DecoratedPotPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -222,7 +223,7 @@ public class DecoratedPotPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -413,6 +414,11 @@ public class DecoratedPotPromptHud {
         return t * t * ((s + 1.0f) * t + s) + 1.0f;
     }
 }
+
+
+
+
+
 
 
 

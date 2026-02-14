@@ -41,7 +41,6 @@ public class PosterEntityPromptHud {
         Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
     private static final int OPTION_HEIGHT_PIXELS = 13;
     private static final int OPTION_SPACING_PIXELS = 4;
-    private static final float LINE_TEXT_OFFSET_Y = OPTION_HEIGHT_PIXELS / 2.0f - 3.0f;
     private static final float PROMPT_OFFSET_X = -2.0f;
 
     private boolean targetVisible = false;
@@ -187,9 +186,10 @@ public class PosterEntityPromptHud {
         float textHeight = font.lineHeight;
         float bgWidth = totalWidth + BACKGROUND_PADDING_X * 2.0f;
         float bgHeight = textHeight + BACKGROUND_PADDING_Y * 2.0f;
+        float lineCenterY = currentY + OPTION_HEIGHT_PIXELS * 0.5f + 4.0f;
         float bgX = -BACKGROUND_PADDING_X + PROMPT_OFFSET_X;
-        float textY = currentY + LINE_TEXT_OFFSET_Y;
-        float bgY = (currentY + LINE_TEXT_OFFSET_Y + textHeight / 2.0f) - bgHeight / 2.0f;
+        float textY = lineCenterY - textHeight * 0.5f;
+        float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
         fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
@@ -338,7 +338,7 @@ public class PosterEntityPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -354,7 +354,7 @@ public class PosterEntityPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -508,6 +508,11 @@ public class PosterEntityPromptHud {
             .setNormal(0.0f, 0.0f, -1.0f);
     }
 }
+
+
+
+
+
 
 
 

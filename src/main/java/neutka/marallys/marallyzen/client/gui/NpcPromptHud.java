@@ -182,7 +182,6 @@ public class NpcPromptHud {
         Component icon = NarrationIcons.rmb();
         String spacer = " ";
         String action = ">> ";
-        float textY = -3.0f + PROMPT_OFFSET_Y;
 
         float widthIcon = font.width(icon);
         float widthSpacer = font.width(spacer);
@@ -192,8 +191,10 @@ public class NpcPromptHud {
         float textHeight = font.lineHeight;
         float bgWidth = totalWidth + BACKGROUND_PADDING_X * 2.0f;
         float bgHeight = textHeight + BACKGROUND_PADDING_Y * 2.0f;
+        float lineCenterY = PROMPT_OFFSET_Y + 1.0f;
+        float textY = lineCenterY - textHeight * 0.5f;
         float bgX = -BACKGROUND_PADDING_X;
-        float bgY = (textY + textHeight / 2.0f) - bgHeight / 2.0f;
+        float bgY = lineCenterY - bgHeight * 0.5f - 1.0f;
         int bgAlpha = (int) (alpha * 120);
         int bgColor = (bgAlpha << 24) | (NARRATION_BG_COLOR & 0xFFFFFF);
         fillRoundedRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, BACKGROUND_CORNER_RADIUS, bgColor);
@@ -339,7 +340,7 @@ public class NpcPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -355,7 +356,7 @@ public class NpcPromptHud {
             x,
             y,
             color,
-            false,
+            true,
             matrix,
             bufferSource,
             Font.DisplayMode.SEE_THROUGH,
@@ -509,6 +510,7 @@ public class NpcPromptHud {
             .setNormal(0.0f, 0.0f, -1.0f);
     }
 }
+
 
 
 
