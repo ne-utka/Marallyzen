@@ -38,6 +38,10 @@ public class GoalDisplayEntity extends Entity {
             SynchedEntityData.defineId(GoalDisplayEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_FLOAT_HEIGHT =
             SynchedEntityData.defineId(GoalDisplayEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<String> DATA_TITLE_FONT =
+            SynchedEntityData.defineId(GoalDisplayEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> DATA_LINES_FONT =
+            SynchedEntityData.defineId(GoalDisplayEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> DATA_VARS =
             SynchedEntityData.defineId(GoalDisplayEntity.class, EntityDataSerializers.STRING);
 
@@ -60,6 +64,8 @@ public class GoalDisplayEntity extends Entity {
         builder.define(DATA_FLOAT_AMPLITUDE, 0.12F);
         builder.define(DATA_FLOAT_SPEED, 0.04F);
         builder.define(DATA_FLOAT_HEIGHT, 2.2F);
+        builder.define(DATA_TITLE_FONT, "");
+        builder.define(DATA_LINES_FONT, "");
         builder.define(DATA_VARS, "");
     }
 
@@ -73,6 +79,8 @@ public class GoalDisplayEntity extends Entity {
         this.entityData.set(DATA_FLOAT_AMPLITUDE, (float) display.floating().amplitude());
         this.entityData.set(DATA_FLOAT_SPEED, (float) display.floating().speed());
         this.entityData.set(DATA_FLOAT_HEIGHT, (float) display.floating().height());
+        this.entityData.set(DATA_TITLE_FONT, display.font().title());
+        this.entityData.set(DATA_LINES_FONT, display.font().lines());
     }
 
     public void updateRuntime(long progress, long target, Map<String, String> variables) {
@@ -121,6 +129,14 @@ public class GoalDisplayEntity extends Entity {
         return this.entityData.get(DATA_FLOAT_HEIGHT);
     }
 
+    public String titleFont() {
+        return this.entityData.get(DATA_TITLE_FONT);
+    }
+
+    public String linesFont() {
+        return this.entityData.get(DATA_LINES_FONT);
+    }
+
     public String serializedVars() {
         return this.entityData.get(DATA_VARS);
     }
@@ -137,6 +153,8 @@ public class GoalDisplayEntity extends Entity {
         output.putFloat("Amplitude", floatAmplitude());
         output.putFloat("Speed", floatSpeed());
         output.putFloat("Height", floatHeight());
+        output.putString("TitleFont", titleFont());
+        output.putString("LinesFont", linesFont());
         output.putString("Vars", serializedVars());
     }
 
@@ -152,6 +170,8 @@ public class GoalDisplayEntity extends Entity {
         this.entityData.set(DATA_FLOAT_AMPLITUDE, input.getFloatOr("Amplitude", 0.12F));
         this.entityData.set(DATA_FLOAT_SPEED, input.getFloatOr("Speed", 0.04F));
         this.entityData.set(DATA_FLOAT_HEIGHT, input.getFloatOr("Height", 2.2F));
+        this.entityData.set(DATA_TITLE_FONT, input.getStringOr("TitleFont", ""));
+        this.entityData.set(DATA_LINES_FONT, input.getStringOr("LinesFont", ""));
         this.entityData.set(DATA_VARS, input.getStringOr("Vars", ""));
     }
 

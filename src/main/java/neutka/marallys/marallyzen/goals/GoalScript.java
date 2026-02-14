@@ -86,7 +86,8 @@ public final class GoalScript {
                 ? object.getAsJsonObject("floating")
                 : null;
         Floating floating = Floating.fromJson(floatingObj);
-        return new Display(title, lines, titleColor, linesColor, floating);
+        FontConfig font = FontConfig.fromJson(object.get("font"));
+        return new Display(title, lines, titleColor, linesColor, floating, font);
     }
 
     private static Zone parseZone(JsonObject object, List<String> errors) {
@@ -261,9 +262,47 @@ public final class GoalScript {
         }
     }
 
-    public record Display(String title, List<String> lines, ColorRgb titleColor, ColorRgb linesColor, Floating floating) {
+    public record Display(
+            String title,
+            List<String> lines,
+            ColorRgb titleColor,
+            ColorRgb linesColor,
+            Floating floating,
+            FontConfig font
+    ) {
         public static Display defaults() {
-            return new Display("World Goal", List.of("{progress}/{target}"), ColorRgb.DEFAULT_TITLE, ColorRgb.DEFAULT_LINES, Floating.defaults());
+            return new Display(
+                    "World Goal",
+                    List.of("{progress}/{target}"),
+                    ColorRgb.DEFAULT_TITLE,
+                    ColorRgb.DEFAULT_LINES,
+                    Floating.defaults(),
+                    FontConfig.defaults()
+            );
+        }
+    }
+
+    public record FontConfig(String title, String lines) {
+        public static FontConfig defaults() {
+            return new FontConfig("", "");
+        }
+
+        public static FontConfig fromJson(JsonElement element) {
+            if (element == null) {
+                return defaults();
+            }
+            if (element.isJsonPrimitive()) {
+                String all = element.getAsString();
+                return new FontConfig(all, all);
+            }
+            if (!element.isJsonObject()) {
+                return defaults();
+            }
+            JsonObject object = element.getAsJsonObject();
+            String all = readString(object, "all", "");
+            String title = readString(object, "title", all);
+            String lines = readString(object, "lines", all);
+            return new FontConfig(title, lines);
         }
     }
 
