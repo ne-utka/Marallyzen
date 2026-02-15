@@ -22,6 +22,8 @@ import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcLoader;
 import neutka.marallys.marallyzen.npc.NpcSpawner;
+import neutka.marallys.marallyzen.entity.TransparentGlowItemFrameEntity;
+import neutka.marallys.marallyzen.entity.TransparentItemFrameEntity;
 import neutka.marallys.marallyzen.entity.GoalDisplayEntity;
 import neutka.marallys.marallyzen.items.MarallyzenItems;
 import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
@@ -86,6 +88,30 @@ public class Marallyzen {
                     .build(net.minecraft.resources.ResourceKey.create(
                             net.minecraft.core.registries.Registries.ENTITY_TYPE,
                             net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "goal_display")
+                    ))
+    );
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<TransparentItemFrameEntity>> TRANSPARENT_ITEM_FRAME_ENTITY = ENTITIES.register(
+            "transparent_item_frame",
+            () -> EntityType.Builder.<TransparentItemFrameEntity>of(TransparentItemFrameEntity::new, MobCategory.MISC)
+                    .sized(0.5f, 0.5f)
+                    .clientTrackingRange(10)
+                    .updateInterval(Integer.MAX_VALUE)
+                    .build(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                            net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "transparent_item_frame")
+                    ))
+    );
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<TransparentGlowItemFrameEntity>> TRANSPARENT_GLOW_ITEM_FRAME_ENTITY = ENTITIES.register(
+            "transparent_glow_item_frame",
+            () -> EntityType.Builder.<TransparentGlowItemFrameEntity>of(TransparentGlowItemFrameEntity::new, MobCategory.MISC)
+                    .sized(0.5f, 0.5f)
+                    .clientTrackingRange(10)
+                    .updateInterval(Integer.MAX_VALUE)
+                    .build(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                            net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "transparent_glow_item_frame")
                     ))
     );
     

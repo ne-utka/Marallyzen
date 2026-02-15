@@ -29,6 +29,22 @@ public class MarallyzenItems {
     public static final DeferredItem<Item> WRENCH = ITEMS.registerSimpleItem("wrench");
     public static final DeferredItem<Item> CELLPHONE = ITEMS.registerSimpleItem("cellphone");
     public static final DeferredItem<Item> PUMPGUN = ITEMS.registerSimpleItem("pumpgun");
+    public static final DeferredItem<Item> TRANSPARENT_ITEM_FRAME = ITEMS.registerItem(
+        "transparent_item_frame",
+        properties -> new TransparentItemFrameItem(
+            Marallyzen.TRANSPARENT_ITEM_FRAME_ENTITY.get(),
+            properties,
+            neutka.marallys.marallyzen.entity.TransparentItemFrameEntity::new
+        )
+    );
+    public static final DeferredItem<Item> TRANSPARENT_GLOW_ITEM_FRAME = ITEMS.registerItem(
+        "transparent_glow_item_frame",
+        properties -> new TransparentItemFrameItem(
+            Marallyzen.TRANSPARENT_GLOW_ITEM_FRAME_ENTITY.get(),
+            properties,
+            neutka.marallys.marallyzen.entity.TransparentGlowItemFrameEntity::new
+        )
+    );
     
     // Poster block items
     @SuppressWarnings("unchecked")
@@ -207,6 +223,8 @@ public class MarallyzenItems {
                 output.accept(PUMPGUN.get());
                 output.accept(VIDEO_CAMERA.get());
                 output.accept(CELLPHONE.get());
+                output.accept(TRANSPARENT_ITEM_FRAME.get());
+                output.accept(TRANSPARENT_GLOW_ITEM_FRAME.get());
                 
                 // Items
                 // Фонарик всегда выключен в креатив табе
