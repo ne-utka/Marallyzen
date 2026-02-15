@@ -194,6 +194,18 @@ public class NpcRegistry {
             }
         }
         
+        if (entity instanceof GeckoNpcEntity geckoEntity) {
+            geckoEntity.setNpcId(npcId);
+            geckoEntity.setGeckolibModel(data.getGeckolibModel());
+            geckoEntity.setGeckolibAnimation(data.getGeckolibAnimation());
+            geckoEntity.setGeckolibTexture(data.getGeckolibTexture());
+            NpcExpressionManager.applyDefaultExpression(geckoEntity, data);
+        }
+        if (entity instanceof NpcEntity npcEntity) {
+            npcEntity.setNpcId(npcId);
+            npcEntity.setAppearanceId(npcId);
+        }
+
         level.addFreshEntity(entity);
 
         if (level instanceof ServerLevel serverLevel && NpcWorldPolicy.isPersistentLevel(serverLevel)) {
@@ -250,18 +262,6 @@ public class NpcRegistry {
         }
 
         WildfireNpcIntegration.applyNpcSettings(entity, data, level);
-
-        if (entity instanceof GeckoNpcEntity geckoEntity) {
-            geckoEntity.setNpcId(npcId);
-            geckoEntity.setGeckolibModel(data.getGeckolibModel());
-            geckoEntity.setGeckolibAnimation(data.getGeckolibAnimation());
-            geckoEntity.setGeckolibTexture(data.getGeckolibTexture());
-            NpcExpressionManager.applyDefaultExpression(geckoEntity, data);
-        }
-        if (entity instanceof NpcEntity npcEntity) {
-            npcEntity.setNpcId(npcId);
-            npcEntity.setAppearanceId(npcId);
-        }
 
         spawnedNpcs.put(npcId, entity);
         entityToNpcId.put(entity, npcId);
@@ -783,12 +783,33 @@ public class NpcRegistry {
         if (npcId == null || npcId.isEmpty()) {
             return;
         }
-        spawnedNpcs.putIfAbsent(npcId, entity);
-        entityToNpcId.putIfAbsent(entity, npcId);
+        spawnedNpcs.compute(npcId, (id, existing) -> {
+            if (existing == null || existing == entity || existing.isRemoved() || !existing.isAlive()) {
+                return entity;
+            }
+            return existing;
+        });
+        Entity mapped = spawnedNpcs.get(npcId);
+        if (mapped != entity) {
+            return;
+        }
+        entityToNpcId.put(entity, npcId);
 
         NpcData data = npcDataMap.get(npcId);
         if (data == null) {
             return;
+        }
+        if (entity instanceof GeckoNpcEntity geckoEntity) {
+            geckoEntity.setNpcId(npcId);
+            // Always re-apply Gecko resources from script data on world bootstrap.
+            // Existing entities may carry stale/legacy resource paths from older builds.
+            geckoEntity.setGeckolibModel(data.getGeckolibModel());
+            geckoEntity.setGeckolibAnimation(data.getGeckolibAnimation());
+            geckoEntity.setGeckolibTexture(data.getGeckolibTexture());
+            NpcExpressionManager.applyDefaultExpression(geckoEntity, data);
+        } else if (entity instanceof NpcEntity npcEntity) {
+            npcEntity.setNpcId(npcId);
+            npcEntity.setAppearanceId(npcId);
         }
         if (entity instanceof LivingEntity livingEntity) {
             boolean shouldBeInvulnerable = data.getInvulnerable() != null ? data.getInvulnerable() : true;
@@ -1104,6 +1125,7 @@ public class NpcRegistry {
 
     private Map<String, Entity> scanExistingNpcEntities(ServerLevel level) {
         Map<String, Entity> result = new HashMap<>();
+        Set<Entity> duplicatesToDiscard = new LinkedHashSet<>();
         AABB box = new AABB(
             -3.0E7, level.getMinY(), -3.0E7,
             3.0E7, level.getMaxY(), 3.0E7
@@ -1120,8 +1142,8 @@ public class NpcRegistry {
                     npcId = resolved;
                 }
             }
-            if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
-                result.put(npcId, entity);
+            if (npcId != null && !npcId.isEmpty()) {
+                mergeExistingNpcEntity(result, duplicatesToDiscard, npcId, entity);
             }
         }
         for (NpcEntity entity : level.getEntitiesOfClass(NpcEntity.class, box)) {
@@ -1136,11 +1158,95 @@ public class NpcRegistry {
                     npcId = resolved;
                 }
             }
-            if (npcId != null && !npcId.isEmpty() && !result.containsKey(npcId)) {
-                result.put(npcId, entity);
+            if (npcId != null && !npcId.isEmpty()) {
+                mergeExistingNpcEntity(result, duplicatesToDiscard, npcId, entity);
             }
         }
+
+        for (Entity duplicate : duplicatesToDiscard) {
+            if (duplicate == null || duplicate.isRemoved()) {
+                continue;
+            }
+            Marallyzen.LOGGER.warn(
+                    "NpcRegistry: removing duplicate NPC entity id={} uuid={} npcId='{}' class={}",
+                    duplicate.getId(),
+                    duplicate.getUUID(),
+                    getNpcIdForScan(duplicate),
+                    duplicate.getClass().getSimpleName()
+            );
+            duplicate.remove(Entity.RemovalReason.DISCARDED);
+        }
+
         return result;
+    }
+
+    public void unregisterNpcReference(String npcId, Entity entity) {
+        if (npcId == null || npcId.isEmpty() || entity == null) {
+            return;
+        }
+        spawnedNpcs.remove(npcId, entity);
+        entityToNpcId.remove(entity, npcId);
+        npcAIs.remove(entity);
+        npcAiErrors.remove(entity);
+    }
+
+    private void mergeExistingNpcEntity(Map<String, Entity> result, Set<Entity> duplicatesToDiscard, String npcId, Entity candidate) {
+        Entity existing = result.get(npcId);
+        if (existing == null || existing == candidate) {
+            result.put(npcId, candidate);
+            return;
+        }
+
+        Entity preferred = pickPreferredExistingEntity(npcId, existing, candidate);
+        Entity discarded = preferred == existing ? candidate : existing;
+        result.put(npcId, preferred);
+        duplicatesToDiscard.add(discarded);
+    }
+
+    private Entity pickPreferredExistingEntity(String npcId, Entity existing, Entity candidate) {
+        NpcData data = npcDataMap.get(npcId);
+        boolean preferGecko = shouldUseGeckoNpc(data);
+
+        boolean existingGecko = existing instanceof GeckoNpcEntity;
+        boolean candidateGecko = candidate instanceof GeckoNpcEntity;
+        if (preferGecko) {
+            if (candidateGecko && !existingGecko) {
+                return candidate;
+            }
+            if (existingGecko && !candidateGecko) {
+                return existing;
+            }
+        } else {
+            if (!candidateGecko && existingGecko) {
+                return candidate;
+            }
+            if (!existingGecko && candidateGecko) {
+                return existing;
+            }
+        }
+
+        if (candidate instanceof GeckoNpcEntity geckoCandidate && existing instanceof GeckoNpcEntity geckoExisting) {
+            boolean candidateReady = geckoCandidate.getGeckolibModel() != null && geckoCandidate.getGeckolibTexture() != null;
+            boolean existingReady = geckoExisting.getGeckolibModel() != null && geckoExisting.getGeckolibTexture() != null;
+            if (candidateReady && !existingReady) {
+                return candidate;
+            }
+            if (existingReady && !candidateReady) {
+                return existing;
+            }
+        }
+
+        return existing;
+    }
+
+    private static String getNpcIdForScan(Entity entity) {
+        if (entity instanceof GeckoNpcEntity geckoNpcEntity) {
+            return geckoNpcEntity.getNpcId();
+        }
+        if (entity instanceof NpcEntity npcEntity) {
+            return npcEntity.getNpcId();
+        }
+        return "";
     }
 
     private String resolveNpcIdFromName(Entity entity) {

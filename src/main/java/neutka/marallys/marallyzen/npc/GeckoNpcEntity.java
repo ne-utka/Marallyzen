@@ -87,7 +87,7 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
     }
 
     public Identifier getGeckolibModel() {
-        return parseResource(this.entityData.get(GEO_MODEL));
+        return parseModelResource(this.entityData.get(GEO_MODEL));
     }
 
     public void setGeckolibAnimation(Identifier animation) {
@@ -95,7 +95,7 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
     }
 
     public Identifier getGeckolibAnimation() {
-        return parseResource(this.entityData.get(GEO_ANIMATION));
+        return parseAnimationResource(this.entityData.get(GEO_ANIMATION));
     }
 
     public void setGeckolibTexture(Identifier texture) {
@@ -103,7 +103,7 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
     }
 
     public Identifier getGeckolibTexture() {
-        return parseResource(this.entityData.get(GEO_TEXTURE));
+        return parseTextureResource(this.entityData.get(GEO_TEXTURE));
     }
 
     public void setExpression(String expression) {
@@ -188,7 +188,15 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
         input.getString("Expression").ifPresent(this::setExpression);
     }
 
-    private static Identifier parseResource(String raw) {
+    private static Identifier parseModelResource(String raw) {
+        return parseGeckoResource(raw, true);
+    }
+
+    private static Identifier parseAnimationResource(String raw) {
+        return parseGeckoResource(raw, false);
+    }
+
+    private static Identifier parseTextureResource(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
@@ -197,6 +205,61 @@ public class GeckoNpcEntity extends PathfinderMob implements GeoEntity {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static Identifier parseGeckoResource(String raw, boolean model) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            Identifier id = Identifier.parse(raw);
+            String path = normalizeGeckoPath(id.getPath(), model);
+            return id.withPath(path);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String normalizeGeckoPath(String path, boolean model) {
+        if (path == null || path.isBlank()) {
+            return path;
+        }
+
+        String normalized = path;
+        if (normalized.startsWith("geckolib/models/")) {
+            normalized = normalized.substring("geckolib/models/".length());
+        } else if (normalized.startsWith("geckolib/animations/")) {
+            normalized = normalized.substring("geckolib/animations/".length());
+        } else if (normalized.startsWith("geo/")) {
+            normalized = normalized.substring("geo/".length());
+        } else if (normalized.startsWith("animations/")) {
+            normalized = normalized.substring("animations/".length());
+        }
+
+        if (normalized.endsWith(".geo.json")) {
+            normalized = normalized.substring(0, normalized.length() - ".geo.json".length());
+        } else if (normalized.endsWith(".animation.json")) {
+            normalized = normalized.substring(0, normalized.length() - ".animation.json".length());
+        } else if (normalized.endsWith(".geo")) {
+            normalized = normalized.substring(0, normalized.length() - ".geo".length());
+        } else if (normalized.endsWith(".animation")) {
+            normalized = normalized.substring(0, normalized.length() - ".animation".length());
+        } else if (normalized.endsWith(".json")) {
+            normalized = normalized.substring(0, normalized.length() - ".json".length());
+        }
+
+        if (normalized.isBlank()) {
+            return path;
+        }
+
+        if (model && normalized.startsWith("animations/")) {
+            return normalized.substring("animations/".length());
+        }
+        if (!model && normalized.startsWith("geo/")) {
+            return normalized.substring("geo/".length());
+        }
+
+        return normalized;
     }
 }
 

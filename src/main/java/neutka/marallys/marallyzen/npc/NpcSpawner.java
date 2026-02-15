@@ -49,11 +49,22 @@ public final class NpcSpawner {
         if (!bootstrapped) {
             return;
         }
-        registerExistingEntities(level, registry, event.getChunk().getPos());
+        ChunkPos chunkPos = event.getChunk().getPos();
+        registerExistingEntities(level, registry, chunkPos);
         if (!NpcWorldPolicy.isPersistentLevel(level)) {
             return;
         }
-        spawnForChunk(level, registry, event.getChunk().getPos());
+        // Defer spawn check to let chunk entities fully deserialize first.
+        level.getServer().execute(() -> level.getServer().execute(() -> {
+            if (!bootstrapped) {
+                return;
+            }
+            if (!isChunkLoaded(level, chunkPos)) {
+                return;
+            }
+            registerExistingEntities(level, registry, chunkPos);
+            spawnForChunk(level, registry, chunkPos);
+        }));
     }
 
     @SubscribeEvent
@@ -177,6 +188,15 @@ public final class NpcSpawner {
             }
         }
         Entity existing = registry.getNpc(npcId);
+        if (existing != null && existing != entity) {
+            if (existing.isRemoved() || !existing.isAlive()) {
+                registry.unregisterNpcReference(npcId, existing);
+            } else {
+                entity.remove(Entity.RemovalReason.DISCARDED);
+                return;
+            }
+        }
+        existing = registry.getNpc(npcId);
         if (existing != null && existing != entity) {
             entity.remove(Entity.RemovalReason.DISCARDED);
             return;
@@ -409,5 +429,13 @@ public final class NpcSpawner {
             geckoEntity.setNpcId(resolved);
         }
         return true;
+    }
+
+    private static boolean isChunkLoaded(ServerLevel level, ChunkPos chunkPos) {
+        if (level == null || chunkPos == null) {
+            return false;
+        }
+        BlockPos probe = new BlockPos(chunkPos.getMinBlockX(), level.getMinY(), chunkPos.getMinBlockZ());
+        return level.hasChunkAt(probe);
     }
 }
