@@ -594,7 +594,7 @@ public class QuestManager {
         return "{\n"
                 + "  \"parent\": \"" + Marallyzen.MODID + ":root\",\n"
                 + "  \"display\": {\n"
-                + "    \"icon\": {\"item\": \"minecraft:paper\"},\n"
+                + "    \"icon\": {\"id\": \"minecraft:paper\"},\n"
                 + "    \"title\": " + titleJson + ",\n"
                 + "    \"description\": " + descJson + ",\n"
                 + "    \"frame\": \"challenge\",\n"
@@ -611,7 +611,7 @@ public class QuestManager {
     private String buildRootAdvancement() {
         return "{\n"
                 + "  \"display\": {\n"
-                + "    \"icon\": {\"item\": \"minecraft:book\"},\n"
+                + "    \"icon\": {\"id\": \"minecraft:book\"},\n"
                 + "    \"title\": {\"text\": \"Marallys\"},\n"
                 + "    \"description\": {\"text\": \"\\u041a\\u0432\\u0435\\u0441\\u0442\\u044b Marallys\"},\n"
                 + "    \"background\": \"minecraft:textures/gui/advancements/backgrounds/stone.png\",\n"

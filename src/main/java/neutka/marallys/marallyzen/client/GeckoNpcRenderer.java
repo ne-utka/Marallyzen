@@ -30,6 +30,7 @@ public class GeckoNpcRenderer extends GeoEntityRenderer<GeckoNpcEntity, GeckoNpc
 
     private final Map<Integer, AnimatableManager<GeckoNpcEntity>> fallbackManagers = new HashMap<>();
     private final Set<Integer> warnedMissingManager = new HashSet<>();
+    private final Set<Integer> warnedControllerStateExtraction = new HashSet<>();
     private static final Map<Long, Identifier> CACHED_MODEL_BY_INSTANCE = new ConcurrentHashMap<>();
     private static final Map<Long, Identifier> CACHED_TEXTURE_BY_INSTANCE = new ConcurrentHashMap<>();
 
@@ -175,15 +176,38 @@ public class GeckoNpcRenderer extends GeoEntityRenderer<GeckoNpcEntity, GeckoNpc
             return;
         }
 
+        if (tryExtractControllerStates(entity, state, "ensureControllerStates_primary")) {
+            return;
+        }
+
+        injectFallbackManager(entity, state, "ensureControllerStates_fallback");
+        if (!tryExtractControllerStates(entity, state, "ensureControllerStates_fallback")) {
+            state.addGeckolibData(DataTickets.ANIMATION_CONTROLLER_STATES, new ControllerState[0]);
+        }
+    }
+
+    private boolean tryExtractControllerStates(GeckoNpcEntity entity, GeckoNpcRenderState state, String source) {
         try {
             AnimationProcessor.extractControllerStates(entity, state, getGeoModel());
-        } catch (NullPointerException npe) {
-            if (!hasAnimationProcessorFrame(npe)) {
-                throw npe;
+            return true;
+        } catch (RuntimeException throwable) {
+            if (!hasAnimationProcessorFrame(throwable)) {
+                throw throwable;
             }
 
-            injectFallbackManager(entity, state, "ensureControllerStates_npe");
-            AnimationProcessor.extractControllerStates(entity, state, getGeoModel());
+            if (warnedControllerStateExtraction.add(entity.getId())) {
+                Marallyzen.LOGGER.warn(
+                        "GeckoNpcRenderer: failed to extract controller states for entity id={} removed={} npcId='{}' source={} model={} texture={}; keeping empty states",
+                        entity.getId(),
+                        entity.isRemoved(),
+                        entity.getNpcId(),
+                        source,
+                        entity.getGeckolibModel(),
+                        entity.getGeckolibTexture(),
+                        throwable
+                );
+            }
+            return false;
         }
     }
 
