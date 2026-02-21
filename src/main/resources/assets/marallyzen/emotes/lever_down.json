@@ -1,30 +1,298 @@
-﻿{
-  "name": "lever_down",
-  "author": "Marallyzen",
-  "description": "Lever down emote",
-  "emote": {
-    "isLoop": "false",
-    "degrees": false,
-    "beginTick": 0,
-    "endTick": 16,
-    "stopTick": 17,
-    "returnTick": 16,
-    "moves": [
-      {
-        "tick": 0,
-        "easing": "LINEAR",
-        "rightArm": {"pitch": -0.6981317, "yaw": 0.08726646, "roll": 0}
-      },
-      {
-        "tick": 8,
-        "easing": "EASEOUTQUAD",
-        "rightArm": {"pitch": -1.3089969, "yaw": 0.20943951, "roll": 0}
-      },
-      {
-        "tick": 16,
-        "easing": "EASEINOUTQUAD",
-        "rightArm": {"pitch": -1.0471976, "yaw": 0.13962634, "roll": 0}
-      }
-    ]
-  }
+{
+    "name":  "lever_down",
+    "author":  "Marallyzen",
+    "description":  "lever_down emote",
+    "emote":  {
+                  "beginTick":  0,
+                  "endTick":  10,
+                  "resetTick":  15,
+                  "degrees":  true,
+                  "moves":  [
+                                {
+                                    "tick":  0,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -119.25167,
+                                                     "yaw":  -23.88704,
+                                                     "roll":  6.16745
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -113.00397,
+                                                    "yaw":  35.33474,
+                                                    "roll":  -4.49101
+                                                }
+                                },
+                                {
+                                    "tick":  1,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -117.34352,
+                                                     "yaw":  -24.59532,
+                                                     "roll":  5.65566
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -109.26064,
+                                                    "yaw":  35.06323,
+                                                    "roll":  -2.2927
+                                                }
+                                },
+                                {
+                                    "tick":  2,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -108.4338,
+                                                     "yaw":  -28.25383,
+                                                     "roll":  3.01211
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -99.96259,
+                                                    "yaw":  32.16695,
+                                                    "roll":  8.40813
+                                                }
+                                },
+                                {
+                                    "tick":  2,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -62.4225,
+                                                     "yaw":  -31.91234,
+                                                     "roll":  0.36855
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -59.08093,
+                                                    "yaw":  24.12294,
+                                                    "roll":  16.85462
+                                                }
+                                },
+                                {
+                                    "tick":  3,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -54.66653,
+                                                     "yaw":  -32.62062,
+                                                     "roll":  -0.14323
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -47.73475,
+                                                    "yaw":  16.82028,
+                                                    "roll":  15.97381
+                                                }
+                                },
+                                {
+                                    "tick":  4,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -1.2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -54.66653,
+                                                     "yaw":  -32.62062,
+                                                     "roll":  -0.14323
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -47.73475,
+                                                    "yaw":  16.82028,
+                                                    "roll":  15.97381
+                                                }
+                                },
+                                {
+                                    "tick":  4,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -1.2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -52.00404,
+                                                     "yaw":  -31.03186,
+                                                     "roll":  -0.13626
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -42.03269,
+                                                    "yaw":  7.15134,
+                                                    "roll":  13.05786
+                                                }
+                                },
+                                {
+                                    "tick":  5,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -1.2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -45.54906,
+                                                     "yaw":  -27.18004,
+                                                     "roll":  -0.11934
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -34.97967,
+                                                    "yaw":  -6.37075,
+                                                    "roll":  10.27493
+                                                }
+                                },
+                                {
+                                    "tick":  6,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -1.2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -36.93564,
+                                                     "yaw":  -22.04024,
+                                                     "roll":  -0.09678
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -27.33153,
+                                                    "yaw":  -18.03706,
+                                                    "roll":  7.67771
+                                                }
+                                },
+                                {
+                                    "tick":  6,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -36.93564,
+                                                     "yaw":  -22.04024,
+                                                     "roll":  -0.09678
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -27.33153,
+                                                    "yaw":  -18.03706,
+                                                    "roll":  7.67771
+                                                }
+                                },
+                                {
+                                    "tick":  7,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -36.93564,
+                                                     "yaw":  -22.04024,
+                                                     "roll":  -0.09678
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -19.65493,
+                                                    "yaw":  -23.75591,
+                                                    "roll":  5.32018
+                                                }
+                                },
+                                {
+                                    "tick":  8,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -17.73088,
+                                                     "yaw":  -10.58038,
+                                                     "roll":  -0.04646
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -12.45863,
+                                                    "yaw":  -23.53393,
+                                                    "roll":  3.2667
+                                                }
+                                },
+                                {
+                                    "tick":  8,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -9.11747,
+                                                     "yaw":  -5.44058,
+                                                     "roll":  -0.02389
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -6.2836,
+                                                    "yaw":  -18.743,
+                                                    "roll":  1.60205
+                                                }
+                                },
+                                {
+                                    "tick":  9,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  -2,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  -2.66249,
+                                                     "yaw":  -1.58876,
+                                                     "roll":  -0.00698
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  -1.80451,
+                                                    "yaw":  -10.61037,
+                                                    "roll":  0.44857
+                                                }
+                                },
+                                {
+                                    "tick":  10,
+                                    "easing":  "linear",
+                                    "head":  {
+                                                 "pitch":  0,
+                                                 "yaw":  0,
+                                                 "roll":  0
+                                             },
+                                    "rightArm":  {
+                                                     "pitch":  0,
+                                                     "yaw":  0,
+                                                     "roll":  0
+                                                 },
+                                    "leftArm":  {
+                                                    "pitch":  0,
+                                                    "yaw":  0,
+                                                    "roll":  0
+                                                }
+                                }
+                            ]
+              }
 }

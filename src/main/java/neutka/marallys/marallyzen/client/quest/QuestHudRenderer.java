@@ -54,9 +54,17 @@ public class QuestHudRenderer {
         }
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         boolean blockHud = mc.screen instanceof QuestJournalScreen;
+        boolean hideGui = mc.options != null && mc.options.hideGui;
 
         QuestClientState state = QuestClientState.getInstance();
-        boolean hudEnabled = state.isQuestHudEnabled();
+        boolean hudEnabled = QuestClientConfig.readQuestHudEnabled();
+        if (hideGui || blockHud || !hudEnabled) {
+            // Hard stop when HUD is disabled/blocked to avoid stale transparent background artifacts.
+            hudAlpha = 0.0f;
+            previousAlpha = 0.0f;
+            cachedLines = new ArrayList<>();
+            return;
+        }
         List<HudLine> lines = new ArrayList<>();
 
         if (!blockHud && hudEnabled) {
@@ -144,6 +152,8 @@ public class QuestHudRenderer {
                 }
             }
         }
+
+        lines.removeIf(line -> line == null || line.text() == null || line.text().getString().isBlank());
 
         boolean shouldShow = !blockHud && hudEnabled && !lines.isEmpty();
         if (shouldShow) {

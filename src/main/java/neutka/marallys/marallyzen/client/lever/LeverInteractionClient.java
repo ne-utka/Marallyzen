@@ -159,7 +159,7 @@ public final class LeverInteractionClient {
             return;
         }
         prevHideGui = mc.options.hideGui;
-        mc.options.hideGui = true;
+        mc.options.hideGui = false;
         hideGuiCaptured = true;
     }
 

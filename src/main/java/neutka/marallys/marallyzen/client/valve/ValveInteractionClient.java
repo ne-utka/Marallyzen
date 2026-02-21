@@ -174,7 +174,7 @@ public final class ValveInteractionClient {
             return;
         }
         prevHideGui = mc.options.hideGui;
-        mc.options.hideGui = true;
+        mc.options.hideGui = false;
         hideGuiCaptured = true;
     }
 

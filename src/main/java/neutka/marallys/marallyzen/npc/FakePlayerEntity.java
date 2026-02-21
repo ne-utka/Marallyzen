@@ -14,12 +14,17 @@ import net.minecraft.world.level.GameType;
 import neutka.marallys.marallyzen.Marallyzen;
 
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Fake player entity for NPCs with custom skins.
  * Based on Denizen's EntityFakePlayerImpl but adapted for NeoForge.
  */
 public class FakePlayerEntity extends ServerPlayer {
+
+    private static final Pattern TEXTURE_URL_HASH_PATTERN =
+            Pattern.compile("https?://textures\\.minecraft\\.net/texture/([0-9a-fA-F]+)");
     
     public FakePlayerEntity(MinecraftServer server, ServerLevel level, GameProfile gameProfile) {
         super(server, level, gameProfile, ClientInformation.createDefault());
@@ -47,12 +52,14 @@ public class FakePlayerEntity extends ServerPlayer {
      * Applies skin texture to the GameProfile.
      */
     public static GameProfile createGameProfileWithSkin(String name, String texture, String signature, String model) {
+        String normalizedTexture = normalizeTexturePayload(texture);
+
         // Try to extract UUID from texture JSON if available
         UUID baseUuid = null;
-        if (texture != null && !texture.isEmpty()) {
+        if (normalizedTexture != null && !normalizedTexture.isEmpty()) {
             try {
                 // Decode base64 texture JSON to extract profileId
-                byte[] decodedBytes = java.util.Base64.getDecoder().decode(texture);
+                byte[] decodedBytes = java.util.Base64.getDecoder().decode(normalizedTexture);
                 String textureJson = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
                 com.google.gson.JsonObject jsonObject = com.google.gson.JsonParser.parseString(textureJson).getAsJsonObject();
                 if (jsonObject.has("profileId")) {
@@ -104,13 +111,27 @@ public class FakePlayerEntity extends ServerPlayer {
                     name, baseUuid, uuid, leastSignificant, (leastSignificant & 0x1L) == 0x1L);
         }
         
-        GameProfile profile = new GameProfile(uuid, name != null ? name : "NPC");
-        
-        if (texture != null && !texture.isEmpty()) {
+        if (normalizedTexture != null && !normalizedTexture.isEmpty()) {
             // DO NOT modify texture JSON - it will invalidate the signature!
             // Minecraft determines slim model ONLY by UUID, not by JSON content
             // The UUID already has the correct bit set above
-            Property skinProperty = new Property("textures", texture, signature != null ? signature : "");
+            String normalizedSignature = signature != null ? signature.trim() : "";
+            Property skinProperty = normalizedSignature.isEmpty()
+                    ? new Property("textures", normalizedTexture)
+                    : new Property("textures", normalizedTexture, normalizedSignature);
+            GameProfile profileWithTexture = createProfileWithProperty(uuid, name, "textures", skinProperty);
+            if (profileWithTexture != null) {
+                // Verify the UUID has the correct bit set
+                boolean slimBitSet = (uuid.getLeastSignificantBits() & 0x1L) == 0x1L;
+                Marallyzen.LOGGER.info("Created GameProfile - Name: {}, UUID: {}, Model: {}, Slim bit set: {}, Expected slim: {}", 
+                        name, uuid, model, slimBitSet, "slim".equalsIgnoreCase(model));
+                if ("slim".equalsIgnoreCase(model) && !slimBitSet) {
+                    Marallyzen.LOGGER.error("ERROR: Slim model requested but UUID does not have slim bit set! UUID: {}", uuid);
+                }
+                return profileWithTexture;
+            }
+            // Fallback for environments without PropertyMap constructor
+            GameProfile profile = new GameProfile(uuid, name != null ? name : "NPC");
             addProfileProperty(profile, "textures", skinProperty);
             
             // Verify the UUID has the correct bit set
@@ -121,9 +142,54 @@ public class FakePlayerEntity extends ServerPlayer {
             if ("slim".equalsIgnoreCase(model) && !slimBitSet) {
                 Marallyzen.LOGGER.error("ERROR: Slim model requested but UUID does not have slim bit set! UUID: {}", uuid);
             }
+            return profile;
         }
-        
-        return profile;
+
+        return new GameProfile(uuid, name != null ? name : "NPC");
+    }
+
+    private static String normalizeTexturePayload(String texture) {
+        if (texture == null) {
+            return null;
+        }
+        String value = texture.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+
+        // Accept only payloads that decode to a textures.minecraft.net URL with a sane hash length.
+        // Invalid hashes (like the 69-char value seen in logs) cause repeated 404 spam on the client.
+        try {
+            byte[] decodedBytes = java.util.Base64.getDecoder().decode(value);
+            String json = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+            com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+            if (!root.has("textures")) {
+                return null;
+            }
+            com.google.gson.JsonObject textures = root.getAsJsonObject("textures");
+            if (textures == null || !textures.has("SKIN")) {
+                return null;
+            }
+            com.google.gson.JsonObject skin = textures.getAsJsonObject("SKIN");
+            if (skin == null || !skin.has("url")) {
+                return null;
+            }
+            String url = skin.get("url").getAsString();
+            Matcher matcher = TEXTURE_URL_HASH_PATTERN.matcher(url);
+            if (!matcher.matches()) {
+                Marallyzen.LOGGER.warn("Skipping NPC skin texture: malformed URL '{}'", url);
+                return null;
+            }
+            String hash = matcher.group(1);
+            if (hash.length() != 64) {
+                Marallyzen.LOGGER.warn("Skipping NPC skin texture: invalid textures.minecraft.net hash length {} for URL '{}'", hash.length(), url);
+                return null;
+            }
+            return value;
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Skipping NPC skin texture: invalid base64 payload ({})", e.getMessage());
+            return null;
+        }
     }
 
     private static void addProfileProperty(GameProfile profile, String key, Property property) {
@@ -131,18 +197,65 @@ public class FakePlayerEntity extends ServerPlayer {
             return;
         }
         try {
-            Object props = null;
+            PropertyMap map = null;
             try {
-                props = profile.getClass().getMethod("getProperties").invoke(profile);
+                Object props = profile.getClass().getMethod("getProperties").invoke(profile);
+                if (props instanceof PropertyMap pm) {
+                    map = pm;
+                }
             } catch (NoSuchMethodException ignored) {
-                props = profile.getClass().getMethod("properties").invoke(profile);
+                Object props = profile.getClass().getMethod("properties").invoke(profile);
+                if (props instanceof PropertyMap pm) {
+                    map = pm;
+                }
             }
-            if (props instanceof PropertyMap map) {
-                map.put(key, property);
+            if (map == null) {
+                return;
             }
+            map.put(key, property);
         } catch (Exception e) {
             Marallyzen.LOGGER.warn("Failed to set GameProfile property {}", key, e);
         }
+    }
+
+    private static GameProfile createProfileWithProperty(UUID uuid, String name, String key, Property property) {
+        try {
+            com.google.common.collect.Multimap<String, Property> backing = com.google.common.collect.HashMultimap.create();
+            backing.put(key, property);
+            PropertyMap props = new PropertyMap(backing);
+            for (var ctor : GameProfile.class.getDeclaredConstructors()) {
+                Class<?>[] params = ctor.getParameterTypes();
+                Object[] args = new Object[params.length];
+                boolean supported = true;
+                for (int i = 0; i < params.length; i++) {
+                    Class<?> param = params[i];
+                    if (param == UUID.class) {
+                        args[i] = uuid;
+                    } else if (param == String.class) {
+                        args[i] = name != null ? name : "NPC";
+                    } else if (PropertyMap.class.isAssignableFrom(param)) {
+                        args[i] = props;
+                    } else if (param == boolean.class || param == Boolean.class) {
+                        args[i] = false;
+                    } else if (param == int.class || param == Integer.class) {
+                        args[i] = 0;
+                    } else if (param == long.class || param == Long.class) {
+                        args[i] = 0L;
+                    } else {
+                        supported = false;
+                        break;
+                    }
+                }
+                if (!supported) {
+                    continue;
+                }
+                ctor.setAccessible(true);
+                return (GameProfile) ctor.newInstance(args);
+            }
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("Failed to construct GameProfile with properties", e);
+        }
+        return null;
     }
     
     @Override

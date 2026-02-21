@@ -961,6 +961,10 @@ public final class ClientEmoteHandler {
             return;
         }
 
+        if (entity == mc.player) {
+            ensureFirstPersonHandsVisible(emote);
+        }
+
         // Play emote on entity
         playEmoteOnNpc(entity, emote);
     }
@@ -973,6 +977,11 @@ public final class ClientEmoteHandler {
         if (emote == null) {
             Marallyzen.LOGGER.warn("ClientEmoteHandler: Could not load emote '{}' for entity {}", emoteId, entity.getUUID());
             return;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && entity == mc.player) {
+            ensureFirstPersonHandsVisible(emote);
         }
 
         playEmoteOnNpc(entity, emote);
@@ -1103,6 +1112,101 @@ public final class ClientEmoteHandler {
             holderName,
             holderFile
         );
+    }
+
+    private static void ensureFirstPersonHandsVisible(Object animation) {
+        if (animation == null) {
+            return;
+        }
+        try {
+            Class<?> modeClass = Class.forName("dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode");
+            Object mode = pickFirstPersonMode(modeClass);
+            java.lang.reflect.Method setMode = findMethod(animation.getClass(), "setFirstPersonMode", modeClass);
+            if (setMode != null && mode != null) {
+                setMode.invoke(animation, mode);
+            }
+
+            Class<?> configClass = Class.forName("dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration");
+            Object config = configClass.getConstructor().newInstance();
+            java.lang.reflect.Method showRightArm = findMethod(configClass, "setShowRightArm", boolean.class);
+            java.lang.reflect.Method showLeftArm = findMethod(configClass, "setShowLeftArm", boolean.class);
+            java.lang.reflect.Method showRightItem = findMethod(configClass, "setShowRightItem", boolean.class);
+            java.lang.reflect.Method showLeftItem = findMethod(configClass, "setShowLeftItem", boolean.class);
+            if (showRightArm != null) {
+                showRightArm.invoke(config, true);
+            }
+            if (showLeftArm != null) {
+                showLeftArm.invoke(config, true);
+            }
+            if (showRightItem != null) {
+                showRightItem.invoke(config, true);
+            }
+            if (showLeftItem != null) {
+                showLeftItem.invoke(config, true);
+            }
+            java.lang.reflect.Method setConfig = findMethod(animation.getClass(), "setFirstPersonConfiguration", configClass);
+            if (setConfig != null) {
+                setConfig.invoke(animation, config);
+            }
+        } catch (Exception e) {
+            Marallyzen.LOGGER.debug("ClientEmoteHandler: Failed to enforce first-person hands visibility: {}", e.getMessage());
+        }
+    }
+
+    private static Object pickFirstPersonMode(Class<?> modeClass) {
+        try {
+            Object[] constants = modeClass.getEnumConstants();
+            if (constants == null || constants.length == 0) {
+                return null;
+            }
+            Object hands = null;
+            Object vanilla = null;
+            Object firstPerson = null;
+            Object safe = null;
+            Object fallback = constants[0];
+            for (Object constant : constants) {
+                if (!(constant instanceof Enum<?> enumValue)) {
+                    continue;
+                }
+                String name = enumValue.name();
+                if ("VANILLA".equals(name)) {
+                    vanilla = constant;
+                    continue;
+                }
+                if (name.contains("HAND") || name.contains("ARM")) {
+                    hands = constant;
+                }
+                if (name.contains("FIRST")) {
+                    firstPerson = constant;
+                }
+                if (name.contains("NONE") || name.contains("DISABLED") || name.contains("OFF") || name.contains("DEFAULT")) {
+                    safe = constant;
+                }
+            }
+            if (hands != null) {
+                return hands;
+            }
+            if (vanilla != null) {
+                return vanilla;
+            }
+            if (firstPerson != null) {
+                return firstPerson;
+            }
+            if (safe != null) {
+                return safe;
+            }
+            return fallback;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static java.lang.reflect.Method findMethod(Class<?> type, String name, Class<?> paramType) {
+        try {
+            return type.getMethod(name, paramType);
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
     }
 
     private static Object loadFromModAssets(String emoteId) {

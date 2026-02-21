@@ -20,6 +20,11 @@ public final class MarallyzenClientConfig {
             .translation("marallyzen.configuration.interactivePromptBackground")
             .define("interactivePromptBackground", true);
 
+    public static final ModConfigSpec.BooleanValue NARRATION_HUD_BACKGROUND = BUILDER
+            .comment("Show dark background for narration HUD text.")
+            .translation("marallyzen.configuration.narrationHudBackground")
+            .define("narrationHudBackground", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private MarallyzenClientConfig() {

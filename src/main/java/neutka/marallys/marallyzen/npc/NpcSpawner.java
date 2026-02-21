@@ -84,7 +84,12 @@ public final class NpcSpawner {
         if (!(entity instanceof NpcEntity) && !(entity instanceof GeckoNpcEntity)) {
             return;
         }
-        registerExistingEntity(level, NpcClickHandler.getRegistry(), entity, true, bootstrapped);
+        NpcRegistry registry = NpcClickHandler.getRegistry();
+        if (bootstrapped && shouldCancelEntityJoin(level, registry, entity)) {
+            event.setCanceled(true);
+            return;
+        }
+        registerExistingEntity(level, registry, entity, true, false);
     }
 
     private static void spawnForChunk(ServerLevel level, NpcRegistry registry, ChunkPos chunkPos) {
@@ -429,6 +434,54 @@ public final class NpcSpawner {
             geckoEntity.setNpcId(resolved);
         }
         return true;
+    }
+
+    private static boolean shouldCancelEntityJoin(ServerLevel level, NpcRegistry registry, Entity entity) {
+        if (level == null || registry == null || entity == null) {
+            return false;
+        }
+
+        String npcId = null;
+        if (entity instanceof NpcEntity npcEntity) {
+            npcId = npcEntity.getNpcId();
+        } else if (entity instanceof GeckoNpcEntity geckoEntity) {
+            npcId = geckoEntity.getNpcId();
+        }
+
+        if (npcId == null || npcId.isEmpty()) {
+            npcId = resolveNpcIdFromName(registry, entity);
+            if (npcId == null && NpcWorldPolicy.isPersistentLevel(level)) {
+                npcId = resolveNpcIdFromPosition(level, entity);
+            }
+            if (npcId == null) {
+                npcId = resolveNpcIdFromRegistryPosition(registry, entity);
+            }
+            if (npcId != null) {
+                if (entity instanceof NpcEntity npcEntity) {
+                    npcEntity.setNpcId(npcId);
+                } else if (entity instanceof GeckoNpcEntity geckoEntity) {
+                    geckoEntity.setNpcId(npcId);
+                }
+            }
+        }
+
+        if (npcId == null || npcId.isEmpty()) {
+            Marallyzen.LOGGER.warn("NpcSpawner: Canceling stray NPC entity join {} (empty npcId, no name match)", entity.getUUID());
+            return true;
+        }
+
+        Entity existing = registry.getNpc(npcId);
+        if (existing != null && existing != entity && !existing.isRemoved() && existing.isAlive()) {
+            Marallyzen.LOGGER.warn(
+                    "NpcSpawner: Canceling duplicate NPC entity join npcId='{}' incoming={} existing={}",
+                    npcId,
+                    entity.getUUID(),
+                    existing.getUUID()
+            );
+            return true;
+        }
+
+        return false;
     }
 
     private static boolean isChunkLoaded(ServerLevel level, ChunkPos chunkPos) {

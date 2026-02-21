@@ -70,12 +70,13 @@ public class GoalRenderer extends EntityRenderer<GoalDisplayEntity, GoalRenderer
         double baseY = Mth.lerp(partialTick, entity.yo, entity.getY());
         double baseZ = Mth.lerp(partialTick, entity.zo, entity.getZ());
 
-        long gameTime = entity.level().getGameTime();
         double amplitude = entity.floatAmplitude();
         double speed = entity.floatSpeed();
         double height = entity.floatHeight();
-        double wavePrimary = Math.sin((gameTime + partialTick) * speed) * amplitude;
-        double waveSecondary = Math.sin((gameTime + partialTick) * speed * 0.35D) * amplitude * 0.5D;
+        // Use continuous client time to avoid visible per-tick stepping in world text bobbing.
+        double smoothTicks = (System.nanoTime() * 1.0E-9D) * 20.0D;
+        double wavePrimary = Math.sin(smoothTicks * speed) * amplitude;
+        double waveSecondary = Math.sin(smoothTicks * speed * 0.35D) * amplitude * 0.5D;
         double offsetY = height + wavePrimary + waveSecondary;
 
         poseStack.pushPose();

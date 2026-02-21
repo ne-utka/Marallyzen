@@ -141,7 +141,7 @@ public class FpvEventHandler {
         }
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.options != null) {
-            mc.options.setCameraType(CameraType.FIRST_PERSON);
+             mc.options.setCameraType(CameraType.FIRST_PERSON);
         }
     }
 

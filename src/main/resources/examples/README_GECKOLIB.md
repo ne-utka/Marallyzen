@@ -12,8 +12,8 @@ To create an NPC with custom GeckoLib model, add the `geckolib` section to your 
   "id": "my_custom_npc",
   "name": "Custom NPC",
   "geckolib": {
-    "model": "marallyzen:geo/my_model.geo.json",
-    "animation": "marallyzen:animations/my_animation.animation.json"
+    "model": "marallyzen:geo/my_model",
+    "animation": "marallyzen:animations/my_animation"
   },
   "spawnPos": {
     "x": 0,

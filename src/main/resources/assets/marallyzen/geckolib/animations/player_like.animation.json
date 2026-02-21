@@ -1,0 +1,108 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "idle": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [2, 0, 0],
+            "2.0": [0, 0, 0]
+          }
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": {
+            "0.0": [2, 0, 0],
+            "0.2": [-2, 0, 0],
+            "0.4": [2, 0, 0]
+          }
+        },
+        "left_arm": {
+          "rotation": {
+            "0.0": [0, 0, 8],
+            "0.2": [0, 0, 4],
+            "0.4": [0, 0, 8]
+          }
+        },
+        "right_arm": {
+          "rotation": {
+            "0.0": [0, 0, -8],
+            "0.2": [0, 0, -4],
+            "0.4": [0, 0, -8]
+          }
+        }
+      }
+    },
+    "smile": {
+      "loop": true,
+      "bones": {
+        "brow_left": {
+          "rotation": {
+            "0.0": [-10, 0, 0]
+          }
+        },
+        "brow_right": {
+          "rotation": {
+            "0.0": [-10, 0, 0]
+          }
+        }
+      }
+    },
+    "angry": {
+      "loop": true,
+      "bones": {
+        "brow_left": {
+          "rotation": {
+            "0.0": [15, 0, 0]
+          }
+        },
+        "brow_right": {
+          "rotation": {
+            "0.0": [15, 0, 0]
+          }
+        }
+      }
+    },
+    "surprise": {
+      "loop": true,
+      "bones": {
+        "brow_left": {
+          "rotation": {
+            "0.0": [-25, 0, 0]
+          }
+        },
+        "brow_right": {
+          "rotation": {
+            "0.0": [-25, 0, 0]
+          }
+        }
+      }
+    },
+    "blink": {
+      "loop": false,
+      "animation_length": 0.2,
+      "bones": {
+        "eyelid_left": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.1": [1, 0.2, 1],
+            "0.2": [1, 1, 1]
+          }
+        },
+        "eyelid_right": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.1": [1, 0.2, 1],
+            "0.2": [1, 1, 1]
+          }
+        }
+      }
+    }
+  }
+}

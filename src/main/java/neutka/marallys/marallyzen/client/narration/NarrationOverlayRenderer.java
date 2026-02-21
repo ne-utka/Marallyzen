@@ -10,6 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 import neutka.marallys.marallyzen.client.lever.LeverQteClient;
 import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 import neutka.marallys.marallyzen.client.quest.QuestJournalScreen;
@@ -134,7 +135,9 @@ public class NarrationOverlayRenderer {
         int bgColor = (bgAlpha << 24); // ARGB: alpha in top 8 bits, RGB = 0 (black)
         
         // Draw rounded semi-transparent background (fits text with padding)
-        renderRoundedBackground(guiGraphics, x, y, boxWidth, boxHeight, bgColor);
+        if (MarallyzenClientConfig.NARRATION_HUD_BACKGROUND.get()) {
+            renderRoundedBackground(guiGraphics, x, y, boxWidth, boxHeight, bgColor);
+        }
         
         // Draw text with alpha
         int textAlpha = (int) (alpha * 255);

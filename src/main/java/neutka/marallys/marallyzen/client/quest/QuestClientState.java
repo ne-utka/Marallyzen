@@ -83,7 +83,7 @@ public final class QuestClientState {
     }
 
     public boolean isQuestHudEnabled() {
-        return getConfig().isQuestHudEnabled();
+        return QuestClientConfig.readQuestHudEnabled();
     }
 
     public void setQuestHudEnabled(boolean questHudEnabled) {

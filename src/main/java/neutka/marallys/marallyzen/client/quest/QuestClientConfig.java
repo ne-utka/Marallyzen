@@ -3,6 +3,7 @@ package neutka.marallys.marallyzen.client.quest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import net.neoforged.fml.loading.FMLPaths;
 import neutka.marallys.marallyzen.Marallyzen;
 
 import java.io.File;
@@ -15,6 +16,8 @@ import java.nio.file.Path;
 public final class QuestClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CONFIG_FILE_NAME = "quest_client.json";
+    private static long cachedLastModified = Long.MIN_VALUE;
+    private static Boolean cachedQuestHudEnabled;
     
     private boolean questHudEnabled = true;
     
@@ -35,8 +38,22 @@ public final class QuestClientConfig {
                 Marallyzen.LOGGER.warn("Failed to load quest client config, using defaults", e);
             }
         }
+
+        synchronized (QuestClientConfig.class) {
+            cachedLastModified = configFile.exists() ? configFile.lastModified() : -1L;
+            cachedQuestHudEnabled = config.questHudEnabled;
+        }
         
         return config;
+    }
+
+    public static synchronized boolean readQuestHudEnabled() {
+        File configFile = getConfigFile();
+        long lastModified = configFile.exists() ? configFile.lastModified() : -1L;
+        if (cachedQuestHudEnabled != null && cachedLastModified == lastModified) {
+            return cachedQuestHudEnabled;
+        }
+        return load().isQuestHudEnabled();
     }
     
     public void save() {
@@ -55,24 +72,25 @@ public final class QuestClientConfig {
             try (FileWriter writer = new FileWriter(configFile)) {
                 GSON.toJson(json, writer);
             }
+
+            synchronized (QuestClientConfig.class) {
+                cachedLastModified = configFile.exists() ? configFile.lastModified() : -1L;
+                cachedQuestHudEnabled = questHudEnabled;
+            }
         } catch (IOException e) {
             Marallyzen.LOGGER.warn("Failed to save quest client config", e);
         }
     }
     
     private static File getConfigFile() {
-        // Get Minecraft config directory
         try {
-            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-            if (mc != null && mc.gameDirectory != null) {
-                File configDir = new File(mc.gameDirectory, "config" + File.separator + "marallyzen");
-                return new File(configDir, CONFIG_FILE_NAME);
+            Path configDir = FMLPaths.CONFIGDIR.get();
+            if (configDir != null) {
+                return configDir.resolve("marallyzen").resolve(CONFIG_FILE_NAME).toFile();
             }
-        } catch (Exception e) {
-            // Minecraft not initialized yet, use fallback
+        } catch (Exception ignored) {
         }
         
-        // Fallback if Minecraft is not initialized yet
         return new File("config", "marallyzen" + File.separator + CONFIG_FILE_NAME);
     }
     
@@ -84,4 +102,3 @@ public final class QuestClientConfig {
         this.questHudEnabled = questHudEnabled;
     }
 }
-
