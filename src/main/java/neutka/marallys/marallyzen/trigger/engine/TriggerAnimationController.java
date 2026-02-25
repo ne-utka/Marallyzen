@@ -73,27 +73,38 @@ public final class TriggerAnimationController {
         if (blocks.isEmpty()) {
             return;
         }
+        TriggerBlueprint.Settings.AnimationSettings animation = blueprint.settings().animation();
+        int duration = Math.max(1, animation.duration());
+        float t = clamp01(instance.animationTick() / (float) duration);
+        float eased = applyEasing(t, animation.easing());
+        double shiftX = animation.spawnOffset().getX() * (1.0D - eased);
+        double shiftY = animation.spawnOffset().getY() * (1.0D - eased);
+        double shiftZ = animation.spawnOffset().getZ() * (1.0D - eased);
+
         String particleProfile = normalize(blueprint.settings().particle());
         int samples = Math.min(12, blocks.size());
         for (int i = 0; i < samples; i++) {
             TriggerBlueprint.BlockEntry entry = blocks.get((instance.animationTick() * 7 + i * 11) % blocks.size());
             BlockPos target = instance.worldPos().offset(entry.localPos());
+            double px = target.getX() + 0.5D + shiftX;
+            double py = target.getY() + 0.2D + shiftY;
+            double pz = target.getZ() + 0.5D + shiftZ;
             var blockState = TriggerBlockStateCodec.decode(entry.state());
             if (blockState.isAir()) {
                 continue;
             }
             if ("cloud".equals(particleProfile)) {
-                level.sendParticles(ParticleTypes.CLOUD, target.getX() + 0.5D, target.getY() + 0.2D, target.getZ() + 0.5D, 2, 0.12D, 0.12D, 0.12D, 0.01D);
+                level.sendParticles(ParticleTypes.CLOUD, px, py, pz, 2, 0.12D, 0.12D, 0.12D, 0.01D);
             } else if ("poof".equals(particleProfile)) {
-                level.sendParticles(ParticleTypes.POOF, target.getX() + 0.5D, target.getY() + 0.2D, target.getZ() + 0.5D, 2, 0.10D, 0.10D, 0.10D, 0.01D);
+                level.sendParticles(ParticleTypes.POOF, px, py, pz, 2, 0.10D, 0.10D, 0.10D, 0.01D);
             } else if ("smoke".equals(particleProfile)) {
-                level.sendParticles(ParticleTypes.SMOKE, target.getX() + 0.5D, target.getY() + 0.2D, target.getZ() + 0.5D, 2, 0.10D, 0.10D, 0.10D, 0.01D);
+                level.sendParticles(ParticleTypes.SMOKE, px, py, pz, 2, 0.10D, 0.10D, 0.10D, 0.01D);
             } else {
                 level.sendParticles(
                         new BlockParticleOption(ParticleTypes.BLOCK, blockState),
-                        target.getX() + 0.5D,
-                        target.getY() + 0.2D,
-                        target.getZ() + 0.5D,
+                        px,
+                        py,
+                        pz,
                         3,
                         0.18D,
                         0.18D,
@@ -136,5 +147,28 @@ public final class TriggerAnimationController {
 
     private String normalize(String raw) {
         return raw == null ? "" : raw.trim().toLowerCase();
+    }
+
+    private float applyEasing(float t, String easing) {
+        String raw = normalize(easing);
+        if ("linear".equals(raw)) {
+            return clamp01(t);
+        }
+        if ("ease_in_out".equals(raw)) {
+            float x = clamp01(t);
+            return x < 0.5F ? 4.0F * x * x * x : 1.0F - (float) Math.pow(-2.0F * x + 2.0F, 3) / 2.0F;
+        }
+        float inv = 1.0F - clamp01(t);
+        return 1.0F - inv * inv * inv;
+    }
+
+    private float clamp01(float value) {
+        if (value < 0.0F) {
+            return 0.0F;
+        }
+        if (value > 1.0F) {
+            return 1.0F;
+        }
+        return value;
     }
 }
