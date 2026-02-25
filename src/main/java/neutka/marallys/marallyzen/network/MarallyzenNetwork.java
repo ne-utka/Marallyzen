@@ -160,6 +160,24 @@ public class MarallyzenNetwork {
                 ValveQteEndPacket::handle
         );
 
+        registrar.playToClient(
+                TriggerAnimationStartPacket.TYPE,
+                TriggerAnimationStartPacket.STREAM_CODEC,
+                TriggerAnimationStartPacket::handle
+        );
+
+        registrar.playToClient(
+                TriggerAnimationStopPacket.TYPE,
+                TriggerAnimationStopPacket.STREAM_CODEC,
+                TriggerAnimationStopPacket::handle
+        );
+
+        registrar.playToClient(
+                TriggerScreenShakePacket.TYPE,
+                TriggerScreenShakePacket.STREAM_CODEC,
+                TriggerScreenShakePacket::handle
+        );
+
 
         registrar.playToClient(
                 QuestSyncPacket.TYPE,

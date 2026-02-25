@@ -28,6 +28,8 @@ import neutka.marallys.marallyzen.npc.NpcSavedData;
 import neutka.marallys.marallyzen.npc.NpcStateStore;
 import neutka.marallys.marallyzen.npc.NpcSpawner;
 import neutka.marallys.marallyzen.goals.GoalCommand;
+import neutka.marallys.marallyzen.trigger.TriggerModuleRegistry;
+import neutka.marallys.marallyzen.trigger.command.TriggerCommand;
 
 import java.util.Objects;
 
@@ -74,6 +76,7 @@ public class MarallyzenCommands {
                                         .then(Commands.argument("waypointIndex", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
                                                 .executes(MarallyzenCommands::moveToWaypointCommand)))))
                 .then(GoalCommand.build())
+                .then(TriggerCommand.build())
         );
     }
 
@@ -148,6 +151,10 @@ private static int reloadCommand(CommandContext<CommandSourceStack> context) {
             // Reload quests and zones
             neutka.marallys.marallyzen.quest.QuestManager.getInstance().reload(context.getSource().getServer());
             neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().reload(context.getSource().getServer());
+            var triggerModule = TriggerModuleRegistry.get(context.getSource().getServer());
+            if (triggerModule != null) {
+                triggerModule.reload(context.getSource().getServer());
+            }
 
             int npcCount = registry.getAllNpcData().size();
             context.getSource().sendSuccess(

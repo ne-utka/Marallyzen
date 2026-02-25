@@ -221,6 +221,8 @@ public class MarallyzenClient {
         // Clear flashlight state cache on disconnect
         neutka.marallys.marallyzen.client.FlashlightStateCache.clear();
         neutka.marallys.marallyzen.client.animation.LeverShakeAnimationClient.clear();
+        neutka.marallys.marallyzen.trigger.client.TriggerAnimationClient.getInstance().clear();
+        neutka.marallys.marallyzen.trigger.client.TriggerScreenShakeManager.getInstance().clear();
 
         // Clear client poster entities on disconnect
         // Execute on render thread to avoid OpenGL errors with Sodium

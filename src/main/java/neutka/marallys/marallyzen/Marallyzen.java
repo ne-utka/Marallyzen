@@ -30,11 +30,14 @@ import neutka.marallys.marallyzen.blocks.MarallyzenBlocks;
 import neutka.marallys.marallyzen.audio.VoiceIntegration;
 import neutka.marallys.marallyzen.audio.MarallyzenPlasmoVoiceAddon;
 import neutka.marallys.marallyzen.audio.MarallyzenSounds;
+import neutka.marallys.marallyzen.trigger.TriggerModule;
+import neutka.marallys.marallyzen.trigger.TriggerModuleRegistry;
 
 @Mod(Marallyzen.MODID)
 public class Marallyzen {
     public static final String MODID = "marallyzen";
     public static final Logger LOGGER = LogUtils.getLogger();
+    private final TriggerModule triggerModule = new TriggerModule();
 
     // Entity registry
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
@@ -151,6 +154,8 @@ public class Marallyzen {
     public void onServerStarting(ServerStartingEvent event) {
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().initialize(event.getServer());
         neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().initialize(event.getServer());
+        triggerModule.initialize(event.getServer());
+        TriggerModuleRegistry.bind(event.getServer(), triggerModule);
     }
 
     @SubscribeEvent
@@ -168,8 +173,8 @@ public class Marallyzen {
         neutka.marallys.marallyzen.npc.NpcSpawner.resetBootstrap();
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().shutdown();
         neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().shutdown();
+        triggerModule.shutdown();
+        TriggerModuleRegistry.unbind(event.getServer());
         LOGGER.info("Marallyzen server stopping. Saved {} NPC state(s).", registry.captureNpcStates().size());
     }
 }
-
-
