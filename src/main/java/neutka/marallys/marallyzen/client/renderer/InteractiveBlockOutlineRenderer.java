@@ -70,40 +70,32 @@ import java.util.Map;
 public class InteractiveBlockOutlineRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger(InteractiveBlockOutlineRenderer.class);
 
-    private static final int OUTLINE_COLOR = 0xD48E03;
+    private static final int OUTLINE_COLOR = 0xFFFFFF;
     private static final int OUTLINE_R = (OUTLINE_COLOR >> 16) & 0xFF;
     private static final int OUTLINE_G = (OUTLINE_COLOR >> 8) & 0xFF;
     private static final int OUTLINE_B = OUTLINE_COLOR & 0xFF;
-    private static final int OUTLINE_A = 128;
+    private static final int OUTLINE_A = 200;
 
-    private static final float OUTLINE_THICKNESS = 0.03125f;
-    private static final float LINE_WIDTH = 1.0f;
+    private static final float OUTLINE_THICKNESS = 0.00390625f;
+    private static final float LINE_WIDTH = 1.5f;
+    private static final int HOVER_FILL_A = 25;
+    private static final float HOVER_FILL_DEPTH_OFFSET = 0.003f;
+    private static final float HOVER_FILL_POSTER_DEPTH_OFFSET = 0.02f;
+    private static final float HOVER_FILL_MODEL_OFFSET = 0.0025f;
     private static final int ALPHA_THRESHOLD = 128;
 
     private static int lineR = OUTLINE_R;
     private static int lineG = OUTLINE_G;
     private static int lineB = OUTLINE_B;
     private static int lineA = OUTLINE_A;
+    private static float lineWidth = LINE_WIDTH;
 
     private record LineStyle(int r, int g, int b, int a, float width, float scale) {}
 
     private static final LineStyle[] GLOW_STYLES = new LineStyle[] {
-        new LineStyle(212, 142, 3, 220, 1.1f, 1.000f),
-        new LineStyle(208, 136, 3, 205, 1.3f, 1.0006f),
-        new LineStyle(202, 128, 3, 190, 1.5f, 1.0012f),
-        new LineStyle(194, 118, 3, 175, 1.7f, 1.0018f),
-        new LineStyle(186, 108, 3, 160, 1.9f, 1.0024f),
-        new LineStyle(176, 98, 3, 145, 2.1f, 1.0030f),
-        new LineStyle(166, 88, 3, 130, 2.3f, 1.0036f),
-        new LineStyle(156, 78, 3, 115, 2.5f, 1.0042f),
-        new LineStyle(146, 70, 3, 100, 2.7f, 1.0048f),
-        new LineStyle(136, 62, 3, 90, 2.9f, 1.0054f),
-        new LineStyle(126, 56, 3, 80, 3.1f, 1.0060f),
-        new LineStyle(118, 50, 3, 72, 3.3f, 1.0066f),
-        new LineStyle(110, 46, 3, 64, 3.5f, 1.0072f),
-        new LineStyle(102, 42, 3, 56, 3.7f, 1.0078f),
-        new LineStyle(94, 38, 3, 50, 3.9f, 1.0084f),
-        new LineStyle(88, 34, 3, 44, 4.1f, 1.0090f)
+        new LineStyle(255, 255, 255, 220, LINE_WIDTH, 1.0f),
+        new LineStyle(255, 255, 255, 140, 2.2f, 1.0009f),
+        new LineStyle(255, 255, 255, 85, 3.0f, 1.0018f)
     };
 
     private static final int QUEST_SCAN_INTERVAL = 6;
@@ -131,6 +123,7 @@ public class InteractiveBlockOutlineRenderer {
         Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone_simple.png");
 
     private static final Map<Identifier, List<EdgeSegment>> OUTLINE_CACHE = new HashMap<>();
+    private static final Map<Identifier, List<FillSegment>> FILL_CACHE = new HashMap<>();
     private static Target lastTarget = null;
     private static long lastQuestScanTick = -1;
     private static final List<AABB> cachedQuestAreas = new ArrayList<>();
@@ -694,14 +687,17 @@ public class InteractiveBlockOutlineRenderer {
         boolean chainTopCap = true;
         boolean chainBottomCap = true;
 
+        renderBlockHoverFill(poseStack.last().pose(), state, pos, spec, mode);
+
         Matrix4f baseMatrix = poseStack.last().pose();
         VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderTypes.lines());
         int prevR = lineR;
         int prevG = lineG;
         int prevB = lineB;
         int prevA = lineA;
+        float prevWidth = lineWidth;
         for (LineStyle style : GLOW_STYLES) {
-            setLineColor(style.r, style.g, style.b, style.a);
+            setLineStyle(style.r, style.g, style.b, style.a, style.width);
             if (Math.abs(style.scale - 1.0f) > 1.0e-4f) {
                 poseStack.pushPose();
                 poseStack.translate(0.5, 0.5, 0.5);
@@ -714,9 +710,266 @@ public class InteractiveBlockOutlineRenderer {
                 renderBlockOutlinePass(vertexConsumer, baseMatrix, camera, pos, spec, mode, state, chainTopCap, chainBottomCap);
             }
         }
-        setLineColor(prevR, prevG, prevB, prevA);
+        setLineStyle(prevR, prevG, prevB, prevA, prevWidth);
 
         poseStack.popPose();
+    }
+
+    private static void renderBlockHoverFill(Matrix4f matrix, BlockState state, BlockPos pos,
+                                             OutlineSpec spec, OutlineMode mode) {
+        if (spec.texture == null) {
+            return;
+        }
+        if (spec.kind == OutlineKind.TEXTURE_ALPHA || spec.kind == OutlineKind.MODEL_AND_TEXTURE) {
+            if (mode == OutlineMode.POSTER) {
+                renderTextureFaceHoverFill(matrix, state, spec, mode, true, HOVER_FILL_POSTER_DEPTH_OFFSET);
+                return;
+            }
+            renderTextureFaceHoverFill(matrix, state, spec, mode, false, HOVER_FILL_DEPTH_OFFSET);
+            return;
+        }
+        if (spec.kind == OutlineKind.MODEL) {
+            renderModelTextureHoverFill(matrix, state, pos, spec.texture, false);
+        }
+    }
+
+    private static final class FillSegment {
+        final float x1;
+        final float y1;
+        final float x2;
+        final float y2;
+
+        FillSegment(float x1, float y1, float x2, float y2) {
+            this.x1 = x1;
+            this.y1 = y1;
+            this.x2 = x2;
+            this.y2 = y2;
+        }
+    }
+
+    private static void renderTextureFaceHoverFill(Matrix4f matrix, BlockState state, OutlineSpec spec, OutlineMode mode,
+                                                   boolean strictMask, float depthOffset) {
+        List<FillSegment> fills = getOrBuildFill(spec.texture);
+        float scaleX = spec.width / 16.0f;
+        float scaleY = spec.height / 16.0f;
+        float offsetX = spec.offsetX;
+        float offsetY = spec.offsetY;
+        float rightEdge = offsetX + spec.width;
+        float topEdge = offsetY + spec.height;
+
+        Direction[] facings = getRenderFacings(mode, state);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        boolean hasGeometry = false;
+
+        if (fills.isEmpty() && !strictMask) {
+            fills = List.of(new FillSegment(0.0f, 0.0f, 16.0f, 16.0f));
+        }
+        if (fills.isEmpty()) {
+            return;
+        }
+        for (Direction facing : facings) {
+            float zPos = switch (facing) {
+                case NORTH -> 1.0f - depthOffset;
+                case SOUTH -> depthOffset;
+                case EAST -> depthOffset;
+                case WEST -> 1.0f - depthOffset;
+                default -> 1.0f - depthOffset;
+            };
+            boolean mirrorHorizontal = (facing == Direction.NORTH || facing == Direction.EAST);
+            for (FillSegment fill : fills) {
+                float texX1 = fill.x1 * scaleX;
+                float texY1 = fill.y1 * scaleY;
+                float texX2 = fill.x2 * scaleX;
+                float texY2 = fill.y2 * scaleY;
+
+                float x1 = mirrorHorizontal ? rightEdge - texX1 : offsetX + texX1;
+                float x2 = mirrorHorizontal ? rightEdge - texX2 : offsetX + texX2;
+                float y1 = topEdge - texY1;
+                float y2 = topEdge - texY2;
+
+                float minX = Math.min(x1, x2);
+                float maxX = Math.max(x1, x2);
+                float minY = Math.min(y1, y2);
+                float maxY = Math.max(y1, y2);
+
+                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
+                    addFillQuad(buffer, matrix, minX, minY, zPos, maxX, minY, zPos, maxX, maxY, zPos, minX, maxY, zPos);
+                } else {
+                    addFillQuad(buffer, matrix, zPos, minY, minX, zPos, minY, maxX, zPos, maxY, maxX, zPos, maxY, minX);
+                }
+                hasGeometry = true;
+            }
+        }
+        if (hasGeometry) {
+            drawMesh(RenderTypes.debugQuads(), buffer);
+        }
+    }
+
+    private static void renderModelTextureHoverFill(Matrix4f matrix, BlockState state, BlockPos pos,
+                                                    Identifier textureLoc, boolean strictMask) {
+        List<FillSegment> fills = getOrBuildFill(textureLoc);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return;
+        }
+        BlockStateModel model = mc.getBlockRenderer().getBlockModel(state);
+        RandomSource random = RandomSource.create(0);
+        List<BlockModelPart> parts = model.collectParts(mc.level, pos, state, random);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        boolean hasGeometry = false;
+        for (BlockModelPart part : parts) {
+            hasGeometry |= renderModelFillQuads(part.getQuads(null), fills, buffer, matrix, strictMask);
+            for (Direction dir : Direction.values()) {
+                hasGeometry |= renderModelFillQuads(part.getQuads(dir), fills, buffer, matrix, strictMask);
+            }
+        }
+        if (hasGeometry) {
+            drawMesh(RenderTypes.debugQuads(), buffer);
+        }
+    }
+
+    private static boolean renderModelFillQuads(List<BakedQuad> quads, List<FillSegment> fills,
+                                                BufferBuilder buffer, Matrix4f matrix, boolean strictMask) {
+        if (quads == null || quads.isEmpty()) {
+            return false;
+        }
+        boolean hasGeometry = false;
+        for (BakedQuad quad : quads) {
+            TextureAtlasSprite sprite = quad.sprite();
+            if (sprite == null) {
+                continue;
+            }
+            long[] packedUv = new long[] { quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3() };
+            Vertex q0 = Vertex.from(quad, packedUv, 0);
+            Vertex q1 = Vertex.from(quad, packedUv, 1);
+            Vertex q2 = Vertex.from(quad, packedUv, 2);
+            Vertex q3 = Vertex.from(quad, packedUv, 3);
+
+            if (fills.isEmpty()) {
+                if (!strictMask) {
+                    addModelFillQuad(buffer, matrix, q0.x, q0.y, q0.z, q1.x, q1.y, q1.z, q2.x, q2.y, q2.z, q3.x, q3.y, q3.z);
+                    hasGeometry = true;
+                }
+                continue;
+            }
+
+            QuadUvBounds uvBounds = QuadUvBounds.fromQuad(quad);
+            if (uvBounds == null) {
+                if (!strictMask) {
+                    addModelFillQuad(buffer, matrix, q0.x, q0.y, q0.z, q1.x, q1.y, q1.z, q2.x, q2.y, q2.z, q3.x, q3.y, q3.z);
+                    hasGeometry = true;
+                }
+                continue;
+            }
+            QuadMapping mapping = QuadMapping.fromQuad(quad);
+            boolean quadDrawn = false;
+            for (FillSegment fill : fills) {
+                float fillU1 = sprite.getU(fill.x1);
+                float fillV1 = sprite.getV(fill.y1);
+                float fillU2 = sprite.getU(fill.x2);
+                float fillV2 = sprite.getV(fill.y2);
+
+                float clipMinU = Math.max(Math.min(fillU1, fillU2), uvBounds.minU);
+                float clipMaxU = Math.min(Math.max(fillU1, fillU2), uvBounds.maxU);
+                float clipMinV = Math.max(Math.min(fillV1, fillV2), uvBounds.minV);
+                float clipMaxV = Math.min(Math.max(fillV1, fillV2), uvBounds.maxV);
+                if (clipMinU >= clipMaxU || clipMinV >= clipMaxV) {
+                    continue;
+                }
+
+                float u1 = clipMinU;
+                float v1 = clipMinV;
+                float u2 = clipMaxU;
+                float v2 = clipMaxV;
+                float[] p1;
+                float[] p2;
+                float[] p3;
+                float[] p4;
+                if (mapping != null) {
+                    p1 = mapping.mapUvToPos(u1, v1);
+                    p2 = mapping.mapUvToPos(u2, v1);
+                    p3 = mapping.mapUvToPos(u2, v2);
+                    p4 = mapping.mapUvToPos(u1, v2);
+                } else {
+                    p1 = mapUvToPosFallback(quad, u1, v1);
+                    p2 = mapUvToPosFallback(quad, u2, v1);
+                    p3 = mapUvToPosFallback(quad, u2, v2);
+                    p4 = mapUvToPosFallback(quad, u1, v2);
+                }
+                if (p1 == null || p2 == null || p3 == null || p4 == null) {
+                    continue;
+                }
+                addModelFillQuad(buffer, matrix,
+                    p1[0], p1[1], p1[2],
+                    p2[0], p2[1], p2[2],
+                    p3[0], p3[1], p3[2],
+                    p4[0], p4[1], p4[2]);
+                hasGeometry = true;
+                quadDrawn = true;
+            }
+            if (!quadDrawn && !strictMask) {
+                addModelFillQuad(buffer, matrix, q0.x, q0.y, q0.z, q1.x, q1.y, q1.z, q2.x, q2.y, q2.z, q3.x, q3.y, q3.z);
+                hasGeometry = true;
+            }
+        }
+        return hasGeometry;
+    }
+
+    private static void addFillQuad(BufferBuilder buffer, Matrix4f matrix,
+                                    float x1, float y1, float z1,
+                                    float x2, float y2, float z2,
+                                    float x3, float y3, float z3,
+                                    float x4, float y4, float z4) {
+        buffer.addVertex(matrix, x1, y1, z1).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x2, y2, z2).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x3, y3, z3).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x4, y4, z4).setColor(255, 255, 255, HOVER_FILL_A);
+
+        // Draw back face too, so highlight remains visible regardless of culling/winding.
+        buffer.addVertex(matrix, x4, y4, z4).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x3, y3, z3).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x2, y2, z2).setColor(255, 255, 255, HOVER_FILL_A);
+        buffer.addVertex(matrix, x1, y1, z1).setColor(255, 255, 255, HOVER_FILL_A);
+    }
+
+    private static void addModelFillQuad(BufferBuilder buffer, Matrix4f matrix,
+                                         float x1, float y1, float z1,
+                                         float x2, float y2, float z2,
+                                         float x3, float y3, float z3,
+                                         float x4, float y4, float z4) {
+        float ux = x2 - x1;
+        float uy = y2 - y1;
+        float uz = z2 - z1;
+        float vx = x4 - x1;
+        float vy = y4 - y1;
+        float vz = z4 - z1;
+
+        float nx = uy * vz - uz * vy;
+        float ny = uz * vx - ux * vz;
+        float nz = ux * vy - uy * vx;
+        float len = Mth.sqrt(nx * nx + ny * ny + nz * nz);
+        if (len <= 1.0e-5f) {
+            addFillQuad(buffer, matrix, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4);
+            return;
+        }
+        nx /= len;
+        ny /= len;
+        nz /= len;
+
+        float ox = nx * HOVER_FILL_MODEL_OFFSET;
+        float oy = ny * HOVER_FILL_MODEL_OFFSET;
+        float oz = nz * HOVER_FILL_MODEL_OFFSET;
+
+        addFillQuad(buffer, matrix,
+            x1 + ox, y1 + oy, z1 + oz,
+            x2 + ox, y2 + oy, z2 + oz,
+            x3 + ox, y3 + oy, z3 + oz,
+            x4 + ox, y4 + oy, z4 + oz);
+        addFillQuad(buffer, matrix,
+            x1 - ox, y1 - oy, z1 - oz,
+            x2 - ox, y2 - oy, z2 - oz,
+            x3 - ox, y3 - oy, z3 - oz,
+            x4 - ox, y4 - oy, z4 - oz);
     }
 
     private static void renderBlockOutlinePass(VertexConsumer vertexConsumer, Matrix4f matrix, Camera camera,
@@ -1068,6 +1321,25 @@ public class InteractiveBlockOutlineRenderer {
         }
     }
 
+    private record QuadUvBounds(float minU, float maxU, float minV, float maxV) {
+        static QuadUvBounds fromQuad(BakedQuad quad) {
+            long[] packedUv = new long[] { quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3() };
+            Vertex v0 = Vertex.from(quad, packedUv, 0);
+            Vertex v1 = Vertex.from(quad, packedUv, 1);
+            Vertex v2 = Vertex.from(quad, packedUv, 2);
+            Vertex v3 = Vertex.from(quad, packedUv, 3);
+
+            float minU = Math.min(Math.min(v0.u, v1.u), Math.min(v2.u, v3.u));
+            float maxU = Math.max(Math.max(v0.u, v1.u), Math.max(v2.u, v3.u));
+            float minV = Math.min(Math.min(v0.v, v1.v), Math.min(v2.v, v3.v));
+            float maxV = Math.max(Math.max(v0.v, v1.v), Math.max(v2.v, v3.v));
+            if (maxU - minU < UV_EPSILON || maxV - minV < UV_EPSILON) {
+                return null;
+            }
+            return new QuadUvBounds(minU, maxU, minV, maxV);
+        }
+    }
+
     private record EdgeSegment3D(float x1, float y1, float z1, float x2, float y2, float z2) {}
 
     private static final Map<Identifier, List<EdgeSegment3D>> MODEL_OUTLINE_CACHE = new HashMap<>();
@@ -1254,6 +1526,10 @@ public class InteractiveBlockOutlineRenderer {
         return OUTLINE_CACHE.computeIfAbsent(textureLoc, InteractiveBlockOutlineRenderer::buildOutline);
     }
 
+    private static List<FillSegment> getOrBuildFill(Identifier textureLoc) {
+        return FILL_CACHE.computeIfAbsent(textureLoc, InteractiveBlockOutlineRenderer::buildFill);
+    }
+
     private static List<EdgeSegment> buildOutline(Identifier textureLoc) {
         List<EdgeSegment> edges = new ArrayList<>();
 
@@ -1339,6 +1615,64 @@ public class InteractiveBlockOutlineRenderer {
         return edges;
     }
 
+    private static List<FillSegment> buildFill(Identifier textureLoc) {
+        List<FillSegment> fills = new ArrayList<>();
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getResourceManager() == null) {
+                LOGGER.warn("ResourceManager not available, cannot load fill mask for {}", textureLoc);
+                return fills;
+            }
+
+            Resource resource = mc.getResourceManager().getResource(textureLoc).orElse(null);
+            if (resource == null) {
+                LOGGER.warn("Texture not found for fill mask: {}", textureLoc);
+                return fills;
+            }
+
+            try (InputStream stream = resource.open();
+                 NativeImage image = NativeImage.read(NativeImage.Format.RGBA, stream)) {
+
+                int width = image.getWidth();
+                int height = image.getHeight();
+                if (width <= 0 || height <= 0) {
+                    return fills;
+                }
+
+                for (int y = 0; y < height; y++) {
+                    int startX = -1;
+                    for (int x = 0; x < width; x++) {
+                        boolean opaque = ((image.getPixel(x, y) >> 24) & 0xFF) >= ALPHA_THRESHOLD;
+                        if (opaque) {
+                            if (startX == -1) {
+                                startX = x;
+                            }
+                        } else if (startX != -1) {
+                            addFillSegment(fills, startX, x, y, width, height);
+                            startX = -1;
+                        }
+                    }
+                    if (startX != -1) {
+                        addFillSegment(fills, startX, width, y, width, height);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Failed to load fill mask for {}: {}", textureLoc, e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Error building fill mask for {}: ", textureLoc, e);
+        }
+        return fills;
+    }
+
+    private static void addFillSegment(List<FillSegment> fills, int startX, int endX, int y, int width, int height) {
+        float x1 = (float) startX / width * 16.0f;
+        float x2 = (float) endX / width * 16.0f;
+        float y1 = (float) y / height * 16.0f;
+        float y2 = (float) (y + 1) / height * 16.0f;
+        fills.add(new FillSegment(x1, y1, x2, y2));
+    }
+
     private static void renderLine(VertexConsumer consumer, Matrix4f matrix,
                                    float x1, float y1, float z1,
                                    float x2, float y2, float z2) {
@@ -1355,11 +1689,11 @@ public class InteractiveBlockOutlineRenderer {
         consumer.addVertex(matrix, x1, y1, z1)
             .setColor(lineR, lineG, lineB, lineA)
             .setNormal(dx, dy, dz)
-            .setLineWidth(LINE_WIDTH);
+            .setLineWidth(lineWidth);
         consumer.addVertex(matrix, x2, y2, z2)
             .setColor(lineR, lineG, lineB, lineA)
             .setNormal(dx, dy, dz)
-            .setLineWidth(LINE_WIDTH);
+            .setLineWidth(lineWidth);
     }
 
     private static void setLineColor(int r, int g, int b, int a) {
@@ -1367,6 +1701,11 @@ public class InteractiveBlockOutlineRenderer {
         lineG = g;
         lineB = b;
         lineA = a;
+    }
+
+    private static void setLineStyle(int r, int g, int b, int a, float width) {
+        setLineColor(r, g, b, a);
+        lineWidth = width;
     }
 
     private static int renderChainSilhouetteFromQuads(BlockState state, VertexConsumer consumer, Matrix4f matrix,
