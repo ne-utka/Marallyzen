@@ -24,6 +24,7 @@ import neutka.marallys.marallyzen.client.renderer.DecoratedPotCarryEntityRendere
 import neutka.marallys.marallyzen.client.renderer.GeckoNpcFallbackRenderer;
 import neutka.marallys.marallyzen.client.renderer.GoalRenderer;
 import neutka.marallys.marallyzen.client.renderer.InteractiveLeverBlockEntityRenderer;
+import neutka.marallys.marallyzen.client.renderer.InteractiveBlockOutlineReloadListener;
 import neutka.marallys.marallyzen.client.renderer.OldTvBlockEntityRenderer;
 import neutka.marallys.marallyzen.client.renderer.TransparentItemFrameRenderer;
 
@@ -33,6 +34,7 @@ public class MarallyzenClient {
     private static String lastBlurScreenLogged = "";
 
     public MarallyzenClient(ModContainer container) {
+        container.getEventBus().addListener(InteractiveBlockOutlineReloadListener::onAddClientReloadListeners);
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         container.registerConfig(ModConfig.Type.CLIENT, MarallyzenClientConfig.SPEC);
     }
@@ -222,6 +224,7 @@ public class MarallyzenClient {
         neutka.marallys.marallyzen.client.FlashlightStateCache.clear();
         neutka.marallys.marallyzen.client.animation.LeverShakeAnimationClient.clear();
         neutka.marallys.marallyzen.trigger.client.TriggerAnimationClient.getInstance().clear();
+        neutka.marallys.marallyzen.trigger.client.TriggerBindClientCache.clear();
         neutka.marallys.marallyzen.trigger.client.TriggerScreenShakeManager.getInstance().clear();
 
         // Clear client poster entities on disconnect

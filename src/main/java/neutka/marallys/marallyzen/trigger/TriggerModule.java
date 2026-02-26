@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.network.NetworkHelper;
+import neutka.marallys.marallyzen.network.TriggerBindSyncPacket;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprint;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprintLoader;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlockStateCodec;
@@ -32,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -62,6 +65,7 @@ public final class TriggerModule {
         instanceManager.attachSavedData(savedData);
         instanceManager.rebuildFromSaved();
         engine.rebuildZones();
+        syncTriggerBindingsToAll();
         initialized = true;
         Marallyzen.LOGGER.info("TriggerModule initialized: {} blueprint(s), {} instance(s)",
                 blueprintLoader.getLoadedBlueprintIds().size(),
@@ -81,6 +85,7 @@ public final class TriggerModule {
         instanceManager.attachSavedData(savedData);
         instanceManager.rebuildFromSaved();
         engine.rebuildZones();
+        syncTriggerBindingsToAll();
         initialized = true;
         Marallyzen.LOGGER.info("TriggerModule reloaded: {} blueprint(s), {} instance(s)",
                 blueprintLoader.getLoadedBlueprintIds().size(),
@@ -179,6 +184,7 @@ public final class TriggerModule {
                 return true;
             }
             engine.rebuildZones();
+            syncTriggerBindingsToAll();
             AdminHudNotifier.bound(player);
             return true;
         }
@@ -303,6 +309,7 @@ public final class TriggerModule {
         }
         instanceManager.remove(instance.id());
         engine.rebuildZones();
+        syncTriggerBindingsToAll();
         if (actor != null) {
             AdminHudNotifier.removed(actor);
         }
@@ -332,6 +339,7 @@ public final class TriggerModule {
         instance.setTriggerType(normalized);
         instanceManager.persistInstance(instance);
         instanceManager.refreshActiveFile(instance);
+        syncTriggerBindingsToAll();
         return new OperationResult(true, "Instance trigger updated: " + instance.id() + " -> " + normalized);
     }
 
@@ -374,6 +382,35 @@ public final class TriggerModule {
 
     public List<String> instanceIds() {
         return new ArrayList<>(instanceManager.allIds());
+    }
+
+    public void syncTriggerBindings(ServerPlayer player) {
+        if (player == null || server == null) {
+            return;
+        }
+        NetworkHelper.sendToPlayer(player, buildBindSyncPacket());
+    }
+
+    public void syncTriggerBindingsToAll() {
+        if (server == null) {
+            return;
+        }
+        TriggerBindSyncPacket packet = buildBindSyncPacket();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            NetworkHelper.sendToPlayer(player, packet);
+        }
+    }
+
+    private TriggerBindSyncPacket buildBindSyncPacket() {
+        Collection<TriggerInstance> all = instanceManager.allInstances();
+        List<TriggerBindSyncPacket.TriggerBindEntry> entries = new ArrayList<>(all.size());
+        for (TriggerInstance instance : all) {
+            if (instance == null) {
+                continue;
+            }
+            entries.add(new TriggerBindSyncPacket.TriggerBindEntry(instance.dimensionId(), instance.bindPos()));
+        }
+        return new TriggerBindSyncPacket(entries);
     }
 
     private String normalizeId(String raw) {

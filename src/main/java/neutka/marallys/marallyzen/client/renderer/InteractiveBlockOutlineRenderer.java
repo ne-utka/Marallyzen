@@ -23,15 +23,20 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -52,6 +57,8 @@ import neutka.marallys.marallyzen.quest.QuestInstance;
 import neutka.marallys.marallyzen.quest.QuestJsonUtils;
 import neutka.marallys.marallyzen.quest.QuestStep;
 import neutka.marallys.marallyzen.quest.QuestTriggerDef;
+import neutka.marallys.marallyzen.entity.DecoratedPotCarryEntity;
+import neutka.marallys.marallyzen.trigger.client.TriggerBindClientCache;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +89,7 @@ public class InteractiveBlockOutlineRenderer {
     private static final float HOVER_FILL_DEPTH_OFFSET = 0.003f;
     private static final float HOVER_FILL_POSTER_DEPTH_OFFSET = 0.02f;
     private static final float HOVER_FILL_MODEL_OFFSET = 0.0025f;
+    private static final float HOVER_FILL_TRIGGER_SHAPE_EXPAND = 0.001f;
     private static final int ALPHA_THRESHOLD = 128;
 
     private static int lineR = OUTLINE_R;
@@ -121,7 +129,6 @@ public class InteractiveBlockOutlineRenderer {
         Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone.png");
     private static final Identifier DICTAPHONE_SIMPLE_TEX =
         Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/block/dictaphone_simple.png");
-
     private static final Map<Identifier, List<EdgeSegment>> OUTLINE_CACHE = new HashMap<>();
     private static final Map<Identifier, List<FillSegment>> FILL_CACHE = new HashMap<>();
     private static Target lastTarget = null;
@@ -158,6 +165,7 @@ public class InteractiveBlockOutlineRenderer {
                                OutlineKind kind, Bounds bounds, Identifier model) {}
 
     private enum OutlineMode {
+        TRIGGER_BOUND,
         POSTER,
         MIRROR,
         OLD_LAPTOP,
@@ -197,19 +205,52 @@ public class InteractiveBlockOutlineRenderer {
         //     renderQuestAreas(poseStack, bufferSource, camera, questAreas);
         // }
         if (target != null) {
-            renderBlockOutline(poseStack, bufferSource, camera, target.pos, target.spec, target.mode, target.state);
+            renderBlockOutline(
+                poseStack,
+                bufferSource,
+                camera,
+                target.renderOrigin,
+                target.pos,
+                target.spec,
+                target.mode,
+                target.state
+            );
         }
 
         bufferSource.endBatch();
     }
     private static Target getTarget(Minecraft mc) {
         HitResult hitResult = mc.hitResult;
-        if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
+        if (hitResult == null) {
             return null;
         }
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            BlockHitResult blockHit = (BlockHitResult) hitResult;
+            return resolveTargetFromPos(mc, blockHit.getBlockPos());
+        }
+        if (hitResult.getType() == HitResult.Type.ENTITY && hitResult instanceof EntityHitResult entityHit) {
+            if (entityHit.getEntity() instanceof DecoratedPotCarryEntity pot
+                && pot.getMode() == DecoratedPotCarryEntity.Mode.RESTING) {
+                return resolveTargetFromPotEntity(pot);
+            }
+        }
+        return null;
+    }
 
-        BlockHitResult blockHit = (BlockHitResult) hitResult;
-        return resolveTargetFromPos(mc, blockHit.getBlockPos());
+    private static Target resolveTargetFromPotEntity(DecoratedPotCarryEntity pot) {
+        if (pot == null || !pot.isAlive()) {
+            return null;
+        }
+        BlockState state = pot.getStoredBlockState();
+        if (state == null || state.isAir()) {
+            state = net.minecraft.world.level.block.Blocks.DECORATED_POT.defaultBlockState();
+        }
+        OutlineSpec spec = getOutlineSpec(OutlineMode.DECORATED_POT, state);
+        if (spec == null) {
+            return null;
+        }
+        BlockPos pos = BlockPos.containing(pot.getX(), pot.getY(), pot.getZ());
+        return new Target(pos, new Vec3(pot.getX(), pot.getY(), pot.getZ()), state, OutlineMode.DECORATED_POT, spec);
     }
 
     private static Target resolveTargetFromPos(Minecraft mc, BlockPos pos) {
@@ -224,6 +265,12 @@ public class InteractiveBlockOutlineRenderer {
         }
         InteractiveBlockTargeting.Type type = InteractiveBlockTargeting.getType(state);
         if (type == InteractiveBlockTargeting.Type.NONE) {
+            if (isTriggerBoundTarget(mc, pos, state)) {
+                OutlineSpec spec = getOutlineSpec(OutlineMode.TRIGGER_BOUND, state);
+                if (spec != null) {
+                    return new Target(pos, Vec3.atLowerCornerOf(pos), state, OutlineMode.TRIGGER_BOUND, spec);
+                }
+            }
             return null;
         }
 
@@ -235,7 +282,27 @@ public class InteractiveBlockOutlineRenderer {
         if (spec == null) {
             return null;
         }
-        return new Target(pos, state, mode, spec);
+        return new Target(pos, Vec3.atLowerCornerOf(pos), state, mode, spec);
+    }
+
+    private static boolean isTriggerBoundTarget(Minecraft mc, BlockPos pos, BlockState state) {
+        if (mc == null || mc.level == null || pos == null || state == null || state.isAir()) {
+            return false;
+        }
+        String dimensionId = mc.level.dimension().identifier().toString();
+        if (TriggerBindClientCache.isBound(dimensionId, pos)) {
+            return true;
+        }
+        return isDoorCounterpartBound(dimensionId, pos, state);
+    }
+
+    private static boolean isDoorCounterpartBound(String dimensionId, BlockPos pos, BlockState state) {
+        if (!(state.getBlock() instanceof DoorBlock) || !state.hasProperty(DoorBlock.HALF)) {
+            return false;
+        }
+        DoubleBlockHalf half = state.getValue(DoorBlock.HALF);
+        BlockPos counterpart = half == DoubleBlockHalf.LOWER ? pos.above() : pos.below();
+        return TriggerBindClientCache.isBound(dimensionId, counterpart);
     }
 
     private enum QuestHintType {
@@ -633,10 +700,14 @@ public class InteractiveBlockOutlineRenderer {
         };
     }
 
-    private record Target(BlockPos pos, BlockState state, OutlineMode mode, OutlineSpec spec) {}
+    private record Target(BlockPos pos, Vec3 renderOrigin, BlockState state, OutlineMode mode, OutlineSpec spec) {}
 
     private static OutlineSpec getOutlineSpec(OutlineMode mode, BlockState state) {
         Block block = state.getBlock();
+        if (mode == OutlineMode.TRIGGER_BOUND) {
+            return new OutlineSpec(null, 0.0f, 0.0f, 0.0f, 0.0f,
+                OutlineKind.BOUNDS, new Bounds(0.0f, 0.0f, 0.0f, 16.0f, 16.0f, 16.0f), null);
+        }
         if (mode == OutlineMode.POSTER && block instanceof PosterBlock posterBlock) {
             int posterNumber = posterBlock.getPosterNumber();
             Identifier tex = PosterTextures.getSmallTexture(posterNumber);
@@ -672,17 +743,22 @@ public class InteractiveBlockOutlineRenderer {
             Identifier texture = showFull ? DICTAPHONE_TEX : DICTAPHONE_SIMPLE_TEX;
             return new OutlineSpec(texture, 0.0f, 0.0f, 0.0f, 0.0f, OutlineKind.MODEL, null, model);
         }
+        if (mode == OutlineMode.DECORATED_POT && block == net.minecraft.world.level.block.Blocks.DECORATED_POT) {
+            return new OutlineSpec(null, 0.0f, 0.0f, 0.0f, 0.0f,
+                OutlineKind.MODEL, null, null);
+        }
         return null;
     }
 
     private static void renderBlockOutline(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource,
-                                           Camera camera, BlockPos pos, OutlineSpec spec, OutlineMode mode, BlockState state) {
+                                           Camera camera, Vec3 renderOrigin, BlockPos pos,
+                                           OutlineSpec spec, OutlineMode mode, BlockState state) {
         poseStack.pushPose();
 
         double camX = camera.position().x;
         double camY = camera.position().y;
         double camZ = camera.position().z;
-        poseStack.translate(pos.getX() - camX, pos.getY() - camY, pos.getZ() - camZ);
+        poseStack.translate(renderOrigin.x - camX, renderOrigin.y - camY, renderOrigin.z - camZ);
 
         boolean chainTopCap = true;
         boolean chainBottomCap = true;
@@ -717,7 +793,14 @@ public class InteractiveBlockOutlineRenderer {
 
     private static void renderBlockHoverFill(Matrix4f matrix, BlockState state, BlockPos pos,
                                              OutlineSpec spec, OutlineMode mode) {
+        if (mode == OutlineMode.TRIGGER_BOUND) {
+            renderTriggerBoundHoverFill(matrix, state, pos);
+            return;
+        }
         if (spec.texture == null) {
+            if (spec.kind == OutlineKind.MODEL) {
+                renderModelTextureHoverFill(matrix, state, pos, null, false);
+            }
             return;
         }
         if (spec.kind == OutlineKind.TEXTURE_ALPHA || spec.kind == OutlineKind.MODEL_AND_TEXTURE) {
@@ -731,6 +814,61 @@ public class InteractiveBlockOutlineRenderer {
         if (spec.kind == OutlineKind.MODEL) {
             renderModelTextureHoverFill(matrix, state, pos, spec.texture, false);
         }
+    }
+
+    private static void renderTriggerBoundHoverFill(Matrix4f matrix, BlockState state, BlockPos pos) {
+        List<AABB> boxes = getTriggerShapeBoxes(state, pos);
+        renderShapeHoverFillBoxes(matrix, boxes);
+    }
+
+    private static void renderModelElementHoverFill(Matrix4f matrix, BlockState state, OutlineMode mode, Identifier modelLoc) {
+        List<ModelFaceQuad> quads = getOrBuildModelFill(modelLoc);
+        if (quads.isEmpty()) {
+            return;
+        }
+        Direction[] facings = getRenderFacings(mode, state);
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        boolean hasGeometry = false;
+        for (Direction facing : facings) {
+            for (ModelFaceQuad quad : quads) {
+                float[] p1 = rotatePointY(quad.x1, quad.y1, quad.z1, facing);
+                float[] p2 = rotatePointY(quad.x2, quad.y2, quad.z2, facing);
+                float[] p3 = rotatePointY(quad.x3, quad.y3, quad.z3, facing);
+                float[] p4 = rotatePointY(quad.x4, quad.y4, quad.z4, facing);
+                addModelFillQuad(buffer, matrix,
+                    p1[0], p1[1], p1[2],
+                    p2[0], p2[1], p2[2],
+                    p3[0], p3[1], p3[2],
+                    p4[0], p4[1], p4[2]);
+                hasGeometry = true;
+            }
+        }
+        if (hasGeometry) {
+            drawMesh(RenderTypes.debugQuads(), buffer);
+        }
+    }
+
+    private static void renderShapeHoverFillBoxes(Matrix4f matrix, List<AABB> boxes) {
+        if (boxes.isEmpty()) {
+            return;
+        }
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        for (AABB base : boxes) {
+            AABB box = base.inflate(HOVER_FILL_TRIGGER_SHAPE_EXPAND);
+            float minX = (float) box.minX;
+            float minY = (float) box.minY;
+            float minZ = (float) box.minZ;
+            float maxX = (float) box.maxX;
+            float maxY = (float) box.maxY;
+            float maxZ = (float) box.maxZ;
+            addFillQuad(buffer, matrix, minX, minY, minZ, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ);
+            addFillQuad(buffer, matrix, minX, minY, maxZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ);
+            addFillQuad(buffer, matrix, minX, minY, minZ, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ);
+            addFillQuad(buffer, matrix, maxX, minY, minZ, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ);
+            addFillQuad(buffer, matrix, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ);
+            addFillQuad(buffer, matrix, minX, minY, minZ, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ);
+        }
+        drawMesh(RenderTypes.debugQuads(), buffer);
     }
 
     private static final class FillSegment {
@@ -807,7 +945,7 @@ public class InteractiveBlockOutlineRenderer {
 
     private static void renderModelTextureHoverFill(Matrix4f matrix, BlockState state, BlockPos pos,
                                                     Identifier textureLoc, boolean strictMask) {
-        List<FillSegment> fills = getOrBuildFill(textureLoc);
+        List<FillSegment> fills = textureLoc == null ? List.of() : getOrBuildFill(textureLoc);
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
             return;
@@ -975,11 +1113,15 @@ public class InteractiveBlockOutlineRenderer {
     private static void renderBlockOutlinePass(VertexConsumer vertexConsumer, Matrix4f matrix, Camera camera,
                                                BlockPos pos, OutlineSpec spec, OutlineMode mode, BlockState state,
                                                boolean chainTopCap, boolean chainBottomCap) {
+        if (mode == OutlineMode.TRIGGER_BOUND) {
+            renderTriggerBoundOutline(vertexConsumer, matrix, state, pos);
+            return;
+        }
         if (spec.kind == OutlineKind.BOUNDS && spec.bounds != null) {
             renderBoundsOutline(vertexConsumer, matrix, spec.bounds);
-        } else if ((spec.kind == OutlineKind.MODEL || spec.kind == OutlineKind.MODEL_AND_TEXTURE) && spec.model != null) {
+        } else if (spec.kind == OutlineKind.MODEL || spec.kind == OutlineKind.MODEL_AND_TEXTURE) {
             int drawn = renderModelOutlineFromQuads(state, vertexConsumer, matrix, camera.position(), pos, mode);
-            if (drawn == 0) {
+            if (drawn == 0 && spec.model != null) {
                 List<EdgeSegment3D> modelEdges = getOrBuildModelOutline(spec.model);
                 if (!modelEdges.isEmpty()) {
                     Direction[] facings = getRenderFacings(mode, state);
@@ -1080,6 +1222,84 @@ public class InteractiveBlockOutlineRenderer {
         renderLine(consumer, matrix, maxX, minY, minZ, maxX, maxY, minZ);
         renderLine(consumer, matrix, maxX, minY, maxZ, maxX, maxY, maxZ);
         renderLine(consumer, matrix, minX, minY, maxZ, minX, maxY, maxZ);
+    }
+
+    private static void renderTriggerBoundOutline(VertexConsumer consumer, Matrix4f matrix, BlockState state, BlockPos pos) {
+        VoxelShape shape = getTriggerShape(state, pos);
+        renderShapeOutline(consumer, matrix, shape);
+    }
+
+    private static void renderShapeOutline(VertexConsumer consumer, Matrix4f matrix, VoxelShape shape) {
+        if (shape.isEmpty()) {
+            return;
+        }
+        shape.forAllEdges((x1, y1, z1, x2, y2, z2) ->
+            renderLine(consumer, matrix,
+                (float) x1, (float) y1, (float) z1,
+                (float) x2, (float) y2, (float) z2)
+        );
+    }
+
+    private static List<AABB> getTriggerShapeBoxes(BlockState state, BlockPos pos) {
+        VoxelShape shape = getTriggerShape(state, pos);
+        if (shape.isEmpty()) {
+            return List.of();
+        }
+        return shape.toAabbs();
+    }
+
+    private static VoxelShape getTriggerShape(BlockState state, BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || state == null || pos == null) {
+            return Shapes.empty();
+        }
+        VoxelShape shape = getSingleTriggerShape(mc, state, pos);
+
+        if (state.getBlock() instanceof DoorBlock && state.hasProperty(DoorBlock.HALF)) {
+            DoubleBlockHalf half = state.getValue(DoorBlock.HALF);
+            BlockPos counterpartPos = half == DoubleBlockHalf.LOWER ? pos.above() : pos.below();
+            BlockState counterpartState = mc.level.getBlockState(counterpartPos);
+            if (counterpartState.getBlock() == state.getBlock()
+                && counterpartState.hasProperty(DoorBlock.HALF)
+                && counterpartState.getValue(DoorBlock.HALF) != half) {
+                VoxelShape counterpartShape = getSingleTriggerShape(mc, counterpartState, counterpartPos);
+                if (!counterpartShape.isEmpty()) {
+                    double dy = counterpartPos.getY() - pos.getY();
+                    shape = Shapes.or(shape, counterpartShape.move(0.0, dy, 0.0));
+                }
+            }
+        }
+        return shape;
+    }
+
+    private static VoxelShape getSingleTriggerShape(Minecraft mc, BlockState state, BlockPos pos) {
+        if (mc.level == null || state == null || pos == null) {
+            return Shapes.empty();
+        }
+        CollisionContext context = mc.player == null ? CollisionContext.empty() : CollisionContext.of(mc.player);
+        VoxelShape shape = state.getShape(mc.level, pos, context);
+        if (shape.isEmpty()) {
+            shape = state.getInteractionShape(mc.level, pos);
+        }
+        if (shape.isEmpty()) {
+            shape = state.getShape(mc.level, pos);
+        }
+        if (shape.isEmpty()) {
+            shape = state.getCollisionShape(mc.level, pos, context);
+        }
+        if (shape.isEmpty()) {
+            shape = state.getCollisionShape(mc.level, pos);
+        }
+        if (shape.isEmpty()) {
+            shape = state.getVisualShape(mc.level, pos, context);
+        }
+        if (shape.isEmpty()) {
+            shape = state.getOcclusionShape();
+        }
+        if (shape.isEmpty() && !state.isAir()) {
+            return Shapes.block();
+        }
+        return shape;
     }
 
     private static void renderTextureOutlineOnModelQuads(BlockState state, BlockPos pos, List<EdgeSegment> outline,
@@ -1341,11 +1561,31 @@ public class InteractiveBlockOutlineRenderer {
     }
 
     private record EdgeSegment3D(float x1, float y1, float z1, float x2, float y2, float z2) {}
+    private record ModelFaceQuad(float x1, float y1, float z1, float x2, float y2, float z2,
+                                 float x3, float y3, float z3, float x4, float y4, float z4) {}
 
     private static final Map<Identifier, List<EdgeSegment3D>> MODEL_OUTLINE_CACHE = new HashMap<>();
+    private static final Map<Identifier, List<ModelFaceQuad>> MODEL_FILL_CACHE = new HashMap<>();
+    private static final Map<Identifier, VoxelShape> MODEL_SHAPE_CACHE = new HashMap<>();
+
+    public static void clearCaches() {
+        OUTLINE_CACHE.clear();
+        FILL_CACHE.clear();
+        MODEL_OUTLINE_CACHE.clear();
+        MODEL_FILL_CACHE.clear();
+        MODEL_SHAPE_CACHE.clear();
+    }
 
     private static List<EdgeSegment3D> getOrBuildModelOutline(Identifier modelLoc) {
         return MODEL_OUTLINE_CACHE.computeIfAbsent(modelLoc, InteractiveBlockOutlineRenderer::buildModelOutline);
+    }
+
+    private static List<ModelFaceQuad> getOrBuildModelFill(Identifier modelLoc) {
+        return MODEL_FILL_CACHE.computeIfAbsent(modelLoc, InteractiveBlockOutlineRenderer::buildModelFill);
+    }
+
+    private static VoxelShape getOrBuildModelShape(Identifier modelLoc) {
+        return MODEL_SHAPE_CACHE.computeIfAbsent(modelLoc, InteractiveBlockOutlineRenderer::buildModelShape);
     }
 
     private static List<EdgeSegment3D> buildModelOutline(Identifier modelLoc) {
@@ -1405,6 +1645,130 @@ public class InteractiveBlockOutlineRenderer {
             LOGGER.error("Error building model outline for {}: ", modelLoc, e);
         }
         return edges;
+    }
+
+    private static List<ModelFaceQuad> buildModelFill(Identifier modelLoc) {
+        List<ModelFaceQuad> faces = new ArrayList<>();
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getResourceManager() == null) {
+                LOGGER.warn("ResourceManager not available, cannot load model fill {}", modelLoc);
+                return faces;
+            }
+            Resource resource = mc.getResourceManager().getResource(modelLoc).orElse(null);
+            if (resource == null) {
+                LOGGER.warn("Model not found for fill: {}", modelLoc);
+                return faces;
+            }
+
+            try (InputStream stream = resource.open()) {
+                JsonObject root = JsonParser.parseReader(new java.io.InputStreamReader(stream)).getAsJsonObject();
+                JsonArray elements = root.getAsJsonArray("elements");
+                if (elements == null) {
+                    return faces;
+                }
+                for (JsonElement element : elements) {
+                    JsonObject obj = element.getAsJsonObject();
+                    float[] from = readVec3(obj.getAsJsonArray("from"));
+                    float[] to = readVec3(obj.getAsJsonArray("to"));
+                    float[][] corners = buildCorners(from, to);
+
+                    if (obj.has("rotation")) {
+                        JsonObject rot = obj.getAsJsonObject("rotation");
+                        float angle = rot.get("angle").getAsFloat();
+                        String axis = rot.get("axis").getAsString();
+                        float[] origin = readVec3(rot.getAsJsonArray("origin"));
+                        for (int i = 0; i < corners.length; i++) {
+                            corners[i] = rotatePoint(corners[i], origin, axis, angle);
+                        }
+                    }
+                    addElementFaces(faces, corners);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error building model fill for {}: ", modelLoc, e);
+        }
+        return faces;
+    }
+
+    private static VoxelShape buildModelShape(Identifier modelLoc) {
+        VoxelShape shape = Shapes.empty();
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getResourceManager() == null) {
+                LOGGER.warn("ResourceManager not available, cannot load model shape {}", modelLoc);
+                return shape;
+            }
+            Resource resource = mc.getResourceManager().getResource(modelLoc).orElse(null);
+            if (resource == null) {
+                LOGGER.warn("Model not found for shape: {}", modelLoc);
+                return shape;
+            }
+
+            try (InputStream stream = resource.open()) {
+                JsonObject root = JsonParser.parseReader(new java.io.InputStreamReader(stream)).getAsJsonObject();
+                JsonArray elements = root.getAsJsonArray("elements");
+                if (elements == null) {
+                    return shape;
+                }
+
+                for (JsonElement element : elements) {
+                    JsonObject obj = element.getAsJsonObject();
+                    float[] from = readVec3(obj.getAsJsonArray("from"));
+                    float[] to = readVec3(obj.getAsJsonArray("to"));
+                    float[][] corners = buildCorners(from, to);
+
+                    if (obj.has("rotation")) {
+                        JsonObject rot = obj.getAsJsonObject("rotation");
+                        float angle = rot.get("angle").getAsFloat();
+                        String axis = rot.get("axis").getAsString();
+                        float[] origin = readVec3(rot.getAsJsonArray("origin"));
+                        for (int i = 0; i < corners.length; i++) {
+                            corners[i] = rotatePoint(corners[i], origin, axis, angle);
+                        }
+                    }
+
+                    float minX = Float.MAX_VALUE;
+                    float minY = Float.MAX_VALUE;
+                    float minZ = Float.MAX_VALUE;
+                    float maxX = -Float.MAX_VALUE;
+                    float maxY = -Float.MAX_VALUE;
+                    float maxZ = -Float.MAX_VALUE;
+                    for (float[] c : corners) {
+                        minX = Math.min(minX, c[0]);
+                        minY = Math.min(minY, c[1]);
+                        minZ = Math.min(minZ, c[2]);
+                        maxX = Math.max(maxX, c[0]);
+                        maxY = Math.max(maxY, c[1]);
+                        maxZ = Math.max(maxZ, c[2]);
+                    }
+                    shape = Shapes.or(shape, Shapes.create(
+                        minX / 16.0, minY / 16.0, minZ / 16.0,
+                        maxX / 16.0, maxY / 16.0, maxZ / 16.0
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error building model shape for {}: ", modelLoc, e);
+        }
+        return shape;
+    }
+
+    private static void addElementFaces(List<ModelFaceQuad> faces, float[][] corners) {
+        addModelFace(faces, corners[0], corners[1], corners[2], corners[3]);
+        addModelFace(faces, corners[5], corners[4], corners[7], corners[6]);
+        addModelFace(faces, corners[4], corners[0], corners[3], corners[7]);
+        addModelFace(faces, corners[1], corners[5], corners[6], corners[2]);
+        addModelFace(faces, corners[3], corners[2], corners[6], corners[7]);
+        addModelFace(faces, corners[4], corners[5], corners[1], corners[0]);
+    }
+
+    private static void addModelFace(List<ModelFaceQuad> faces, float[] a, float[] b, float[] c, float[] d) {
+        faces.add(new ModelFaceQuad(
+            a[0] / 16.0f, a[1] / 16.0f, a[2] / 16.0f,
+            b[0] / 16.0f, b[1] / 16.0f, b[2] / 16.0f,
+            c[0] / 16.0f, c[1] / 16.0f, c[2] / 16.0f,
+            d[0] / 16.0f, d[1] / 16.0f, d[2] / 16.0f));
     }
 
     private static Identifier getPosterModelLocation(int posterNumber) {
@@ -1521,6 +1885,177 @@ public class InteractiveBlockOutlineRenderer {
         double rx = dx * Math.cos(angle) + dz * Math.sin(angle);
         double rz = -dx * Math.sin(angle) + dz * Math.cos(angle);
         return new float[] { (float) (rx + cx), y, (float) (rz + cz) };
+    }
+
+    private static VoxelShape rotateShapeForFacing(VoxelShape shape, Direction facing) {
+        if (shape.isEmpty() || facing == Direction.NORTH) {
+            return shape;
+        }
+        VoxelShape rotated = Shapes.empty();
+        for (AABB box : shape.toAabbs()) {
+            AABB r = rotateAabbForFacing(box, facing);
+            rotated = Shapes.or(rotated, Shapes.create(r.minX, r.minY, r.minZ, r.maxX, r.maxY, r.maxZ));
+        }
+        return rotated;
+    }
+
+    private static AABB rotateAabbForFacing(AABB box, Direction facing) {
+        double[] xs = {box.minX, box.maxX};
+        double[] zs = {box.minZ, box.maxZ};
+        double minX = Double.MAX_VALUE;
+        double minZ = Double.MAX_VALUE;
+        double maxX = -Double.MAX_VALUE;
+        double maxZ = -Double.MAX_VALUE;
+        for (double x : xs) {
+            for (double z : zs) {
+                float[] p = rotatePointY((float) x, 0.0f, (float) z, facing);
+                minX = Math.min(minX, p[0]);
+                minZ = Math.min(minZ, p[2]);
+                maxX = Math.max(maxX, p[0]);
+                maxZ = Math.max(maxZ, p[2]);
+            }
+        }
+        return new AABB(minX, box.minY, minZ, maxX, box.maxY, maxZ);
+    }
+
+    private static int renderModelSilhouetteOutline(Identifier modelLoc, BlockState state, OutlineMode mode,
+                                                    Vec3 cameraPos, BlockPos pos, VertexConsumer consumer, Matrix4f matrix) {
+        List<ModelFaceQuad> quads = getOrBuildModelFill(modelLoc);
+        if (quads.isEmpty()) {
+            return 0;
+        }
+        float[] center = getModelCenter(quads);
+        Direction[] facings = getRenderFacings(mode, state);
+        int drawn = 0;
+        for (Direction facing : facings) {
+            float[] centerRot = rotatePointY(center[0], center[1], center[2], facing);
+            Map<String, SilhouetteEdgeInfo> edges = new HashMap<>();
+            for (ModelFaceQuad quad : quads) {
+                float[] p1 = rotatePointY(quad.x1, quad.y1, quad.z1, facing);
+                float[] p2 = rotatePointY(quad.x2, quad.y2, quad.z2, facing);
+                float[] p3 = rotatePointY(quad.x3, quad.y3, quad.z3, facing);
+                float[] p4 = rotatePointY(quad.x4, quad.y4, quad.z4, facing);
+                float[] normal = computeFaceNormal(p1, p2, p4);
+                float cx = (p1[0] + p2[0] + p3[0] + p4[0]) * 0.25f;
+                float cy = (p1[1] + p2[1] + p3[1] + p4[1]) * 0.25f;
+                float cz = (p1[2] + p2[2] + p3[2] + p4[2]) * 0.25f;
+                float outX = cx - centerRot[0];
+                float outY = cy - centerRot[1];
+                float outZ = cz - centerRot[2];
+                if (dot(normal, outX, outY, outZ) < 0.0f) {
+                    normal = new float[] { -normal[0], -normal[1], -normal[2] };
+                }
+                addSilhouetteEdge(edges, p1, p2, normal);
+                addSilhouetteEdge(edges, p2, p3, normal);
+                addSilhouetteEdge(edges, p3, p4, normal);
+                addSilhouetteEdge(edges, p4, p1, normal);
+            }
+
+            for (SilhouetteEdgeInfo info : edges.values()) {
+                if (info.normalB == null) {
+                    continue;
+                }
+                float midX = (info.x1 + info.x2) * 0.5f;
+                float midY = (info.y1 + info.y2) * 0.5f;
+                float midZ = (info.z1 + info.z2) * 0.5f;
+                float viewX = (float) (cameraPos.x - (pos.getX() + midX));
+                float viewY = (float) (cameraPos.y - (pos.getY() + midY));
+                float viewZ = (float) (cameraPos.z - (pos.getZ() + midZ));
+                boolean frontA = dot(info.normalA, viewX, viewY, viewZ) > 0.0f;
+                boolean frontB = dot(info.normalB, viewX, viewY, viewZ) > 0.0f;
+                if (frontA != frontB) {
+                    renderLine(consumer, matrix, info.x1, info.y1, info.z1, info.x2, info.y2, info.z2);
+                    drawn++;
+                }
+            }
+        }
+        return drawn;
+    }
+
+    private static float[] getModelCenter(List<ModelFaceQuad> quads) {
+        float minX = Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        float maxZ = -Float.MAX_VALUE;
+        for (ModelFaceQuad q : quads) {
+            minX = Math.min(minX, Math.min(Math.min(q.x1, q.x2), Math.min(q.x3, q.x4)));
+            minY = Math.min(minY, Math.min(Math.min(q.y1, q.y2), Math.min(q.y3, q.y4)));
+            minZ = Math.min(minZ, Math.min(Math.min(q.z1, q.z2), Math.min(q.z3, q.z4)));
+            maxX = Math.max(maxX, Math.max(Math.max(q.x1, q.x2), Math.max(q.x3, q.x4)));
+            maxY = Math.max(maxY, Math.max(Math.max(q.y1, q.y2), Math.max(q.y3, q.y4)));
+            maxZ = Math.max(maxZ, Math.max(Math.max(q.z1, q.z2), Math.max(q.z3, q.z4)));
+        }
+        return new float[] { (minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f };
+    }
+
+    private static float[] computeFaceNormal(float[] p1, float[] p2, float[] p4) {
+        float ux = p2[0] - p1[0];
+        float uy = p2[1] - p1[1];
+        float uz = p2[2] - p1[2];
+        float vx = p4[0] - p1[0];
+        float vy = p4[1] - p1[1];
+        float vz = p4[2] - p1[2];
+        float nx = uy * vz - uz * vy;
+        float ny = uz * vx - ux * vz;
+        float nz = ux * vy - uy * vx;
+        float len = Mth.sqrt(nx * nx + ny * ny + nz * nz);
+        if (len <= 1.0e-5f) {
+            return new float[] { 0.0f, 1.0f, 0.0f };
+        }
+        return new float[] { nx / len, ny / len, nz / len };
+    }
+
+    private static void addSilhouetteEdge(Map<String, SilhouetteEdgeInfo> edges, float[] a, float[] b, float[] normal) {
+        long ax = Math.round(a[0] * 10000.0);
+        long ay = Math.round(a[1] * 10000.0);
+        long az = Math.round(a[2] * 10000.0);
+        long bx = Math.round(b[0] * 10000.0);
+        long by = Math.round(b[1] * 10000.0);
+        long bz = Math.round(b[2] * 10000.0);
+        boolean swap = ax > bx || (ax == bx && (ay > by || (ay == by && az > bz)));
+        float x1 = swap ? b[0] : a[0];
+        float y1 = swap ? b[1] : a[1];
+        float z1 = swap ? b[2] : a[2];
+        float x2 = swap ? a[0] : b[0];
+        float y2 = swap ? a[1] : b[1];
+        float z2 = swap ? a[2] : b[2];
+        if (swap) {
+            long tx = ax; long ty = ay; long tz = az;
+            ax = bx; ay = by; az = bz;
+            bx = tx; by = ty; bz = tz;
+        }
+        String key = ax + "," + ay + "," + az + "|" + bx + "," + by + "," + bz;
+        SilhouetteEdgeInfo existing = edges.get(key);
+        if (existing == null) {
+            edges.put(key, new SilhouetteEdgeInfo(x1, y1, z1, x2, y2, z2, normal, null));
+        } else if (existing.normalB == null) {
+            existing.normalB = normal;
+        }
+    }
+
+    private static final class SilhouetteEdgeInfo {
+        final float x1;
+        final float y1;
+        final float z1;
+        final float x2;
+        final float y2;
+        final float z2;
+        final float[] normalA;
+        float[] normalB;
+
+        private SilhouetteEdgeInfo(float x1, float y1, float z1, float x2, float y2, float z2,
+                                   float[] normalA, float[] normalB) {
+            this.x1 = x1;
+            this.y1 = y1;
+            this.z1 = z1;
+            this.x2 = x2;
+            this.y2 = y2;
+            this.z2 = z2;
+            this.normalA = normalA;
+            this.normalB = normalB;
+        }
     }
     private static List<EdgeSegment> getOrBuildOutline(Identifier textureLoc) {
         return OUTLINE_CACHE.computeIfAbsent(textureLoc, InteractiveBlockOutlineRenderer::buildOutline);

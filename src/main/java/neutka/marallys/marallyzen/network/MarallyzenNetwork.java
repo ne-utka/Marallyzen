@@ -178,6 +178,12 @@ public class MarallyzenNetwork {
                 TriggerScreenShakePacket::handle
         );
 
+        registrar.playToClient(
+                TriggerBindSyncPacket.TYPE,
+                TriggerBindSyncPacket.STREAM_CODEC,
+                TriggerBindSyncPacket::handle
+        );
+
 
         registrar.playToClient(
                 QuestSyncPacket.TYPE,
