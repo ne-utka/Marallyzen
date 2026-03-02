@@ -65,14 +65,22 @@ public final class DoorSavedData extends SavedData {
             boolean opened,
             boolean animating,
             int animationTick,
-            String animationDirection
+            String animationDirection,
+            int durationTicks,
+            String soundEnd,
+            boolean pendingProtection,
+            boolean collision
     ) {
         public static final Codec<DoorState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.BOOL.optionalFieldOf("opened", true).forGetter(DoorState::opened),
                 Codec.BOOL.optionalFieldOf("animating", false).forGetter(DoorState::animating),
                 Codec.INT.optionalFieldOf("animationTick", 0).forGetter(DoorState::animationTick),
                 Codec.STRING.optionalFieldOf("animationDirection", DoorAnimationDirection.CLOSING.name())
-                        .forGetter(DoorState::animationDirection)
+                        .forGetter(DoorState::animationDirection),
+                Codec.INT.optionalFieldOf("durationTicks", 60).forGetter(DoorState::durationTicks),
+                Codec.STRING.optionalFieldOf("soundEnd", "").forGetter(DoorState::soundEnd),
+                Codec.BOOL.optionalFieldOf("pendingProtection", false).forGetter(DoorState::pendingProtection),
+                Codec.BOOL.optionalFieldOf("collision", true).forGetter(DoorState::collision)
         ).apply(instance, DoorState::new));
 
         public DoorAnimationDirection direction() {

@@ -263,13 +263,23 @@ public final class TriggerBlueprint {
                 String scene,
                 String sceneArgs,
                 String nextTrigger,
-                String doorId
+                String doorId,
+                String activityType,
+                String activityScript,
+                String activityArgs,
+                java.util.Map<String, String> params
         ) {
             public static ActionSettings none() {
-                return new ActionSettings("", "", "", "", "", "", "");
+                return new ActionSettings("", "", "", "", "", "", "", "", "", "", java.util.Map.of());
             }
 
             public boolean hasAction() {
+                if (activityType != null && !activityType.isBlank()) {
+                    return true;
+                }
+                if (activityScript != null && !activityScript.isBlank()) {
+                    return true;
+                }
                 return type != null && !type.isBlank();
             }
 
@@ -279,27 +289,62 @@ public final class TriggerBlueprint {
                 }
                 JsonObject actionObj = settingsObject.getAsJsonObject("action");
                 if (actionObj != null) {
+                    java.util.Map<String, String> params = extractParams(actionObj);
                     String type = readString(actionObj, "type", "");
-                    String npc = readString(actionObj, "npc", "");
-                    String replay = readString(actionObj, "replay", "");
+                    String npc = readString(actionObj, "npc", readString(actionObj, "npc_id", ""));
+                    String replay = readString(actionObj, "replay", readString(actionObj, "replay_id", ""));
                     String scene = readString(actionObj, "scene", readString(actionObj, "script", ""));
                     String sceneArgs = readString(actionObj, "scene_args", readString(actionObj, "args", ""));
                     String nextTrigger = readString(actionObj, "next_trigger", readString(actionObj, "nextTrigger", ""));
                     String doorId = readString(actionObj, "door_id", readString(actionObj, "doorId", ""));
-                    return new ActionSettings(type, npc, replay, scene, sceneArgs, nextTrigger, doorId);
+
+                    String activityType = readString(actionObj, "activity_type", readString(actionObj, "activityType", ""));
+                    String activityScript = readString(actionObj, "activity_script", readString(actionObj, "activityScript", ""));
+                    String activityArgs = readString(actionObj, "activity_args", readString(actionObj, "activityArgs", ""));
+                    String activityRef = readString(actionObj, "activity", "");
+                    if (actionObj.has("activity") && actionObj.get("activity").isJsonObject()) {
+                        JsonObject activityObj = actionObj.getAsJsonObject("activity");
+                        activityType = readString(activityObj, "type", activityType);
+                        activityScript = readString(activityObj, "script", readString(activityObj, "id", activityScript));
+                        activityArgs = readString(activityObj, "args", activityArgs);
+                    }
+                    if (activityScript.isBlank() && !activityRef.isBlank()) {
+                        ActivityRef parsed = ActivityRef.parse(activityRef, activityType);
+                        activityType = parsed.type;
+                        activityScript = parsed.script;
+                    }
+                    return new ActionSettings(type, npc, replay, scene, sceneArgs, nextTrigger, doorId,
+                            activityType, activityScript, activityArgs, params);
                 }
                 // Legacy flattened form inside settings.
                 String legacyType = readString(settingsObject, "type", "");
                 if (legacyType.isBlank()) {
                     return none();
                 }
-                String npc = readString(settingsObject, "npc", "");
-                String replay = readString(settingsObject, "replay", "");
+                java.util.Map<String, String> params = extractParams(settingsObject);
+                String npc = readString(settingsObject, "npc", readString(settingsObject, "npc_id", ""));
+                String replay = readString(settingsObject, "replay", readString(settingsObject, "replay_id", ""));
                 String scene = readString(settingsObject, "scene", readString(settingsObject, "script", ""));
                 String sceneArgs = readString(settingsObject, "scene_args", readString(settingsObject, "args", ""));
                 String nextTrigger = readString(settingsObject, "next_trigger", readString(settingsObject, "nextTrigger", ""));
                 String doorId = readString(settingsObject, "door_id", readString(settingsObject, "doorId", ""));
-                return new ActionSettings(legacyType, npc, replay, scene, sceneArgs, nextTrigger, doorId);
+                String activityType = readString(settingsObject, "activity_type", readString(settingsObject, "activityType", ""));
+                String activityScript = readString(settingsObject, "activity_script", readString(settingsObject, "activityScript", ""));
+                String activityArgs = readString(settingsObject, "activity_args", readString(settingsObject, "activityArgs", ""));
+                String activityRef = readString(settingsObject, "activity", "");
+                if (settingsObject.has("activity") && settingsObject.get("activity").isJsonObject()) {
+                    JsonObject activityObj = settingsObject.getAsJsonObject("activity");
+                    activityType = readString(activityObj, "type", activityType);
+                    activityScript = readString(activityObj, "script", readString(activityObj, "id", activityScript));
+                    activityArgs = readString(activityObj, "args", activityArgs);
+                }
+                if (activityScript.isBlank() && !activityRef.isBlank()) {
+                    ActivityRef parsed = ActivityRef.parse(activityRef, activityType);
+                    activityType = parsed.type;
+                    activityScript = parsed.script;
+                }
+                return new ActionSettings(legacyType, npc, replay, scene, sceneArgs, nextTrigger, doorId,
+                        activityType, activityScript, activityArgs, params);
             }
 
             public JsonObject toJson() {
@@ -323,7 +368,148 @@ public final class TriggerBlueprint {
                 if (doorId != null && !doorId.isBlank()) {
                     obj.addProperty("door_id", doorId);
                 }
+                if (activityType != null && !activityType.isBlank()) {
+                    obj.addProperty("activity_type", activityType);
+                }
+                if (activityScript != null && !activityScript.isBlank()) {
+                    obj.addProperty("activity_script", activityScript);
+                }
+                if (activityArgs != null && !activityArgs.isBlank()) {
+                    obj.addProperty("activity_args", activityArgs);
+                }
+                if (params != null && !params.isEmpty()) {
+                    JsonObject paramsObj = new JsonObject();
+                    for (var entry : params.entrySet()) {
+                        String key = entry.getKey();
+                        if (key == null || key.isBlank()) {
+                            continue;
+                        }
+                        if (isReservedParam(key)) {
+                            continue;
+                        }
+                        paramsObj.addProperty(key, entry.getValue());
+                    }
+                    if (!paramsObj.isEmpty()) {
+                        obj.add("params", paramsObj);
+                    }
+                }
                 return obj;
+            }
+
+            public String resolveActivityType() {
+                if (activityType != null && !activityType.isBlank()) {
+                    return activityType.trim().toLowerCase(Locale.ROOT);
+                }
+                if (doorId != null && !doorId.isBlank()) {
+                    return "door";
+                }
+                if ((replay != null && !replay.isBlank()) || (scene != null && !scene.isBlank())) {
+                    return "npc";
+                }
+                if (type != null && !type.isBlank() && !"activity".equalsIgnoreCase(type)) {
+                    return type.trim().toLowerCase(Locale.ROOT);
+                }
+                return "";
+            }
+
+            public String resolveActivityScript() {
+                if (activityScript != null && !activityScript.isBlank()) {
+                    return activityScript.trim().toLowerCase(Locale.ROOT);
+                }
+                if (doorId != null && !doorId.isBlank()) {
+                    return doorId.trim().toLowerCase(Locale.ROOT);
+                }
+                if (scene != null && !scene.isBlank()) {
+                    return scene.trim().toLowerCase(Locale.ROOT);
+                }
+                if (replay != null && !replay.isBlank()) {
+                    return replay.trim().toLowerCase(Locale.ROOT);
+                }
+                String ref = param("activity");
+                if (ref != null && !ref.isBlank()) {
+                    ActivityRef parsed = ActivityRef.parse(ref, "");
+                    return parsed.script;
+                }
+                return "";
+            }
+
+            public String param(String key) {
+                if (key == null || key.isBlank()) {
+                    return "";
+                }
+                String normalized = key.trim().toLowerCase(Locale.ROOT);
+                if (params != null && params.containsKey(normalized)) {
+                    return params.get(normalized);
+                }
+                return "";
+            }
+
+            private static java.util.Map<String, String> extractParams(JsonObject obj) {
+                java.util.Map<String, String> out = new java.util.HashMap<>();
+                if (obj == null) {
+                    return out;
+                }
+                for (var entry : obj.entrySet()) {
+                    if (entry.getValue() != null && entry.getValue().isJsonPrimitive()) {
+                        out.put(normalizeKey(entry.getKey()), entry.getValue().getAsString());
+                    }
+                }
+                JsonObject paramsObj = obj.getAsJsonObject("params");
+                if (paramsObj != null) {
+                    for (var entry : paramsObj.entrySet()) {
+                        if (entry.getValue() != null && entry.getValue().isJsonPrimitive()) {
+                            out.put(normalizeKey(entry.getKey()), entry.getValue().getAsString());
+                        }
+                    }
+                }
+                return out;
+            }
+
+            private static boolean isReservedParam(String key) {
+                String normalized = key.toLowerCase(Locale.ROOT);
+                return "type".equals(normalized)
+                        || "activity_type".equals(normalized)
+                        || "activity_script".equals(normalized)
+                        || "activity_args".equals(normalized)
+                        || "scene_args".equals(normalized)
+                        || "next_trigger".equals(normalized)
+                        || "door_id".equals(normalized)
+                        || "npc".equals(normalized)
+                        || "npc_id".equals(normalized)
+                        || "replay".equals(normalized)
+                        || "replay_id".equals(normalized)
+                        || "scene".equals(normalized)
+                        || "script".equals(normalized)
+                        || "params".equals(normalized);
+            }
+
+            private static String normalizeKey(String key) {
+                if (key == null) {
+                    return "";
+                }
+                return key.trim().toLowerCase(Locale.ROOT);
+            }
+
+            private record ActivityRef(String type, String script) {
+                private static ActivityRef parse(String raw, String fallbackType) {
+                    String clean = raw == null ? "" : raw.trim();
+                    if (clean.isBlank()) {
+                        return new ActivityRef(fallbackType, "");
+                    }
+                    String type = fallbackType == null ? "" : fallbackType;
+                    String script = clean;
+                    if (clean.contains("/")) {
+                        String[] parts = clean.split("/", 2);
+                        type = parts[0];
+                        script = parts[1];
+                    } else if (clean.contains(":")) {
+                        String[] parts = clean.split(":", 2);
+                        type = parts[0];
+                        script = parts[1];
+                    }
+                    return new ActivityRef(type == null ? "" : type.trim().toLowerCase(Locale.ROOT),
+                            script == null ? "" : script.trim().toLowerCase(Locale.ROOT));
+                }
             }
         }
 

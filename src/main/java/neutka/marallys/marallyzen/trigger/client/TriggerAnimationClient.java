@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import neutka.marallys.marallyzen.activity.EasingRegistry;
 import neutka.marallys.marallyzen.network.TriggerAnimationStartPacket;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlockStateCodec;
 
@@ -95,7 +96,7 @@ public final class TriggerAnimationClient {
                 continue;
             }
             float t = Math.min(1.0F, (animation.ageTicks + partialTick) / (float) animation.durationTicks);
-            float eased = applyEasing(t, animation.easing);
+            float eased = EasingRegistry.apply(animation.easing, t);
             double shiftX = animation.spawnOffset.getX() * (1.0D - eased);
             double shiftY = animation.spawnOffset.getY() * (1.0D - eased);
             double shiftZ = animation.spawnOffset.getZ() * (1.0D - eased);
@@ -126,19 +127,6 @@ public final class TriggerAnimationClient {
 
     public void clear() {
         animations.clear();
-    }
-
-    private float applyEasing(float t, String easing) {
-        String raw = easing == null ? "" : easing.trim().toLowerCase();
-        if ("linear".equals(raw)) {
-            return Math.max(0.0F, Math.min(1.0F, t));
-        }
-        if ("ease_in_out".equals(raw)) {
-            float x = Math.max(0.0F, Math.min(1.0F, t));
-            return x < 0.5F ? 4.0F * x * x * x : 1.0F - (float) Math.pow(-2.0F * x + 2.0F, 3) / 2.0F;
-        }
-        float inv = 1.0F - Math.max(0.0F, Math.min(1.0F, t));
-        return 1.0F - inv * inv * inv;
     }
 
     private static final class RunningAnimation {

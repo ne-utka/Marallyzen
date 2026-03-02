@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.activity.ActivityRegistry;
+import neutka.marallys.marallyzen.activity.ActivityScript;
 import neutka.marallys.marallyzen.door.DoorEngine;
 import neutka.marallys.marallyzen.denizen.commands.CommandScriptRegistry;
 import neutka.marallys.marallyzen.network.NetworkHelper;
@@ -56,7 +58,8 @@ public final class TriggerModule {
     private final TriggerRegistry triggerRegistry = new TriggerRegistry();
     private final TriggerZoneManager zoneManager = new TriggerZoneManager();
     private final TriggerInstanceManager instanceManager = new TriggerInstanceManager(blueprintLoader);
-    private final TriggerEngine engine = new TriggerEngine(blueprintLoader, instanceManager, triggerRegistry, zoneManager);
+    private final ActivityRegistry activityRegistry = new ActivityRegistry();
+    private final TriggerEngine engine = new TriggerEngine(blueprintLoader, instanceManager, triggerRegistry, zoneManager, activityRegistry);
 
     private MinecraftServer server;
     private boolean initialized;
@@ -64,6 +67,7 @@ public final class TriggerModule {
     public void initialize(MinecraftServer server) {
         this.server = server;
         blueprintLoader.reloadBlueprints();
+        activityRegistry.reload();
         if (server == null || server.overworld() == null) {
             initialized = false;
             return;
@@ -84,6 +88,7 @@ public final class TriggerModule {
             this.server = server;
         }
         blueprintLoader.reloadBlueprints();
+        activityRegistry.reload();
         if (this.server == null || this.server.overworld() == null) {
             initialized = false;
             return;
@@ -110,6 +115,10 @@ public final class TriggerModule {
 
     public TriggerBlueprintLoader blueprintLoader() {
         return blueprintLoader;
+    }
+
+    public ActivityRegistry activityRegistry() {
+        return activityRegistry;
     }
 
     public TriggerInstanceManager instanceManager() {
@@ -309,6 +318,10 @@ public final class TriggerModule {
             return new OperationResult(false, "Failed to create door: " + id);
         }
         selectionManager.clearSelection(player.getUUID());
+        OperationResult activityResult = ensureDoorActivityScript(id);
+        if (!activityResult.success()) {
+            return activityResult;
+        }
         return new OperationResult(true, "Door saved: " + id);
     }
 
@@ -589,7 +602,7 @@ public final class TriggerModule {
             instance.setNextTimerGameTime(0L);
             instance.setLastPowered(false);
             instance.playersInside().clear();
-            instance.persistentData().remove("chain_wait_replay_unlock");
+            instance.persistentData().remove("chain_wait_activity_unlock");
 
             int chainStep = instanceManager.getChainStep(instance);
             if (chainStep > 0) {
@@ -707,15 +720,24 @@ public final class TriggerModule {
             return new OperationResult(true, "Blueprint ready: " + blueprintId);
         }
 
+        OperationResult activityResult = ensureNpcSceneActivityScript(sceneId);
+        if (!activityResult.success()) {
+            return activityResult;
+        }
+
         TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
         TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
-                "npc_scene",
+                "activity",
                 "",
                 "",
+                "",
+                "",
+                "",
+                "",
+                "npc",
                 sceneId,
                 "",
-                "",
-                ""
+                java.util.Map.of("scene_id", normalizeId(sceneId))
         );
         TriggerBlueprint blueprint = new TriggerBlueprint(
                 blueprintId,
@@ -752,15 +774,24 @@ public final class TriggerModule {
             return new OperationResult(true, "Blueprint ready: " + blueprintId);
         }
 
+        OperationResult activityResult = ensureNpcReplayActivityScript(replayId);
+        if (!activityResult.success()) {
+            return activityResult;
+        }
+
         TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
         TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
-                "npc_replay",
+                "activity",
                 npcId,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "npc",
                 replayId,
                 "",
-                "",
-                "",
-                ""
+                java.util.Map.of("npc_id", normalizeId(npcId), "replay_id", normalizeId(replayId))
         );
         TriggerBlueprint blueprint = new TriggerBlueprint(
                 blueprintId,
@@ -797,15 +828,24 @@ public final class TriggerModule {
             return new OperationResult(true, "Blueprint ready: " + blueprintId);
         }
 
+        OperationResult activityResult = ensureDoorActivityScript(doorId);
+        if (!activityResult.success()) {
+            return activityResult;
+        }
+
         TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
         TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
+                "activity",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 "door",
+                doorId,
                 "",
-                "",
-                "",
-                "",
-                "",
-                doorId
+                java.util.Map.of("door_id", normalizeId(doorId))
         );
         TriggerBlueprint blueprint = new TriggerBlueprint(
                 blueprintId,
@@ -841,6 +881,108 @@ public final class TriggerModule {
             return "block_use";
         }
         return raw.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private OperationResult ensureDoorActivityScript(String doorId) {
+        String id = normalizeId(doorId);
+        if (id.isBlank()) {
+            return new OperationResult(false, "Door id is required for activity script.");
+        }
+        Path root = activityRegistry.loader().getRootDirectory();
+        Path file = root.resolve("door").resolve(id + ".json");
+        if (Files.exists(file)) {
+            return new OperationResult(true, "Activity script ready: door/" + id);
+        }
+        ActivityScript script = new ActivityScript(
+                id,
+                "door",
+                ActivityScript.CURRENT_FORMAT,
+                new ActivityScript.Animation("vertical", "down", 60, "ease_out", BlockPos.ZERO, 0.0D, 0.0D),
+                new ActivityScript.Physics(true, true),
+                new ActivityScript.Effects(
+                        "",
+                        "minecraft:block.stone_break",
+                        new ActivityScript.ParticleSettings("minecraft:poof", 24, 0.25D, 0.02D),
+                        new ActivityScript.ShakeSettings(20, 1.0F, "linear", 15)
+                ),
+                new com.google.gson.JsonObject()
+        );
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(script.toJson(), writer);
+            }
+            activityRegistry.reload();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create door activity script: " + e.getMessage());
+        }
+        return new OperationResult(true, "Activity script created: door/" + id);
+    }
+
+    private OperationResult ensureNpcReplayActivityScript(String replayId) {
+        String id = normalizeId(replayId);
+        if (id.isBlank()) {
+            return new OperationResult(false, "Replay id is required for activity script.");
+        }
+        Path root = activityRegistry.loader().getRootDirectory();
+        Path file = root.resolve("npc").resolve(id + ".json");
+        if (Files.exists(file)) {
+            return new OperationResult(true, "Activity script ready: npc/" + id);
+        }
+        com.google.gson.JsonObject data = new com.google.gson.JsonObject();
+        data.addProperty("replay_id", id);
+        ActivityScript script = new ActivityScript(
+                id,
+                "npc",
+                ActivityScript.CURRENT_FORMAT,
+                ActivityScript.Animation.defaults(),
+                ActivityScript.Physics.defaults(),
+                ActivityScript.Effects.defaults(),
+                data
+        );
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(script.toJson(), writer);
+            }
+            activityRegistry.reload();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create npc activity script: " + e.getMessage());
+        }
+        return new OperationResult(true, "Activity script created: npc/" + id);
+    }
+
+    private OperationResult ensureNpcSceneActivityScript(String sceneId) {
+        String id = normalizeId(sceneId);
+        if (id.isBlank()) {
+            return new OperationResult(false, "Scene id is required for activity script.");
+        }
+        Path root = activityRegistry.loader().getRootDirectory();
+        Path file = root.resolve("npc").resolve(id + ".json");
+        if (Files.exists(file)) {
+            return new OperationResult(true, "Activity script ready: npc/" + id);
+        }
+        com.google.gson.JsonObject data = new com.google.gson.JsonObject();
+        data.addProperty("scene_id", id);
+        ActivityScript script = new ActivityScript(
+                id,
+                "npc",
+                ActivityScript.CURRENT_FORMAT,
+                ActivityScript.Animation.defaults(),
+                ActivityScript.Physics.defaults(),
+                ActivityScript.Effects.defaults(),
+                data
+        );
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(script.toJson(), writer);
+            }
+            activityRegistry.reload();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create npc activity script: " + e.getMessage());
+        }
+        return new OperationResult(true, "Activity script created: npc/" + id);
     }
 
     private String formatPos(BlockPos pos) {

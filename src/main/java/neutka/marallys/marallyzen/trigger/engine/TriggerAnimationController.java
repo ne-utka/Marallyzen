@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
+import neutka.marallys.marallyzen.activity.EasingRegistry;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.TriggerScreenShakePacket;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprint;
@@ -36,6 +37,10 @@ public final class TriggerAnimationController {
 
     public void onAnimationStart(ServerLevel level, TriggerInstance instance, TriggerBlueprint blueprint) {
         if (level == null || instance == null || blueprint == null) {
+            return;
+        }
+        if (blueprint.blocks().isEmpty()) {
+            // NPC scene/replay trigger blueprints may be action-only; skip structure VFX/SFX in this case.
             return;
         }
         playStartSound(level, instance, blueprint);
@@ -76,7 +81,7 @@ public final class TriggerAnimationController {
         TriggerBlueprint.Settings.AnimationSettings animation = blueprint.settings().animation();
         int duration = Math.max(1, animation.duration());
         float t = clamp01(instance.animationTick() / (float) duration);
-        float eased = applyEasing(t, animation.easing());
+        float eased = EasingRegistry.apply(animation.easing(), t);
         double shiftX = animation.spawnOffset().getX() * (1.0D - eased);
         double shiftY = animation.spawnOffset().getY() * (1.0D - eased);
         double shiftZ = animation.spawnOffset().getZ() * (1.0D - eased);
@@ -147,19 +152,6 @@ public final class TriggerAnimationController {
 
     private String normalize(String raw) {
         return raw == null ? "" : raw.trim().toLowerCase();
-    }
-
-    private float applyEasing(float t, String easing) {
-        String raw = normalize(easing);
-        if ("linear".equals(raw)) {
-            return clamp01(t);
-        }
-        if ("ease_in_out".equals(raw)) {
-            float x = clamp01(t);
-            return x < 0.5F ? 4.0F * x * x * x : 1.0F - (float) Math.pow(-2.0F * x + 2.0F, 3) / 2.0F;
-        }
-        float inv = 1.0F - clamp01(t);
-        return 1.0F - inv * inv * inv;
     }
 
     private float clamp01(float value) {
