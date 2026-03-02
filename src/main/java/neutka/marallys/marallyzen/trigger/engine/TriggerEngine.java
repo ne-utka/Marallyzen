@@ -14,9 +14,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.denizen.commands.CommandScriptRegistry;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.TriggerAnimationStartPacket;
 import neutka.marallys.marallyzen.network.TriggerAnimationStopPacket;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayEngine;
+import neutka.marallys.marallyzen.door.DoorEngine;
 import neutka.marallys.marallyzen.trigger.TriggerRegistry;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprint;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprintLoader;
@@ -29,6 +32,8 @@ import java.util.List;
 import java.util.Locale;
 
 public final class TriggerEngine {
+    private static final String KEY_WAIT_REPLAY_CHAIN_UNLOCK = "chain_wait_replay_unlock";
+
     private final TriggerBlueprintLoader blueprintLoader;
     private final TriggerInstanceManager instanceManager;
     private final TriggerRegistry triggerRegistry;
@@ -100,7 +105,7 @@ public final class TriggerEngine {
             if (inside && !wasInside) {
                 instance.playersInside().add(player.getUUID());
                 ServerLevel playerLevel = player.level() instanceof ServerLevel sl ? sl : null;
-                tryActivate(instance, player, playerLevel);
+                tryActivate(instance, player, playerLevel, false);
             } else if (!inside && wasInside) {
                 instance.playersInside().remove(player.getUUID());
             }
@@ -122,7 +127,7 @@ public final class TriggerEngine {
                 continue;
             }
             ServerLevel playerLevel = player.level() instanceof ServerLevel sl ? sl : null;
-            consumed |= tryActivate(instance, player, playerLevel);
+            consumed |= tryActivate(instance, player, playerLevel, false);
         }
         return consumed;
     }
@@ -136,7 +141,7 @@ public final class TriggerEngine {
         if (level == null) {
             return false;
         }
-        return tryActivate(instance, player, level);
+        return tryActivate(instance, player, level, false);
     }
 
     public void clearPlacedStructure(TriggerInstance instance, ServerLevel level) {
@@ -165,7 +170,7 @@ public final class TriggerEngine {
             }
             if (now >= instance.nextTimerGameTime()) {
                 instance.setNextTimerGameTime(now + Math.max(1L, instance.timerIntervalTicks()));
-                return tryActivate(instance, null, level) || true;
+                return tryActivate(instance, null, level, false) || true;
             }
             return false;
         }
@@ -174,7 +179,7 @@ public final class TriggerEngine {
             boolean risingEdge = powered && !instance.lastPowered();
             instance.setLastPowered(powered);
             if (risingEdge) {
-                return tryActivate(instance, null, level);
+                return tryActivate(instance, null, level, false);
             }
             return false;
         }
@@ -185,7 +190,7 @@ public final class TriggerEngine {
                     ServerPlayer::isAlive
             );
             if (!players.isEmpty()) {
-                return tryActivate(instance, players.get(0), level);
+                return tryActivate(instance, players.get(0), level, false);
             }
             return false;
         }
@@ -209,11 +214,14 @@ public final class TriggerEngine {
         instance.setAnimationTick(0);
         instance.setCooldownRemaining(instance.cooldownTicks());
         NetworkHelper.sendToAll(new TriggerAnimationStopPacket(instance.id()));
+        if (!isWaitingReplayChainUnlock(instance)) {
+            unlockNextInChain(instance);
+        }
         instanceManager.refreshActiveFile(instance);
         return true;
     }
 
-    private boolean tryActivate(TriggerInstance instance, ServerPlayer player, ServerLevel level) {
+    private boolean tryActivate(TriggerInstance instance, ServerPlayer player, ServerLevel level, boolean bypassTriggerCheck) {
         if (instance == null || level == null) {
             return false;
         }
@@ -223,6 +231,9 @@ public final class TriggerEngine {
         if (instance.cooldownRemaining() > 0) {
             return false;
         }
+        if (instanceManager.isChainLocked(instance)) {
+            return false;
+        }
         TriggerBlueprint blueprint = blueprintLoader.getBlueprint(instance.blueprintId());
         if (blueprint == null) {
             return false;
@@ -230,17 +241,177 @@ public final class TriggerEngine {
         if (!passesCondition(level, blueprint.settings().condition())) {
             return false;
         }
-        if (!triggerRegistry.shouldActivate(instance.triggerType(), player, instance.bindPos(), level)) {
+        if (!bypassTriggerCheck && !triggerRegistry.shouldActivate(instance.triggerType(), player, instance.bindPos(), level)) {
             return false;
         }
 
         instance.setStructureState(TriggerInstance.StructureState.ANIMATING);
         instance.setAnimationTick(0);
+        executeAction(level, player, instance, blueprint.settings().action());
         sendAnimationStart(instance, level, blueprint);
         animationController.onAnimationStart(level, instance, blueprint);
         instanceManager.persistInstance(instance);
         instanceManager.refreshActiveFile(instance);
         return true;
+    }
+
+    private void executeAction(
+            ServerLevel level,
+            ServerPlayer player,
+            TriggerInstance instance,
+            TriggerBlueprint.Settings.ActionSettings action
+    ) {
+        if (level == null || action == null || action.type() == null || action.type().isBlank()) {
+            return;
+        }
+        String type = action.type().trim().toLowerCase(Locale.ROOT);
+        if ("npc_replay".equals(type)) {
+            executeNpcReplayAction(level, instance, action);
+            return;
+        }
+        if ("door".equals(type)) {
+            executeDoorAction(level, action);
+            return;
+        }
+        if ("npc_scene".equals(type) || "scene".equals(type)) {
+            executeNpcSceneAction(level, player, action);
+        }
+    }
+
+    private void executeDoorAction(ServerLevel level, TriggerBlueprint.Settings.ActionSettings action) {
+        String doorId = action.doorId();
+        if (doorId == null || doorId.isBlank()) {
+            Marallyzen.LOGGER.warn("TriggerEngine: door action requires door_id field");
+            return;
+        }
+        boolean ok = DoorEngine.getInstance().activate(level.getServer(), doorId);
+        if (!ok) {
+            Marallyzen.LOGGER.warn("TriggerEngine: failed to activate door '{}'", doorId);
+        }
+    }
+
+    private void executeNpcReplayAction(ServerLevel level, TriggerInstance sourceInstance, TriggerBlueprint.Settings.ActionSettings action) {
+        if (action.npc() == null || action.npc().isBlank() || action.replay() == null || action.replay().isBlank()) {
+            Marallyzen.LOGGER.warn("TriggerEngine: npc_replay action requires both npc and replay fields");
+            return;
+        }
+        if (NpcReplayEngine.isDebugEnabled()) {
+            Marallyzen.LOGGER.info(
+                    "TriggerEngine: trigger-start npc_replay npc='{}' replay='{}'",
+                    action.npc(),
+                    action.replay()
+            );
+        }
+        Runnable onComplete = null;
+        String sourceInstanceId = sourceInstance == null ? "" : sourceInstance.id();
+        String nextActionTriggerId = action.nextTrigger() == null ? "" : action.nextTrigger().trim().toLowerCase(Locale.ROOT);
+        if (!sourceInstanceId.isBlank() || !nextActionTriggerId.isBlank()) {
+            onComplete = () -> {
+                if (!sourceInstanceId.isBlank()) {
+                    TriggerInstance current = instanceManager.get(sourceInstanceId);
+                    if (current != null) {
+                        current.persistentData().remove(KEY_WAIT_REPLAY_CHAIN_UNLOCK);
+                        unlockNextInChain(current);
+                        instanceManager.persistInstance(current);
+                        instanceManager.refreshActiveFile(current);
+                    }
+                }
+                if (!nextActionTriggerId.isBlank()) {
+                    activateChained(nextActionTriggerId, level);
+                }
+            };
+        }
+        NpcReplayEngine.Result result = NpcReplayEngine.play(action.npc(), action.replay(), onComplete);
+        if (!result.success()) {
+            Marallyzen.LOGGER.warn("TriggerEngine: failed to execute npc_replay action npc='{}' replay='{}': {}",
+                    action.npc(), action.replay(), result.message());
+            return;
+        }
+        if (sourceInstance != null) {
+            sourceInstance.persistentData().putBoolean(KEY_WAIT_REPLAY_CHAIN_UNLOCK, true);
+            instanceManager.persistInstance(sourceInstance);
+            instanceManager.refreshActiveFile(sourceInstance);
+        }
+    }
+
+    private void executeNpcSceneAction(ServerLevel level, ServerPlayer player, TriggerBlueprint.Settings.ActionSettings action) {
+        String sceneId = firstNonBlank(action.scene(), action.replay());
+        if (sceneId == null || sceneId.isBlank()) {
+            Marallyzen.LOGGER.warn("TriggerEngine: npc_scene action requires scene field");
+            return;
+        }
+        if (player == null) {
+            Marallyzen.LOGGER.warn("TriggerEngine: npc_scene '{}' requires player activator (block_use/zone_enter/pressure_plate)", sceneId);
+            return;
+        }
+        boolean exists = CommandScriptRegistry.hasCommandScript(sceneId);
+        if (!exists) {
+            Marallyzen.LOGGER.warn("TriggerEngine: npc_scene command script not found: {}", sceneId);
+            return;
+        }
+        boolean started = CommandScriptRegistry.executeCommandScript(sceneId, player, action.sceneArgs());
+        if (!started) {
+            Marallyzen.LOGGER.warn("TriggerEngine: failed to execute npc_scene '{}' for player '{}'", sceneId, player.getName().getString());
+            return;
+        }
+        if (action.nextTrigger() != null && !action.nextTrigger().isBlank()) {
+            String nextId = action.nextTrigger().trim().toLowerCase(Locale.ROOT);
+            activateChained(nextId, level);
+        }
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return "";
+    }
+
+    private boolean activateChained(String instanceId, ServerLevel currentLevel) {
+        if (instanceId == null || instanceId.isBlank()) {
+            return false;
+        }
+        TriggerInstance next = instanceManager.get(instanceId);
+        if (next == null) {
+            Marallyzen.LOGGER.warn("TriggerEngine: chained instance not found: {}", instanceId);
+            return false;
+        }
+        ServerLevel nextLevel = currentLevel;
+        if (!next.dimensionId().equals(currentLevel.dimension().identifier().toString())) {
+            nextLevel = resolveLevel(currentLevel.getServer(), next.dimensionId());
+        }
+        return tryActivate(next, null, nextLevel, true);
+    }
+
+    private boolean isWaitingReplayChainUnlock(TriggerInstance instance) {
+        if (instance == null) {
+            return false;
+        }
+        return instance.persistentData().getBoolean(KEY_WAIT_REPLAY_CHAIN_UNLOCK).orElse(false);
+    }
+
+    private void unlockNextInChain(TriggerInstance instance) {
+        if (instance == null) {
+            return;
+        }
+        String nextId = instanceManager.getChainNextInstanceId(instance);
+        if (nextId == null || nextId.isBlank()) {
+            return;
+        }
+        TriggerInstance next = instanceManager.get(nextId);
+        if (next == null) {
+            Marallyzen.LOGGER.warn("TriggerEngine: next chain instance not found: {}", nextId);
+            return;
+        }
+        next.playersInside().clear();
+        if (instanceManager.isChainLocked(next)) {
+            instanceManager.setChainLocked(next, false);
+        }
+        instanceManager.persistInstance(next);
+        instanceManager.refreshActiveFile(next);
     }
 
     private void sendAnimationStart(TriggerInstance instance, ServerLevel level, TriggerBlueprint blueprint) {

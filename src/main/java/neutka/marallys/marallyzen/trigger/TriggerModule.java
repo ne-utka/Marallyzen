@@ -16,8 +16,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.door.DoorEngine;
+import neutka.marallys.marallyzen.denizen.commands.CommandScriptRegistry;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.TriggerBindSyncPacket;
+import neutka.marallys.marallyzen.npc.NpcClickHandler;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayLoader;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayScript;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprint;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlueprintLoader;
 import neutka.marallys.marallyzen.trigger.blueprint.TriggerBlockStateCodec;
@@ -35,8 +40,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class TriggerModule {
     public record OperationResult(boolean success, String message) {
@@ -279,20 +286,200 @@ public final class TriggerModule {
         return new OperationResult(true, "Blueprint saved: " + id + " (" + entries.size() + " blocks).");
     }
 
+    public OperationResult createDoor(ServerPlayer player, String rawId) {
+        if (player == null) {
+            return new OperationResult(false, "This command must be executed by a player.");
+        }
+        String id = normalizeId(rawId);
+        if (id.isBlank()) {
+            return new OperationResult(false, "Door id is required.");
+        }
+        SelectionManager.Selection selection = selectionManager.getSelection(player.getUUID());
+        if (selection == null || !selection.isComplete()) {
+            return new OperationResult(false, "Selection is incomplete. Use wand to set pos1/pos2.");
+        }
+        if (!selection.dimensionId().equals(player.level().dimension().identifier().toString())) {
+            return new OperationResult(false, "Selection is from another dimension.");
+        }
+        if (selection.sizeX() > 20 || selection.sizeY() > 20 || selection.sizeZ() > 20) {
+            return new OperationResult(false, "Selection too large: max 20x20x20.");
+        }
+        boolean created = DoorEngine.getInstance().createDoor(player, selection, id);
+        if (!created) {
+            return new OperationResult(false, "Failed to create door: " + id);
+        }
+        selectionManager.clearSelection(player.getUUID());
+        return new OperationResult(true, "Door saved: " + id);
+    }
+
+    public OperationResult deleteDoor(ServerPlayer player, String rawId) {
+        if (server == null) {
+            return new OperationResult(false, "Trigger system is not ready.");
+        }
+        String id = normalizeId(rawId);
+        if (id.isBlank()) {
+            return new OperationResult(false, "Door id is required.");
+        }
+        boolean deleted = DoorEngine.getInstance().deleteDoor(server, id);
+        if (!deleted) {
+            return new OperationResult(false, "Door not found: " + id);
+        }
+        return new OperationResult(true, "Door deleted: " + id);
+    }
+
+    public OperationResult reloadDoors() {
+        if (server == null) {
+            return new OperationResult(false, "Trigger system is not ready.");
+        }
+        DoorEngine.getInstance().reload(server);
+        return new OperationResult(true, "Doors reloaded.");
+    }
+
     public OperationResult armBind(ServerPlayer player, String blueprintId, String triggerType) {
+        return armBind(player, blueprintId, triggerType, "");
+    }
+
+    public OperationResult armBind(ServerPlayer player, String blueprintId, String triggerType, String chainId) {
         if (player == null) {
             return new OperationResult(false, "This command must be executed by a player.");
         }
         String id = normalizeId(blueprintId);
-        if (blueprintLoader.getBlueprint(id) == null) {
+        TriggerBlueprint blueprint = blueprintLoader.getBlueprint(id);
+        if (blueprint == null) {
+            // If admin edited files manually, try to refresh loader before failing.
+            blueprintLoader.reloadBlueprints();
+            blueprint = blueprintLoader.getBlueprint(id);
+        }
+        if (blueprint == null) {
+            if (CommandScriptRegistry.hasCommandScript(id)) {
+                // Simple UX: bind directly by scene id via the same command.
+                return armNpcSceneBind(player, id, triggerType, chainId);
+            }
+            NpcReplayScript replayScript = NpcReplayLoader.getInstance().get(id);
+            if (replayScript != null) {
+                // Simple UX: bind directly by replay id if recorder metadata has source npc.
+                String npcId = replayScript.sourceNpcId();
+                if (npcId == null || npcId.isBlank()) {
+                    npcId = resolveNearestNpcId(player);
+                }
+                if (npcId == null || npcId.isBlank()) {
+                    return new OperationResult(
+                            false,
+                            "Replay '" + id + "' has no source_npc metadata. " +
+                                    "Use '/marallyzen trigger npc bind_replay <npc_id> " + id + "' once, " +
+                                    "or re-record replay with current build."
+                    );
+                }
+                return armNpcReplayBind(player, npcId, id, triggerType, chainId);
+            }
+            if (DoorEngine.getInstance().getDoor(player.level().getServer(), id) != null) {
+                return armDoorBind(player, id, triggerType, chainId);
+            }
             return new OperationResult(false, "Blueprint not found: " + id);
         }
         String normalizedType = normalizeType(triggerType);
         if (triggerRegistry.get(normalizedType) == null) {
             return new OperationResult(false, "Unknown trigger type: " + normalizedType);
         }
-        instanceManager.setPendingBind(player.getUUID(), id, normalizedType);
-        return new OperationResult(true, "Bind armed for blueprint '" + id + "'. Right-click a block to bind.");
+        String normalizedPreviousId = normalizeId(chainId);
+        if (!normalizedPreviousId.isBlank()) {
+            TriggerInstance previous = instanceManager.get(normalizedPreviousId);
+            if (previous == null) {
+                return new OperationResult(false, "Previous trigger instance not found: " + normalizedPreviousId);
+            }
+            String existingNext = instanceManager.getChainNextInstanceId(previous);
+            if (!existingNext.isBlank() && instanceManager.get(existingNext) != null) {
+                return new OperationResult(
+                        false,
+                        "Trigger '" + normalizedPreviousId + "' already has next step: '" + existingNext + "'."
+                );
+            }
+        }
+        instanceManager.setPendingBind(player.getUUID(), id, normalizedType, normalizedPreviousId);
+        if (normalizedPreviousId.isBlank()) {
+            return new OperationResult(true, "Bind armed for blueprint '" + id + "'. Right-click a block to bind.");
+        }
+        return new OperationResult(
+                true,
+                "Bind armed for blueprint '" + id + "' after trigger '" + normalizedPreviousId + "'. Right-click a block to bind."
+        );
+    }
+
+    public OperationResult armNpcSceneBind(ServerPlayer player, String sceneId, String triggerType) {
+        return armNpcSceneBind(player, sceneId, triggerType, "");
+    }
+
+    public OperationResult armNpcSceneBind(ServerPlayer player, String sceneId, String triggerType, String chainId) {
+        if (player == null) {
+            return new OperationResult(false, "This command must be executed by a player.");
+        }
+        String normalizedScene = normalizeId(sceneId);
+        if (normalizedScene.isBlank()) {
+            return new OperationResult(false, "Scene id is required.");
+        }
+        if (!CommandScriptRegistry.hasCommandScript(normalizedScene)) {
+            if (NpcReplayLoader.getInstance().get(normalizedScene) != null) {
+                return new OperationResult(
+                        false,
+                        "ID '" + normalizedScene + "' is a replay script, not a scene script. " +
+                                "Use: /marallyzen trigger npc bind_replay <npc_id> " + normalizedScene
+                );
+            }
+            return new OperationResult(false, "NPC scene script not found: " + normalizedScene);
+        }
+        String blueprintId = buildNpcSceneBlueprintId(normalizedScene);
+        OperationResult ensureResult = ensureNpcSceneBlueprint(blueprintId, normalizedScene);
+        if (!ensureResult.success()) {
+            return ensureResult;
+        }
+        return armBind(player, blueprintId, triggerType, chainId);
+    }
+
+    public OperationResult armNpcReplayBind(ServerPlayer player, String npcId, String replayId, String triggerType) {
+        return armNpcReplayBind(player, npcId, replayId, triggerType, "");
+    }
+
+    public OperationResult armNpcReplayBind(ServerPlayer player, String npcId, String replayId, String triggerType, String chainId) {
+        if (player == null) {
+            return new OperationResult(false, "This command must be executed by a player.");
+        }
+        String normalizedNpc = normalizeId(npcId);
+        String normalizedReplay = normalizeId(replayId);
+        if (normalizedNpc.isBlank() || normalizedReplay.isBlank()) {
+            return new OperationResult(false, "Both npc_id and replay_id are required.");
+        }
+        if (NpcReplayLoader.getInstance().get(normalizedReplay) == null) {
+            return new OperationResult(false, "Replay script not found: " + normalizedReplay);
+        }
+        String blueprintId = buildNpcReplayBlueprintId(normalizedNpc, normalizedReplay);
+        OperationResult ensureResult = ensureNpcReplayBlueprint(blueprintId, normalizedNpc, normalizedReplay);
+        if (!ensureResult.success()) {
+            return ensureResult;
+        }
+        return armBind(player, blueprintId, triggerType, chainId);
+    }
+
+    public OperationResult armDoorBind(ServerPlayer player, String doorId, String triggerType) {
+        return armDoorBind(player, doorId, triggerType, "");
+    }
+
+    public OperationResult armDoorBind(ServerPlayer player, String doorId, String triggerType, String chainId) {
+        if (player == null) {
+            return new OperationResult(false, "This command must be executed by a player.");
+        }
+        String normalizedDoor = normalizeId(doorId);
+        if (normalizedDoor.isBlank()) {
+            return new OperationResult(false, "Door id is required.");
+        }
+        if (DoorEngine.getInstance().getDoor(player.level().getServer(), normalizedDoor) == null) {
+            return new OperationResult(false, "Door not found: " + normalizedDoor);
+        }
+        String blueprintId = buildDoorBlueprintId(normalizedDoor);
+        OperationResult ensureResult = ensureDoorBlueprint(blueprintId, normalizedDoor);
+        if (!ensureResult.success()) {
+            return ensureResult;
+        }
+        return armBind(player, blueprintId, triggerType, chainId);
     }
 
     public OperationResult removeInstance(String instanceId, ServerPlayer actor) {
@@ -352,6 +539,72 @@ public final class TriggerModule {
         instanceManager.persistInstance(instance);
         instanceManager.refreshActiveFile(instance);
         return new OperationResult(true, "Instance cooldown updated: " + instance.id() + " -> " + ticks + " ticks");
+    }
+
+    public OperationResult linkSequence(List<String> rawInstanceIds) {
+        if (rawInstanceIds == null || rawInstanceIds.isEmpty()) {
+            return new OperationResult(false, "At least 2 instance ids are required.");
+        }
+        Set<String> orderedUnique = new LinkedHashSet<>();
+        for (String raw : rawInstanceIds) {
+            String id = normalizeId(raw);
+            if (!id.isBlank()) {
+                orderedUnique.add(id);
+            }
+        }
+        if (orderedUnique.size() < 2) {
+            return new OperationResult(false, "At least 2 unique instance ids are required.");
+        }
+        List<String> ids = new ArrayList<>(orderedUnique);
+        for (String id : ids) {
+            if (instanceManager.get(id) == null) {
+                return new OperationResult(false, "Instance not found: " + id);
+            }
+        }
+        instanceManager.linkSequence(ids);
+        return new OperationResult(true, "Sequence linked: " + String.join(" -> ", ids));
+    }
+
+    public OperationResult reloadTriggers(boolean hardReset) {
+        if (server == null) {
+            return new OperationResult(false, "Trigger system is not ready.");
+        }
+        reload(server);
+        if (!hardReset) {
+            return new OperationResult(true, "Triggers reloaded (soft).");
+        }
+
+        int resetCount = 0;
+        for (TriggerInstance instance : instanceManager.allInstances()) {
+            if (instance == null) {
+                continue;
+            }
+            ServerLevel level = resolveLevel(instance.dimensionId());
+            if (level != null && instance.structureState() != TriggerInstance.StructureState.HIDDEN) {
+                engine.clearPlacedStructure(instance, level);
+            }
+            instance.setStructureState(TriggerInstance.StructureState.HIDDEN);
+            instance.setAnimationTick(0);
+            instance.setCooldownRemaining(0);
+            instance.setNextTimerGameTime(0L);
+            instance.setLastPowered(false);
+            instance.playersInside().clear();
+            instance.persistentData().remove("chain_wait_replay_unlock");
+
+            int chainStep = instanceManager.getChainStep(instance);
+            if (chainStep > 0) {
+                instanceManager.setChainLocked(instance, chainStep > 1);
+            } else {
+                instanceManager.setChainLocked(instance, false);
+            }
+
+            instanceManager.persistInstance(instance);
+            instanceManager.refreshActiveFile(instance);
+            resetCount++;
+        }
+        engine.rebuildZones();
+        syncTriggerBindingsToAll();
+        return new OperationResult(true, "Triggers reloaded (hard): reset " + resetCount + " instance(s).");
     }
 
     public ServerLevel resolveLevel(String dimensionId) {
@@ -420,6 +673,169 @@ public final class TriggerModule {
         return raw.trim().toLowerCase(Locale.ROOT);
     }
 
+    private String buildNpcSceneBlueprintId(String sceneId) {
+        String clean = sceneId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
+        if (clean.isBlank()) {
+            clean = "scene";
+        }
+        return "npc_scene_" + clean;
+    }
+
+    private String buildNpcReplayBlueprintId(String npcId, String replayId) {
+        String npc = npcId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
+        String replay = replayId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
+        if (npc.isBlank()) {
+            npc = "npc";
+        }
+        if (replay.isBlank()) {
+            replay = "replay";
+        }
+        return "npc_replay_" + npc + "_" + replay;
+    }
+
+    private String buildDoorBlueprintId(String doorId) {
+        String clean = doorId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
+        if (clean.isBlank()) {
+            clean = "door";
+        }
+        return "door_" + clean;
+    }
+
+    private OperationResult ensureNpcSceneBlueprint(String blueprintId, String sceneId) {
+        TriggerBlueprint existing = blueprintLoader.getBlueprint(blueprintId);
+        if (existing != null) {
+            return new OperationResult(true, "Blueprint ready: " + blueprintId);
+        }
+
+        TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
+        TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
+                "npc_scene",
+                "",
+                "",
+                sceneId,
+                "",
+                "",
+                ""
+        );
+        TriggerBlueprint blueprint = new TriggerBlueprint(
+                blueprintId,
+                new BlockPos(1, 1, 1),
+                null,
+                List.of(),
+                new TriggerBlueprint.Settings(
+                        defaults.animation(),
+                        defaults.cooldownTicks(),
+                        defaults.timerIntervalTicks(),
+                        defaults.zoneRadius(),
+                        defaults.sound(),
+                        defaults.particle(),
+                        defaults.condition(),
+                        action
+                )
+        );
+        Path file = blueprintLoader.getBlueprintDirectory().resolve(blueprintId + ".json");
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(blueprint.toJson(), writer);
+            }
+            blueprintLoader.reloadBlueprints();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create npc_scene blueprint: " + e.getMessage());
+        }
+        return new OperationResult(true, "Blueprint created: " + blueprintId);
+    }
+
+    private OperationResult ensureNpcReplayBlueprint(String blueprintId, String npcId, String replayId) {
+        TriggerBlueprint existing = blueprintLoader.getBlueprint(blueprintId);
+        if (existing != null) {
+            return new OperationResult(true, "Blueprint ready: " + blueprintId);
+        }
+
+        TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
+        TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
+                "npc_replay",
+                npcId,
+                replayId,
+                "",
+                "",
+                "",
+                ""
+        );
+        TriggerBlueprint blueprint = new TriggerBlueprint(
+                blueprintId,
+                new BlockPos(1, 1, 1),
+                null,
+                List.of(),
+                new TriggerBlueprint.Settings(
+                        defaults.animation(),
+                        defaults.cooldownTicks(),
+                        defaults.timerIntervalTicks(),
+                        defaults.zoneRadius(),
+                        defaults.sound(),
+                        defaults.particle(),
+                        defaults.condition(),
+                        action
+                )
+        );
+        Path file = blueprintLoader.getBlueprintDirectory().resolve(blueprintId + ".json");
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(blueprint.toJson(), writer);
+            }
+            blueprintLoader.reloadBlueprints();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create npc_replay blueprint: " + e.getMessage());
+        }
+        return new OperationResult(true, "Blueprint created: " + blueprintId);
+    }
+
+    private OperationResult ensureDoorBlueprint(String blueprintId, String doorId) {
+        TriggerBlueprint existing = blueprintLoader.getBlueprint(blueprintId);
+        if (existing != null) {
+            return new OperationResult(true, "Blueprint ready: " + blueprintId);
+        }
+
+        TriggerBlueprint.Settings defaults = TriggerBlueprint.Settings.defaults();
+        TriggerBlueprint.Settings.ActionSettings action = new TriggerBlueprint.Settings.ActionSettings(
+                "door",
+                "",
+                "",
+                "",
+                "",
+                "",
+                doorId
+        );
+        TriggerBlueprint blueprint = new TriggerBlueprint(
+                blueprintId,
+                new BlockPos(1, 1, 1),
+                null,
+                List.of(),
+                new TriggerBlueprint.Settings(
+                        defaults.animation(),
+                        defaults.cooldownTicks(),
+                        defaults.timerIntervalTicks(),
+                        defaults.zoneRadius(),
+                        "",
+                        "",
+                        defaults.condition(),
+                        action
+                )
+        );
+        Path file = blueprintLoader.getBlueprintDirectory().resolve(blueprintId + ".json");
+        try {
+            Files.createDirectories(file.getParent());
+            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+                GSON.toJson(blueprint.toJson(), writer);
+            }
+            blueprintLoader.reloadBlueprints();
+        } catch (Exception e) {
+            return new OperationResult(false, "Failed to create door blueprint: " + e.getMessage());
+        }
+        return new OperationResult(true, "Blueprint created: " + blueprintId);
+    }
+
     private String normalizeType(String raw) {
         if (raw == null || raw.isBlank()) {
             return "block_use";
@@ -441,5 +857,35 @@ public final class TriggerModule {
                 }
             }
         }
+    }
+
+    private String resolveNearestNpcId(ServerPlayer player) {
+        if (player == null) {
+            return "";
+        }
+        var registry = NpcClickHandler.getRegistry();
+        double bestDistSq = Double.MAX_VALUE;
+        String bestId = "";
+        for (var entity : registry.getSpawnedNpcs()) {
+            if (entity == null || !entity.isAlive() || entity.isRemoved()) {
+                continue;
+            }
+            if (entity.level() != player.level()) {
+                continue;
+            }
+            double distSq = entity.distanceToSqr(player);
+            if (distSq > (16.0D * 16.0D)) {
+                continue;
+            }
+            String npcId = registry.getNpcId(entity);
+            if (npcId == null || npcId.isBlank()) {
+                continue;
+            }
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestId = npcId;
+            }
+        }
+        return bestId;
     }
 }

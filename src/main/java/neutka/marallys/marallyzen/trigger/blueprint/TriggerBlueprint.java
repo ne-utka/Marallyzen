@@ -204,7 +204,8 @@ public final class TriggerBlueprint {
             int zoneRadius,
             String sound,
             String particle,
-            String condition
+            String condition,
+            ActionSettings action
     ) {
         public static Settings defaults() {
             return new Settings(
@@ -214,7 +215,8 @@ public final class TriggerBlueprint {
                     6,
                     "",
                     "block_dust",
-                    ""
+                    "",
+                    ActionSettings.none()
             );
         }
 
@@ -229,7 +231,8 @@ public final class TriggerBlueprint {
             String sound = readString(obj, "sound", "");
             String particle = readString(obj, "particle", readString(obj, "particles", "block_dust"));
             String condition = readString(obj, "condition", "");
-            return new Settings(animation, cooldownTicks, timerIntervalTicks, zoneRadius, sound, particle, condition);
+            ActionSettings action = ActionSettings.fromJson(obj);
+            return new Settings(animation, cooldownTicks, timerIntervalTicks, zoneRadius, sound, particle, condition, action);
         }
 
         public JsonObject toJson() {
@@ -247,7 +250,81 @@ public final class TriggerBlueprint {
             if (condition != null && !condition.isBlank()) {
                 obj.addProperty("condition", condition);
             }
+            if (action != null && action.hasAction()) {
+                obj.add("action", action.toJson());
+            }
             return obj;
+        }
+
+        public record ActionSettings(
+                String type,
+                String npc,
+                String replay,
+                String scene,
+                String sceneArgs,
+                String nextTrigger,
+                String doorId
+        ) {
+            public static ActionSettings none() {
+                return new ActionSettings("", "", "", "", "", "", "");
+            }
+
+            public boolean hasAction() {
+                return type != null && !type.isBlank();
+            }
+
+            public static ActionSettings fromJson(JsonObject settingsObject) {
+                if (settingsObject == null) {
+                    return none();
+                }
+                JsonObject actionObj = settingsObject.getAsJsonObject("action");
+                if (actionObj != null) {
+                    String type = readString(actionObj, "type", "");
+                    String npc = readString(actionObj, "npc", "");
+                    String replay = readString(actionObj, "replay", "");
+                    String scene = readString(actionObj, "scene", readString(actionObj, "script", ""));
+                    String sceneArgs = readString(actionObj, "scene_args", readString(actionObj, "args", ""));
+                    String nextTrigger = readString(actionObj, "next_trigger", readString(actionObj, "nextTrigger", ""));
+                    String doorId = readString(actionObj, "door_id", readString(actionObj, "doorId", ""));
+                    return new ActionSettings(type, npc, replay, scene, sceneArgs, nextTrigger, doorId);
+                }
+                // Legacy flattened form inside settings.
+                String legacyType = readString(settingsObject, "type", "");
+                if (legacyType.isBlank()) {
+                    return none();
+                }
+                String npc = readString(settingsObject, "npc", "");
+                String replay = readString(settingsObject, "replay", "");
+                String scene = readString(settingsObject, "scene", readString(settingsObject, "script", ""));
+                String sceneArgs = readString(settingsObject, "scene_args", readString(settingsObject, "args", ""));
+                String nextTrigger = readString(settingsObject, "next_trigger", readString(settingsObject, "nextTrigger", ""));
+                String doorId = readString(settingsObject, "door_id", readString(settingsObject, "doorId", ""));
+                return new ActionSettings(legacyType, npc, replay, scene, sceneArgs, nextTrigger, doorId);
+            }
+
+            public JsonObject toJson() {
+                JsonObject obj = new JsonObject();
+                obj.addProperty("type", type == null ? "" : type);
+                if (npc != null && !npc.isBlank()) {
+                    obj.addProperty("npc", npc);
+                }
+                if (replay != null && !replay.isBlank()) {
+                    obj.addProperty("replay", replay);
+                }
+                if (scene != null && !scene.isBlank()) {
+                    obj.addProperty("scene", scene);
+                }
+                if (sceneArgs != null && !sceneArgs.isBlank()) {
+                    obj.addProperty("scene_args", sceneArgs);
+                }
+                if (nextTrigger != null && !nextTrigger.isBlank()) {
+                    obj.addProperty("next_trigger", nextTrigger);
+                }
+                if (doorId != null && !doorId.isBlank()) {
+                    obj.addProperty("door_id", doorId);
+                }
+                return obj;
+            }
         }
 
         public record AnimationSettings(

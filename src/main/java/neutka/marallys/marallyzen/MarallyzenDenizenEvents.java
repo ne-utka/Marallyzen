@@ -6,7 +6,10 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 
 import neutka.marallys.marallyzen.denizen.storage.MarallyzenFlagStore;
+import neutka.marallys.marallyzen.door.DoorEngine;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayEngine;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayRecorder;
 import neutka.marallys.marallyzen.trigger.TriggerModuleRegistry;
 
 @EventBusSubscriber(modid = Marallyzen.MODID)
@@ -19,12 +22,15 @@ public class MarallyzenDenizenEvents {
         DenizenService.tickServer();
         // Tick NPC AI
         NpcClickHandler.getRegistry().tickAIs();
+        NpcReplayRecorder.getInstance().tick(event.getServer());
+        NpcReplayEngine.tick(event.getServer());
         neutka.marallys.marallyzen.quest.QuestManager.getInstance().onServerTick();
         neutka.marallys.marallyzen.goals.GoalProgressEngine.getInstance().onServerTick();
         var triggerModule = TriggerModuleRegistry.get(event.getServer());
         if (triggerModule != null) {
             triggerModule.onServerTick();
         }
+        DoorEngine.getInstance().tick(event.getServer());
         npcStateSaveTicks++;
         if (npcStateSaveTicks >= NPC_STATE_SAVE_INTERVAL) {
             npcStateSaveTicks = 0;

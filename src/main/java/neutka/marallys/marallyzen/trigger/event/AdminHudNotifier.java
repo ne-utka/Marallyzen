@@ -14,23 +14,27 @@ public final class AdminHudNotifier {
     }
 
     public static void firstPoint(ServerPlayer player) {
-        sendActionBar(player, "🟢 Первая точка выделена", COLOR_GREEN);
+        sendActionBar(player, "Первая точка выделена", COLOR_GREEN);
     }
 
     public static void secondPoint(ServerPlayer player, int x, int y, int z) {
-        sendActionBar(player, "🟢 Область выделена (" + x + "x" + y + "x" + z + ")", COLOR_GREEN);
+        sendActionBar(player, "Область выделена (" + x + "x" + y + "x" + z + ")", COLOR_GREEN);
     }
 
     public static void saved(ServerPlayer player) {
-        sendActionBar(player, "🟣 Область сохранена!", COLOR_PURPLE);
+        sendActionBar(player, "Область сохранена!", COLOR_PURPLE);
     }
 
     public static void removed(ServerPlayer player) {
-        sendActionBar(player, "🔴 Область удалена", COLOR_RED);
+        sendActionBar(player, "Область удалена", COLOR_RED);
     }
 
     public static void bound(ServerPlayer player) {
-        sendActionBar(player, "🔵 Триггер привязан", COLOR_BLUE);
+        sendActionBar(player, "Триггер привязан", COLOR_BLUE);
+    }
+
+    public static void doorSaved(ServerPlayer player) {
+        sendActionBar(player, "Область двери сохранена!", COLOR_GREEN);
     }
 
     private static void sendActionBar(ServerPlayer player, String text, int rgb) {
