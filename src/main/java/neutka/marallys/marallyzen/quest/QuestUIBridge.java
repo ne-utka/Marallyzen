@@ -3,7 +3,9 @@ package neutka.marallys.marallyzen.quest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.QuestSyncPacket;
 
@@ -51,14 +53,19 @@ public final class QuestUIBridge {
         }
         QuestZoneContext context = findActiveZoneContext(definitions, data, zones);
         if (context == null || context.zone == null) {
+            context = findFallbackZoneContext(player, zones);
+        }
+        if (context == null || context.zone == null) {
             return null;
         }
+
         QuestZoneDefinition zone = context.zone;
         QuestCategory category = context.category != null ? context.category : QuestCategory.SIDE;
         var level = player.level().getServer() != null ? player.level().getServer().getLevel(zone.dimension()) : null;
         if (level == null) {
             level = player.level();
         }
+
         double minX;
         double minY;
         double minZ;
@@ -68,7 +75,6 @@ public final class QuestUIBridge {
         double centerX;
         double centerY;
         double centerZ;
-
         if (zone.shape() == QuestZoneDefinition.Shape.SPHERE && zone.center() != null) {
             centerX = zone.center().getX() + 0.5;
             centerY = zone.center().getY() + 0.5;
@@ -115,6 +121,9 @@ public final class QuestUIBridge {
         zoneJson.addProperty("dimension", zone.dimension().identifier().toString());
         zoneJson.addProperty("category", category.name().toLowerCase());
         zoneJson.addProperty("ignoreHeight", zone.ignoreHeight());
+        zoneJson.addProperty("alwaysActive", zone.alwaysActive());
+        zoneJson.addProperty("requireLodestone", zone.requireLodestone());
+        zoneJson.addProperty("autoStartQuestId", zone.autoStartQuestId());
         zoneJson.add("min", vec3Json(minX, minY, minZ));
         zoneJson.add("max", vec3Json(maxX, maxY, maxZ));
         zoneJson.add("center", vec3Json(centerX, centerY, centerZ));
@@ -134,6 +143,72 @@ public final class QuestUIBridge {
             if (context != null) {
                 return context;
             }
+        }
+        return null;
+    }
+
+    private static QuestZoneContext findFallbackZoneContext(ServerPlayer player,
+                                                            Map<String, QuestZoneDefinition> zones) {
+        if (player == null || zones == null || zones.isEmpty()) {
+            return null;
+        }
+        Vec3 playerPos = player.position();
+        QuestZoneDefinition best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (QuestZoneDefinition zone : zones.values()) {
+            if (zone == null) {
+                continue;
+            }
+            if (!zone.alwaysActive() && (zone.autoStartQuestId() == null || zone.autoStartQuestId().isBlank())) {
+                continue;
+            }
+            if (!player.level().dimension().equals(zone.dimension())) {
+                continue;
+            }
+            double dist = distanceToZoneCenter(zone, playerPos);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = zone;
+            }
+        }
+        if (best == null) {
+            return null;
+        }
+        return new QuestZoneContext(best, QuestCategory.SIDE);
+    }
+
+    private static double distanceToZoneCenter(QuestZoneDefinition zone, Vec3 pos) {
+        if (zone == null || pos == null) {
+            return Double.MAX_VALUE;
+        }
+        Vec3 center = zoneCenter(zone);
+        if (center == null) {
+            return Double.MAX_VALUE;
+        }
+        double dx = pos.x - center.x;
+        double dz = pos.z - center.z;
+        if (zone.ignoreHeight()) {
+            return Math.sqrt(dx * dx + dz * dz);
+        }
+        double dy = pos.y - center.y;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    private static Vec3 zoneCenter(QuestZoneDefinition zone) {
+        if (zone == null) {
+            return null;
+        }
+        if (zone.shape() == QuestZoneDefinition.Shape.SPHERE && zone.center() != null) {
+            return new Vec3(zone.center().getX() + 0.5, zone.center().getY() + 0.5, zone.center().getZ() + 0.5);
+        }
+        if (zone.min() != null && zone.max() != null) {
+            double minX = zone.min().getX();
+            double minY = zone.min().getY();
+            double minZ = zone.min().getZ();
+            double maxX = zone.max().getX() + 1.0;
+            double maxY = zone.max().getY() + 1.0;
+            double maxZ = zone.max().getZ() + 1.0;
+            return new Vec3((minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5);
         }
         return null;
     }
@@ -189,8 +264,6 @@ public final class QuestUIBridge {
         return obj;
     }
 
-    private record QuestZoneContext(QuestZoneDefinition zone, QuestCategory category) {}
+    private record QuestZoneContext(QuestZoneDefinition zone, QuestCategory category) {
+    }
 }
-
-
-

@@ -2,8 +2,8 @@ package neutka.marallys.marallyzen.quest;
 
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
 public class QuestZoneDefinition {
@@ -20,6 +20,9 @@ public class QuestZoneDefinition {
     private final BlockPos center;
     private final double radius;
     private final boolean ignoreHeight;
+    private final boolean alwaysActive;
+    private final boolean requireLodestone;
+    private final String autoStartQuestId;
 
     private QuestZoneDefinition(
             String id,
@@ -29,7 +32,10 @@ public class QuestZoneDefinition {
             BlockPos max,
             BlockPos center,
             double radius,
-            boolean ignoreHeight
+            boolean ignoreHeight,
+            boolean alwaysActive,
+            boolean requireLodestone,
+            String autoStartQuestId
     ) {
         this.id = id;
         this.shape = shape;
@@ -39,6 +45,9 @@ public class QuestZoneDefinition {
         this.center = center;
         this.radius = radius;
         this.ignoreHeight = ignoreHeight;
+        this.alwaysActive = alwaysActive;
+        this.requireLodestone = requireLodestone;
+        this.autoStartQuestId = autoStartQuestId;
     }
 
     public String id() {
@@ -73,6 +82,18 @@ public class QuestZoneDefinition {
         return ignoreHeight;
     }
 
+    public boolean alwaysActive() {
+        return alwaysActive;
+    }
+
+    public boolean requireLodestone() {
+        return requireLodestone;
+    }
+
+    public String autoStartQuestId() {
+        return autoStartQuestId;
+    }
+
     public boolean contains(BlockPos pos) {
         if (shape == Shape.SPHERE) {
             double dx = pos.getX() + 0.5 - center.getX() - 0.5;
@@ -104,6 +125,9 @@ public class QuestZoneDefinition {
                 net.minecraft.core.registries.Registries.DIMENSION,
                 Identifier.parse(dimensionStr)
         );
+        boolean alwaysActive = QuestJsonUtils.getBoolean(obj, "alwaysActive", false);
+        boolean requireLodestone = QuestJsonUtils.getBoolean(obj, "requireLodestone", true);
+        String autoStartQuestId = QuestJsonUtils.getString(obj, "autoStartQuestId", "");
 
         if (shape == Shape.SPHERE) {
             JsonObject centerObj = obj.getAsJsonObject("center");
@@ -112,7 +136,8 @@ public class QuestZoneDefinition {
             int cz = QuestJsonUtils.getInt(centerObj, "z", 0);
             boolean ignoreHeight = centerObj == null || !centerObj.has("y");
             double radius = QuestJsonUtils.getDouble(obj, "radius", 1.0);
-            return new QuestZoneDefinition(id, shape, dimension, null, null, new BlockPos(cx, cy, cz), radius, ignoreHeight);
+            return new QuestZoneDefinition(id, shape, dimension, null, null, new BlockPos(cx, cy, cz), radius,
+                    ignoreHeight, alwaysActive, requireLodestone, autoStartQuestId);
         }
 
         JsonObject minObj = obj.getAsJsonObject("min");
@@ -129,9 +154,10 @@ public class QuestZoneDefinition {
                 new BlockPos(maxX, maxY, maxZ),
                 null,
                 0.0,
-                ignoreHeight
+                ignoreHeight,
+                alwaysActive,
+                requireLodestone,
+                autoStartQuestId
         );
     }
 }
-
-

@@ -2,8 +2,10 @@ package neutka.marallys.marallyzen.client.narration;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -12,10 +14,8 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.MarallyzenClientConfig;
 import neutka.marallys.marallyzen.client.lever.LeverQteClient;
-import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 import neutka.marallys.marallyzen.client.quest.QuestJournalScreen;
-import net.minecraft.util.ARGB;
-import net.minecraft.client.renderer.RenderPipelines;
+import neutka.marallys.marallyzen.client.valve.ValveQteClient;
 
 /**
  * Renders the narration overlay as a Bedrock-style semi-transparent panel at the bottom of the screen.
@@ -27,11 +27,11 @@ public class NarrationOverlayRenderer {
     private static float overlayAlpha = 1.0f;
     private static float previousAlpha = 1.0f;
     private static final Identifier ROUNDED_BG_TEXTURE =
-        Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
+            Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/gui/rounded_prompt_bg.png");
     private static final int ROUNDED_BG_TEX_SIZE = 64;
     private static final int ROUNDED_BG_CORNER_PX = 10;
     private static final int ROUNDED_BG_RADIUS_PX = 2;
-    
+
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
@@ -42,12 +42,12 @@ public class NarrationOverlayRenderer {
             return;
         }
         boolean blockOverlay = mc.screen instanceof QuestJournalScreen;
-        
+
         GuiGraphics guiGraphics = event.getGuiGraphics();
         var window = mc.getWindow();
         int width = window.getGuiScaledWidth();
         int height = window.getGuiScaledHeight();
-        
+
         // Get partialTick for smooth 60fps interpolation
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         previousAlpha = overlayAlpha;
@@ -59,9 +59,9 @@ public class NarrationOverlayRenderer {
             overlayAlpha = Math.max(target, overlayAlpha - step);
         }
         float overlayMultiplier = Mth.lerp(partialTick, previousAlpha, overlayAlpha);
-        
+
         NarrationManager manager = NarrationManager.getInstance();
-        
+
         // Render narration overlay (higher priority - shows above proximity)
         NarrationOverlay narrationOverlay = manager.getActive();
         if (narrationOverlay != null) {
@@ -69,13 +69,13 @@ public class NarrationOverlayRenderer {
             if (narrationOverlay.isVisible()) {
                 // Interpolate alpha for smooth 60fps animation
                 float interpolatedAlpha = Mth.lerp(partialTick, narrationOverlay.getPreviousAlpha(), narrationOverlay.getAlpha());
-                
+
                 // Clamp interpolated alpha to prevent negative values or values > 1.0
                 interpolatedAlpha = Mth.clamp(interpolatedAlpha, 0.0f, 1.0f);
-
                 float finalAlpha = interpolatedAlpha * overlayMultiplier;
                 if (finalAlpha > 0.01f) {
-                    renderOverlay(guiGraphics, mc, width, height, narrationOverlay.getText(), finalAlpha);
+                    renderOverlay(guiGraphics, mc, width, height, narrationOverlay.getText(), finalAlpha,
+                            narrationOverlay.isBackgroundVisible());
                 }
             }
         } else {
@@ -84,31 +84,32 @@ public class NarrationOverlayRenderer {
             if (proximityOverlay != null && proximityOverlay.isVisible()) {
                 // Interpolate alpha for smooth 60fps animation
                 float interpolatedAlpha = Mth.lerp(partialTick, proximityOverlay.getPreviousAlpha(), proximityOverlay.getAlpha());
-                
+
                 float finalAlpha = interpolatedAlpha * overlayMultiplier;
                 if (finalAlpha > 0.01f) {
-                    renderOverlay(guiGraphics, mc, width, height, proximityOverlay.getText(), finalAlpha);
+                    renderOverlay(guiGraphics, mc, width, height, proximityOverlay.getText(), finalAlpha, true);
                 }
             }
         }
     }
-    
-    private static void renderOverlay(GuiGraphics guiGraphics, Minecraft mc, int width, int height, Component text, float alpha) {
+
+    private static void renderOverlay(GuiGraphics guiGraphics, Minecraft mc, int width, int height,
+                                      Component text, float alpha, boolean showBackground) {
         if (text == null || alpha <= 0.0f) {
             return;
         }
-        
+
         var font = mc.font;
-        
+
         // Calculate max text width (screen width - margins - padding)
         int maxTextWidth = width - 80 - 4; // 40px margin on each side, 2px padding on each side
-        
+
         // Split text into lines
         var lines = font.split(text, maxTextWidth);
         if (lines.isEmpty()) {
             return;
         }
-        
+
         // Calculate text dimensions
         int maxLineWidth = 0;
         for (var line : lines) {
@@ -117,36 +118,36 @@ public class NarrationOverlayRenderer {
                 maxLineWidth = lineWidth;
             }
         }
-        
+
         int lineHeight = font.lineHeight;
         int textHeight = lines.size() * lineHeight;
-        
+
         int paddingX = 5;
         int paddingY = 3;
         int boxWidth = maxLineWidth + paddingX * 2;
         int boxHeight = textHeight + paddingY * 2;
-        
+
         // Bedrock-style positioning: bottom of screen, centered horizontally
         int x = (width - boxWidth) / 2;
         int y = height - 60; // 60px from bottom (lower on screen)
-        
+
         // Calculate alpha for background (more transparent - ~47% opacity when fully visible)
         int bgAlpha = (int) (alpha * 120); // ~47% of 255 (was 180 = ~70%)
         int bgColor = (bgAlpha << 24); // ARGB: alpha in top 8 bits, RGB = 0 (black)
-        
+
         // Draw rounded semi-transparent background (fits text with padding)
-        if (MarallyzenClientConfig.NARRATION_HUD_BACKGROUND.get()) {
+        if (showBackground && MarallyzenClientConfig.NARRATION_HUD_BACKGROUND.get()) {
             renderRoundedBackground(guiGraphics, x, y, boxWidth, boxHeight, bgColor);
         }
-        
+
         // Draw text with alpha
         int textAlpha = (int) (alpha * 255);
         int textColor = 0xFFFFFF | (textAlpha << 24); // White text with alpha
-        
+
         // Draw text lines (padding offset from box edges)
         int textX = x + paddingX;
         int textY = y + paddingY;
-        
+
         for (int i = 0; i < lines.size() && i < 2; i++) { // Max 2 lines
             int lineY = textY + (i * lineHeight);
             guiGraphics.drawString(font, lines.get(i), textX, lineY, textColor, false);
@@ -157,13 +158,11 @@ public class NarrationOverlayRenderer {
         if (width <= 0 || height <= 0) {
             return;
         }
-
         float corner = Math.min(Math.max(ROUNDED_BG_RADIUS_PX, 0.0f), Math.min(width, height) / 2.0f);
         if (corner <= 0.0f) {
             guiGraphics.fill(x, y, x + width, y + height, color);
             return;
         }
-
         fillTexturedRect(guiGraphics, x, y, width, height, Math.round(corner), color);
     }
 
@@ -178,18 +177,14 @@ public class NarrationOverlayRenderer {
         int y1 = y + corner;
         int y2 = y + height - corner;
         int y3 = y + height;
-
         // Avoid overlap to prevent dark seams from double-blending.
         int overlap = 0;
-
         blitSlice(guiGraphics, x0, y0, corner + overlap, corner + overlap, 0.0f, 0.0f, uCorner, uCorner, color);
         blitSlice(guiGraphics, x1, y0, (x2 - x1) + overlap, corner + overlap, uCorner, 0.0f, 1.0f - uCorner, uCorner, color);
         blitSlice(guiGraphics, x2 - overlap, y0, (x3 - x2) + overlap, corner + overlap, 1.0f - uCorner, 0.0f, 1.0f, uCorner, color);
-
         blitSlice(guiGraphics, x0, y1, corner + overlap, (y2 - y1) + overlap, 0.0f, uCorner, uCorner, 1.0f - uCorner, color);
         blitSlice(guiGraphics, x1, y1, (x2 - x1) + overlap, (y2 - y1) + overlap, uCorner, uCorner, 1.0f - uCorner, 1.0f - uCorner, color);
         blitSlice(guiGraphics, x2 - overlap, y1, (x3 - x2) + overlap, (y2 - y1) + overlap, 1.0f - uCorner, uCorner, 1.0f, 1.0f - uCorner, color);
-
         blitSlice(guiGraphics, x0, y2 - overlap, corner + overlap, (y3 - y2) + overlap, 0.0f, 1.0f - uCorner, uCorner, 1.0f, color);
         blitSlice(guiGraphics, x1, y2 - overlap, (x2 - x1) + overlap, (y3 - y2) + overlap, uCorner, 1.0f - uCorner, 1.0f - uCorner, 1.0f, color);
         blitSlice(guiGraphics, x2 - overlap, y2 - overlap, (x3 - x2) + overlap, (y3 - y2) + overlap, 1.0f - uCorner, 1.0f - uCorner, 1.0f, 1.0f, color);
@@ -206,8 +201,6 @@ public class NarrationOverlayRenderer {
         int uSize = Math.round((u1 - u0) * tex);
         int vSize = Math.round((v1 - v0) * tex);
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, ROUNDED_BG_TEXTURE, x, y, u, v, w, h,
-            uSize, vSize, tex, tex, color);
+                uSize, vSize, tex, tex, color);
     }
 }
-
-

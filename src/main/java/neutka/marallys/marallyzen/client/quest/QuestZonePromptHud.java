@@ -2,31 +2,37 @@ package neutka.marallys.marallyzen.client.quest;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import org.joml.Matrix4f;
-
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
+import net.minecraft.world.phys.AABB;
+import neutka.marallys.marallyzen.MarallyzenClientConfig;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.instance.InstanceClientState;
-import neutka.marallys.marallyzen.MarallyzenClientConfig;
+import neutka.marallys.marallyzen.client.narration.NarrationManager;
+import neutka.marallys.marallyzen.network.NetworkHelper;
+import neutka.marallys.marallyzen.network.QuestZoneTeleportRequestPacket;
 import neutka.marallys.marallyzen.quest.QuestDefinition;
 import neutka.marallys.marallyzen.util.NarrationIcons;
+import org.joml.Matrix4f;
 
 public class QuestZonePromptHud {
     private static QuestZonePromptHud instance;
 
+    // Lodestone prompt visuals
     private static final int FADE_IN_DURATION_TICKS = 3;
     private static final int FADE_OUT_DURATION_TICKS = 2;
     private static final float VERTICAL_OFFSET_MAX = 0.1f;
@@ -38,15 +44,30 @@ public class QuestZonePromptHud {
     private static final float BACKGROUND_PADDING_Y = 1.855f;
     private static final double TARGET_RANGE = 6.0;
 
+    // Countdown behavior
+    private static final int COUNTDOWN_SECONDS = 8;
+    private static final int TICKS_PER_SECOND = 20;
+    private static final int COUNTDOWN_TICKS = COUNTDOWN_SECONDS * TICKS_PER_SECOND;
+    private static final int NARRATION_FADE_IN = 5;
+    private static final int NARRATION_FADE_OUT = 5;
+    private static final int LEAVE_STAY_TICKS = 40;
+
     private boolean targetVisible = false;
     private BlockPos magnetitePos;
     private String promptLabel;
-    private String zoneId;
-
+    private String lodestoneZoneId;
     private float fadeInProgress = 0.0f;
     private float fadeOutProgress = 1.0f;
     private float previousFadeInProgress = 0.0f;
     private float previousFadeOutProgress = 1.0f;
+
+    private boolean countdownActive = false;
+    private long countdownStartTick = 0L;
+    private int lastFilled = -1;
+    private String countdownZoneId;
+    private boolean insideZone = false;
+    private boolean teleportSent = false;
+
     public static QuestZonePromptHud getInstance() {
         if (instance == null) {
             instance = new QuestZonePromptHud();
@@ -59,7 +80,6 @@ public class QuestZonePromptHud {
 
         previousFadeInProgress = fadeInProgress;
         previousFadeOutProgress = fadeOutProgress;
-
         if (targetVisible) {
             if (fadeInProgress < 1.0f) {
                 fadeInProgress = Mth.clamp(fadeInProgress + (1.0f / FADE_IN_DURATION_TICKS), 0.0f, 1.0f);
@@ -86,6 +106,7 @@ public class QuestZonePromptHud {
         if (mc.player == null || mc.level == null) {
             return;
         }
+
         float interpolatedFadeIn = Mth.lerp(partialTick, previousFadeInProgress, fadeInProgress);
         float interpolatedFadeOut = Mth.lerp(partialTick, previousFadeOutProgress, fadeOutProgress);
         boolean showing = targetVisible;
@@ -100,11 +121,9 @@ public class QuestZonePromptHud {
         double blockY = PromptAnchorUtil.blockTopY(mc.level, magnetitePos, state)
                 - PromptAnchorUtil.pxToWorld(20.0f, SCALE_BASE);
         double blockZ = magnetitePos.getZ() + 0.5;
-
         double camX = camera.position().x;
         double camY = camera.position().y;
         double camZ = camera.position().z;
-
         double dx = blockX - camX;
         double dy = blockY - camY;
         double dz = blockZ - camZ;
@@ -114,17 +133,13 @@ public class QuestZonePromptHud {
         }
 
         poseStack.pushPose();
-
         double dirX = camX - blockX;
         double dirZ = camZ - blockZ;
         double dirDistance = Math.sqrt(dirX * dirX + dirZ * dirZ);
-
         double offsetX = blockX - camX;
         double offsetY = blockY - camY;
         double offsetZ = blockZ - camZ;
-
         offsetY -= VERTICAL_OFFSET_MAX * (1.0f - appear);
-
         if (dirDistance > 0.001) {
             dirX /= dirDistance;
             dirZ /= dirDistance;
@@ -133,9 +148,7 @@ public class QuestZonePromptHud {
             offsetX += rightX * OFFSET_RIGHT;
             offsetZ += rightZ * OFFSET_RIGHT;
         }
-
         poseStack.translate(offsetX, offsetY, offsetZ);
-
         float cameraYaw = camera.yRot();
         float cameraPitch = camera.xRot();
         poseStack.mulPose(Axis.YP.rotationDegrees(-cameraYaw));
@@ -156,19 +169,17 @@ public class QuestZonePromptHud {
         MultiBufferSource textSource = bufferSource;
         Font font = mc.font;
         Matrix4f matrix = poseStack.last().pose();
-
         int alpha = (int) (appear * 255);
         int white = (alpha << 24) | 0xFFFFFF;
         int darkGray = (alpha << 24) | TEXT_DARK_GRAY;
-
         drawPrompt(font, bufferSource, textSource, matrix, promptLabel, white, darkGray, alpha);
         bufferSource.endBatch();
         poseStack.popPose();
     }
 
     public String activeZoneId() {
-        if (targetVisible && zoneId != null && promptLabel != null) {
-            return zoneId;
+        if (targetVisible && lodestoneZoneId != null && promptLabel != null) {
+            return lodestoneZoneId;
         }
         return null;
     }
@@ -183,27 +194,43 @@ public class QuestZonePromptHud {
     private void updateTarget() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
-            resetTarget();
+            resetAll(false);
             return;
         }
         if (InstanceClientState.getInstance().isInInstance()) {
-            resetTarget();
+            resetAll(false);
             return;
         }
+
         QuestZoneVisual zone = QuestClientState.getInstance().activeZone();
         if (zone == null) {
-            resetTarget();
+            resetAll(false);
             return;
         }
         if (!mc.level.dimension().equals(zone.dimension())) {
-            resetTarget();
+            resetAll(false);
             return;
         }
+
+        boolean usesLodestone = zone.requireLodestone();
+        if (usesLodestone) {
+            resetCountdown(false);
+            updateLodestoneTarget(zone);
+            return;
+        }
+
+        resetTarget();
+        updateCountdownTarget(zone);
+    }
+
+    private void updateLodestoneTarget(QuestZoneVisual zone) {
+        Minecraft mc = Minecraft.getInstance();
         QuestDefinition definition = QuestClientState.getInstance().getActiveDefinition();
         if (definition == null || definition.instanceSpec() == null) {
             resetTarget();
             return;
         }
+
         HitResult hitResult = mc.player.pick(TARGET_RANGE, 0.0f, false);
         if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) {
             resetTarget();
@@ -222,15 +249,111 @@ public class QuestZonePromptHud {
         }
         targetVisible = true;
         magnetitePos = magnetite;
-        promptLabel = "\u0422\u0435\u043b\u0435\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f";
-        zoneId = zone.id();
+        promptLabel = "РўРµР»РµРїРѕСЂС‚РёСЂРѕРІР°С‚СЊСЃСЏ";
+        lodestoneZoneId = zone.id();
+    }
+
+    private void updateCountdownTarget(QuestZoneVisual zone) {
+        Minecraft mc = Minecraft.getInstance();
+        QuestDefinition definition = QuestClientState.getInstance().getActiveDefinition();
+        boolean questHasInstance = definition != null && definition.instanceSpec() != null;
+        boolean zoneActive = questHasInstance || zone.alwaysActive()
+                || (zone.autoStartQuestId() != null && !zone.autoStartQuestId().isBlank());
+        if (!zoneActive) {
+            resetCountdown(false);
+            return;
+        }
+
+        boolean currentlyInside = isPlayerInsideZone(mc, zone);
+        if (currentlyInside) {
+            if (!insideZone) {
+                startCountdown(zone.id());
+            }
+            tickCountdown(mc);
+        } else {
+            if (insideZone) {
+                resetCountdown(true);
+            } else {
+                resetCountdown(false);
+            }
+        }
+        insideZone = currentlyInside;
+    }
+
+    private boolean isPlayerInsideZone(Minecraft mc, QuestZoneVisual zone) {
+        Vec3 pos = mc.player.position();
+        if (zone.ignoreHeight()) {
+            return pos.x >= zone.bounds().minX && pos.x <= zone.bounds().maxX
+                    && pos.z >= zone.bounds().minZ && pos.z <= zone.bounds().maxZ;
+        }
+        return zone.bounds().contains(pos);
+    }
+
+    private void startCountdown(String zoneId) {
+        Minecraft mc = Minecraft.getInstance();
+        countdownActive = true;
+        countdownStartTick = mc.level.getGameTime();
+        lastFilled = -1;
+        teleportSent = false;
+        countdownZoneId = zoneId;
+
+        Component text = buildCountdownText(0);
+        NarrationManager.getInstance().startNarration(text, null, NARRATION_FADE_IN, COUNTDOWN_TICKS, NARRATION_FADE_OUT,
+                false, false);
+    }
+
+    private void tickCountdown(Minecraft mc) {
+        if (!countdownActive || mc.level == null) {
+            return;
+        }
+        long elapsed = mc.level.getGameTime() - countdownStartTick;
+        if (elapsed < 0) {
+            elapsed = 0;
+        }
+        int filled = (int) Math.min(COUNTDOWN_SECONDS, elapsed / TICKS_PER_SECOND);
+        if (filled != lastFilled) {
+            lastFilled = filled;
+            NarrationManager.getInstance().updateNarrationText(buildCountdownText(filled));
+        }
+
+        if (elapsed >= COUNTDOWN_TICKS && !teleportSent) {
+            teleportSent = true;
+            if (countdownZoneId != null) {
+                NetworkHelper.sendToServer(new QuestZoneTeleportRequestPacket(countdownZoneId));
+            }
+        }
     }
 
     private void resetTarget() {
         targetVisible = false;
         magnetitePos = null;
         promptLabel = null;
-        zoneId = null;
+        lodestoneZoneId = null;
+    }
+
+    private void resetCountdown(boolean showLeaveMessage) {
+        if (showLeaveMessage && (countdownActive || insideZone)) {
+            NarrationManager.getInstance().startNarration(
+                    Component.literal("Р’С‹ РїРѕРєРёРЅСѓР»Рё Р·РѕРЅСѓ РєРІРµСЃС‚Р°!"),
+                    null,
+                    3,
+                    LEAVE_STAY_TICKS,
+                    5,
+                    false,
+                    false
+            );
+        }
+        countdownActive = false;
+        countdownStartTick = 0L;
+        lastFilled = -1;
+        countdownZoneId = null;
+        teleportSent = false;
+    }
+
+    private void resetAll(boolean showLeaveMessage) {
+        resetTarget();
+        resetCountdown(showLeaveMessage);
+        insideZone = false;
     }
 
     private boolean zoneContainsBlock(QuestZoneVisual zone, BlockPos pos) {
@@ -245,6 +368,20 @@ public class QuestZonePromptHud {
         return zone.bounds().contains(center);
     }
 
+    private static Component buildCountdownText(int filled) {
+        int clamped = Mth.clamp(filled, 0, COUNTDOWN_SECONDS);
+        MutableComponent root = Component.literal("");
+        root.append(Component.literal("\u2716 ").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xD73A3A))));
+        root.append(Component.literal("\u258c ").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x3EB05A))));
+        for (int i = 0; i < COUNTDOWN_SECONDS; i++) {
+            boolean done = i < clamped;
+            String glyph = "\u2588";
+            int color = done ? 0xE8EEF8 : 0x7A8190;
+            root.append(Component.literal(glyph).withStyle(Style.EMPTY.withColor(TextColor.fromRgb(color))));
+        }
+        root.append(Component.literal(" \u2714").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x56B96C))));
+        return root;
+    }
     private float easeOutCubic(float t) {
         return 1.0f - (float) Math.pow(1.0f - t, 3);
     }
@@ -265,7 +402,6 @@ public class QuestZonePromptHud {
         Component icon = NarrationIcons.rmb();
         String spacer = " ";
         String action = ">> ";
-
         float widthIcon = font.width(icon);
         float widthSpacer = font.width(spacer);
         float widthAction = font.width(action);
@@ -283,7 +419,6 @@ public class QuestZonePromptHud {
         if (MarallyzenClientConfig.INTERACTIVE_PROMPT_BACKGROUND.get()) {
             fillRect(matrix, bufferSource, bgX, bgY, bgWidth, bgHeight, bgColor);
         }
-
         float cursorX = 0.0f;
         drawComponent(matrix, textSource, font, icon, cursorX, textY, white);
         cursorX += widthIcon;
@@ -317,29 +452,24 @@ public class QuestZonePromptHud {
                         net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "textures/misc/white.png")
                 )
         );
-
         int a = (color >> 24) & 0xFF;
         int r = (color >> 16) & 0xFF;
         int g = (color >> 8) & 0xFF;
         int b = color & 0xFF;
-
         float left = x;
         float top = y;
         float right = x + width;
         float bottom = y + height;
         float z = 0.01f;
-
         int light = net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
         int overlay = net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY;
         int lightU = light & 0xFFFF;
         int lightV = (light >> 16) & 0xFFFF;
         int overlayU = overlay & 0xFFFF;
         int overlayV = overlay & 0xFFFF;
-
         float normalX = 0.0f;
         float normalY = 0.0f;
         float normalZ = -1.0f;
-
         vertexConsumer.addVertex(matrix, left, bottom, z)
                 .setColor(r, g, b, a)
                 .setUv(0.0f, 1.0f)
@@ -382,13 +512,3 @@ public class QuestZonePromptHud {
         );
     }
 }
-
-
-
-
-
-
-
-
-
-

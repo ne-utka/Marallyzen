@@ -10,7 +10,6 @@ import java.util.UUID;
  * Bedrock-style narration display with controlled timing.
  */
 public class NarrationOverlay {
-    
     /**
      * State of the narration overlay.
      */
@@ -20,28 +19,29 @@ public class NarrationOverlay {
         FADE_OUT,
         HIDDEN
     }
-    
+
     private Component text;
     private UUID npcUuid;
     private State state = State.HIDDEN;
     private float alpha = 0.0f;
-    
+    private boolean showBackground = true;
+
     // Previous alpha for smooth interpolation (60fps)
     private float previousAlpha = 0.0f;
-    
+
     // Timing configuration
     private int fadeInTicks;
     private int stayTicks;
     private int fadeOutTicks;
-    
+
     // Current progress
     private int fadeInProgress = 0;
     private int stayProgress = 0;
     private int fadeOutProgress = 0;
-    
+
     /**
      * Starts a new narration with specified timing.
-     * 
+     *
      * @param text The text to display
      * @param npcUuid The UUID of the NPC (can be null)
      * @param fadeInTicks Number of ticks for fade-in animation
@@ -49,19 +49,24 @@ public class NarrationOverlay {
      * @param fadeOutTicks Number of ticks for fade-out animation
      */
     public void start(Component text, UUID npcUuid, int fadeInTicks, int stayTicks, int fadeOutTicks) {
+        start(text, npcUuid, fadeInTicks, stayTicks, fadeOutTicks, true);
+    }
+
+    public void start(Component text, UUID npcUuid, int fadeInTicks, int stayTicks, int fadeOutTicks, boolean showBackground) {
         this.text = text;
         this.npcUuid = npcUuid;
         this.fadeInTicks = Math.max(1, fadeInTicks);
         this.stayTicks = Math.max(0, stayTicks);
         this.fadeOutTicks = Math.max(1, fadeOutTicks);
-        
+        this.showBackground = showBackground;
+
         this.state = State.FADE_IN;
         this.alpha = 0.0f;
         this.fadeInProgress = 0;
         this.stayProgress = 0;
         this.fadeOutProgress = 0;
     }
-    
+
     /**
      * Updates the overlay state machine. Should be called every client tick.
      * Saves previous alpha for smooth interpolation at 60fps.
@@ -69,7 +74,7 @@ public class NarrationOverlay {
     public void tick() {
         // Save previous alpha for interpolation
         previousAlpha = alpha;
-        
+
         switch (state) {
             case FADE_IN:
                 fadeInProgress++;
@@ -83,7 +88,7 @@ public class NarrationOverlay {
                     alpha = (float) fadeInProgress / (float) fadeInTicks;
                 }
                 break;
-                
+
             case SHOW:
                 stayProgress++;
                 alpha = 1.0f; // Keep fully visible
@@ -93,7 +98,7 @@ public class NarrationOverlay {
                     fadeOutProgress = 0;
                 }
                 break;
-                
+
             case FADE_OUT:
                 fadeOutProgress++;
                 if (fadeOutProgress >= fadeOutTicks) {
@@ -105,45 +110,45 @@ public class NarrationOverlay {
                     alpha = 1.0f - ((float) fadeOutProgress / (float) fadeOutTicks);
                 }
                 break;
-                
+
             case HIDDEN:
                 // Do nothing, already hidden
                 alpha = 0.0f;
                 break;
         }
     }
-    
+
     /**
      * Gets the previous alpha value for smooth interpolation.
-     * 
+     *
      * @return Previous alpha value
      */
     public float getPreviousAlpha() {
         return previousAlpha;
     }
-    
+
     /**
      * Checks if the overlay should be rendered.
-     * 
+     *
      * @return true if overlay is visible (not HIDDEN)
      */
     public boolean isVisible() {
         // Use a small threshold to prevent flickering when alpha is very close to 0
         return state != State.HIDDEN && alpha >= 0.01f;
     }
-    
+
     /**
      * Gets the current alpha value for rendering (0.0 to 1.0).
-     * 
+     *
      * @return Current alpha value
      */
     public float getAlpha() {
         return Mth.clamp(alpha, 0.0f, 1.0f);
     }
-    
+
     /**
      * Gets the text to display.
-     * 
+     *
      * @return The narration text
      */
     public Component getText() {
@@ -156,25 +161,33 @@ public class NarrationOverlay {
     public void updateText(Component text) {
         this.text = text;
     }
-    
+
+    public boolean isBackgroundVisible() {
+        return showBackground;
+    }
+
+    public void setBackgroundVisible(boolean showBackground) {
+        this.showBackground = showBackground;
+    }
+
     /**
      * Gets the NPC UUID associated with this narration.
-     * 
+     *
      * @return NPC UUID, or null if not associated with an NPC
      */
     public UUID getNpcUuid() {
         return npcUuid;
     }
-    
+
     /**
      * Gets the current state.
-     * 
+     *
      * @return Current state
      */
     public State getState() {
         return state;
     }
-    
+
     /**
      * Forcefully clears the narration (immediately hides it).
      */
@@ -183,8 +196,9 @@ public class NarrationOverlay {
         this.alpha = 0.0f;
         this.text = null;
         this.npcUuid = null;
+        this.showBackground = true;
     }
-    
+
     /**
      * Starts fade-out animation if narration is currently showing.
      * If narration is in SHOW state, transitions to FADE_OUT.

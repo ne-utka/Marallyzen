@@ -2,8 +2,8 @@ package neutka.marallys.marallyzen.client.quest;
 
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -16,7 +16,10 @@ public record QuestZoneVisual(
         AABB bounds,
         Vec3 center,
         QuestCategory category,
-        boolean ignoreHeight
+        boolean ignoreHeight,
+        boolean alwaysActive,
+        boolean requireLodestone,
+        String autoStartQuestId
 ) {
     public static QuestZoneVisual fromJson(JsonObject obj) {
         if (obj == null) {
@@ -33,6 +36,9 @@ public record QuestZoneVisual(
         );
         QuestCategory category = parseCategory(QuestJsonUtils.getString(obj, "category", null));
         boolean ignoreHeight = QuestJsonUtils.getBoolean(obj, "ignoreHeight", false);
+        boolean alwaysActive = QuestJsonUtils.getBoolean(obj, "alwaysActive", false);
+        boolean requireLodestone = QuestJsonUtils.getBoolean(obj, "requireLodestone", true);
+        String autoStartQuestId = QuestJsonUtils.getString(obj, "autoStartQuestId", "");
 
         JsonObject minObj = obj.getAsJsonObject("min");
         JsonObject maxObj = obj.getAsJsonObject("max");
@@ -51,7 +57,8 @@ public record QuestZoneVisual(
         double centerZ = QuestJsonUtils.getDouble(centerObj, "z", 0.0);
         AABB bounds = new AABB(minX, minY, minZ, maxX, maxY, maxZ);
         Vec3 center = new Vec3(centerX, centerY, centerZ);
-        return new QuestZoneVisual(id, dimension, bounds, center, category, ignoreHeight);
+        return new QuestZoneVisual(id, dimension, bounds, center, category, ignoreHeight,
+                alwaysActive, requireLodestone, autoStartQuestId);
     }
 
     public double distanceTo(Vec3 pos) {
@@ -96,5 +103,3 @@ public record QuestZoneVisual(
         }
     }
 }
-
-
