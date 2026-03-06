@@ -103,6 +103,33 @@ public class NpcSavedData extends SavedData {
         String appearance = existing != null ? existing.appearanceId() : null;
         String ai = existing != null ? existing.aiState() : null;
         String dialog = existing != null ? existing.dialogState() : null;
-        putState(npcId, new NpcState(level.dimension(), pos, yaw, appearance, ai, dialog));
+        String replayId = existing != null ? existing.currentReplayId() : null;
+        int replayFrame = existing != null ? existing.replayFrameIndex() : 0;
+        boolean replayRunning = existing != null && existing.replayRunning();
+        putState(npcId, new NpcState(level.dimension(), pos, yaw, appearance, ai, dialog, replayId, replayFrame, replayRunning));
+    }
+
+    public void updateReplay(String npcId, ServerLevel level, String replayId, int frameIndex, boolean running) {
+        if (npcId == null || level == null) {
+            return;
+        }
+        NpcState existing = npcStates.get(npcId);
+        BlockPos pos = existing != null ? existing.pos() : BlockPos.ZERO;
+        float yaw = existing != null ? existing.yaw() : 0.0F;
+        String appearance = existing != null ? existing.appearanceId() : null;
+        String ai = existing != null ? existing.aiState() : null;
+        String dialog = existing != null ? existing.dialogState() : null;
+        String normalizedReplayId = (replayId == null || replayId.isBlank()) ? null : replayId;
+        putState(npcId, new NpcState(
+                level.dimension(),
+                pos,
+                yaw,
+                appearance,
+                ai,
+                dialog,
+                normalizedReplayId,
+                Math.max(0, frameIndex),
+                running
+        ));
     }
 }

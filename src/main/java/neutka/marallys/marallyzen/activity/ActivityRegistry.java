@@ -10,11 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class ActivityRegistry {
     private final ActivityScriptLoader loader = new ActivityScriptLoader();
+    private final ActivityTypeLoader typeLoader = new ActivityTypeLoader();
     private final Map<String, ActivityExecutor> executors = new ConcurrentHashMap<>();
-
-    public ActivityRegistry() {
-        registerDefaults();
-    }
 
     public ActivityScriptLoader loader() {
         return loader;
@@ -22,6 +19,7 @@ public final class ActivityRegistry {
 
     public void reload() {
         loader.reload();
+        reloadExecutors();
     }
 
     public void register(String type, ActivityExecutor executor) {
@@ -62,18 +60,10 @@ public final class ActivityRegistry {
 
         ActivityScript script = loader.getScript(ref.type(), ref.script());
         if (script == null) {
-            script = ActivityReference.buildFallback(ref, action);
-            if (script == null) {
-                Marallyzen.LOGGER.warn("ActivityRegistry: script not found type='{}' id='{}'", ref.type(), ref.script());
-                return ActivityResult.failed("Activity script not found: " + ref.type() + "/" + ref.script());
-            }
+            Marallyzen.LOGGER.error("ActivityRegistry: script not found type='{}' id='{}'", ref.type(), ref.script());
+            return ActivityResult.failed("Activity script not found: " + ref.type() + "/" + ref.script());
         }
         return executor.execute(context, script, action, onComplete);
-    }
-
-    private void registerDefaults() {
-        register("door", new DoorActivityExecutor());
-        register("npc", new NpcActivityExecutor());
     }
 
     private String normalize(String raw) {
@@ -95,41 +85,38 @@ public final class ActivityRegistry {
             }
             return new ActivityReference(type, script);
         }
+    }
 
-        public static ActivityScript buildFallback(ActivityReference ref, TriggerBlueprint.Settings.ActionSettings action) {
-            if (ref == null || action == null) {
+    private void reloadExecutors() {
+        executors.clear();
+        typeLoader.reload();
+        for (Map.Entry<String, String> entry : typeLoader.types().entrySet()) {
+            String type = entry.getKey();
+            String className = entry.getValue();
+            ActivityExecutor executor = instantiateExecutor(className, type);
+            if (executor != null) {
+                executors.put(normalize(type), executor);
+            }
+        }
+        if (executors.isEmpty()) {
+            Marallyzen.LOGGER.error("ActivityRegistry: no executors registered. Check activity_types.json");
+        }
+    }
+
+    private ActivityExecutor instantiateExecutor(String className, String type) {
+        if (className == null || className.isBlank()) {
+            Marallyzen.LOGGER.error("ActivityRegistry: empty executor class for type '{}'", type);
+            return null;
+        }
+        try {
+            Class<?> clazz = Class.forName(className);
+            if (!ActivityExecutor.class.isAssignableFrom(clazz)) {
+                Marallyzen.LOGGER.error("ActivityRegistry: {} does not implement ActivityExecutor for type '{}'", className, type);
                 return null;
             }
-            if ("npc".equalsIgnoreCase(ref.type())) {
-                var data = new com.google.gson.JsonObject();
-                String replayParam = action.param("replay_id");
-                if (replayParam != null && !replayParam.isBlank()) {
-                    data.addProperty("replay_id", replayParam.trim().toLowerCase(Locale.ROOT));
-                } else if (action.replay() != null && !action.replay().isBlank()) {
-                    data.addProperty("replay_id", action.replay().trim().toLowerCase(Locale.ROOT));
-                }
-                String sceneParam = action.param("scene_id");
-                if (sceneParam != null && !sceneParam.isBlank()) {
-                    data.addProperty("scene_id", sceneParam.trim().toLowerCase(Locale.ROOT));
-                } else if (action.scene() != null && !action.scene().isBlank()) {
-                    data.addProperty("scene_id", action.scene().trim().toLowerCase(Locale.ROOT));
-                }
-                if (data.size() == 0) {
-                    return null;
-                }
-                return new ActivityScript(ref.script(), ref.type(), ActivityScript.CURRENT_FORMAT,
-                        ActivityScript.Animation.defaults(),
-                        ActivityScript.Physics.defaults(),
-                        ActivityScript.Effects.defaults(),
-                        data);
-            }
-            if ("door".equalsIgnoreCase(ref.type())) {
-                return new ActivityScript(ref.script(), ref.type(), ActivityScript.CURRENT_FORMAT,
-                        ActivityScript.Animation.defaults(),
-                        ActivityScript.Physics.defaults(),
-                        ActivityScript.Effects.defaults(),
-                        new com.google.gson.JsonObject());
-            }
+            return (ActivityExecutor) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            Marallyzen.LOGGER.error("ActivityRegistry: failed to load executor {} for type '{}'", className, type, e);
             return null;
         }
     }

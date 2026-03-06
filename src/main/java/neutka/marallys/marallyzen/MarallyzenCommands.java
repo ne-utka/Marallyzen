@@ -21,6 +21,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import neutka.marallys.marallyzen.network.NetworkHelper;
 import neutka.marallys.marallyzen.network.OldTvBindModePacket;
+import neutka.marallys.marallyzen.mirror.MirrorCommand;
 import neutka.marallys.marallyzen.npc.DialogScriptLoader;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcData;
@@ -154,6 +155,7 @@ public class MarallyzenCommands {
                                                 .executes(MarallyzenCommands::npcReplayDeleteCommand)))))
                 .then(GoalCommand.build())
                 .then(TriggerCommand.build())
+                .then(MirrorCommand.build())
         );
     }
 

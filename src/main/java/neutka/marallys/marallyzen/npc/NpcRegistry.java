@@ -30,6 +30,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcExpressionManager;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayEngine;
 import net.minecraft.world.phys.AABB;
 
 import java.util.*;
@@ -969,6 +970,10 @@ public class NpcRegistry {
             if (entity == null || entity.isRemoved()) {
                 continue;
             }
+            String npcId = getNpcId(entity);
+            if (npcId != null && (NpcReplayEngine.isReplayRunning(npcId) || NpcReplayEngine.isPoseLocked(npcId))) {
+                continue;
+            }
             if (entity.level() != null && !entity.level().hasChunkAt(entity.blockPosition())) {
                 continue;
             }
@@ -979,8 +984,8 @@ public class NpcRegistry {
                 npcAiErrors.put(entity, count);
                 npcAIs.remove(entity);
                 if (count == 1) {
-                    String npcId = getNpcId(entity);
-                    Marallyzen.LOGGER.warn("NpcRegistry: AI error for NPC {} ({}). Disabling AI for this NPC.", npcId, entity.getUUID(), e);
+                    String npcIdForError = getNpcId(entity);
+                    Marallyzen.LOGGER.warn("NpcRegistry: AI error for NPC {} ({}). Disabling AI for this NPC.", npcIdForError, entity.getUUID(), e);
                 }
             }
         }

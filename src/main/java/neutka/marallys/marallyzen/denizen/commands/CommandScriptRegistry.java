@@ -64,6 +64,46 @@ public final class CommandScriptRegistry {
         Marallyzen.LOGGER.info("CommandScriptRegistry refresh: {} command script(s), {} registered.", commandScripts.size(), registered.size());
     }
 
+    public static boolean hasCommandScript(String commandName) {
+        if (commandName == null || commandName.isBlank()) {
+            return false;
+        }
+        String normalized = commandName.trim().toLowerCase(Locale.ROOT);
+        return findContainer(normalized) != null;
+    }
+
+    public static Set<String> commandScriptNames() {
+        for (var entry : ScriptRegistry.scriptContainers.values()) {
+            if (!(entry instanceof CommandScriptContainer container)) {
+                continue;
+            }
+            String name = container.getCommandName();
+            if (name != null) {
+                commandScripts.put(name, container);
+            }
+        }
+        return new TreeSet<>(commandScripts.keySet());
+    }
+
+    /**
+     * Executes a command-script container programmatically.
+     * This is used by server systems (for example, trigger actions) that need to launch scene scripts.
+     */
+    public static boolean executeCommandScript(String commandName, ServerPlayer player, String rawArgs) {
+        if (commandName == null || commandName.isBlank()) {
+            return false;
+        }
+        if (player == null) {
+            return false;
+        }
+        String normalized = commandName.trim().toLowerCase(Locale.ROOT);
+        CommandScriptContainer container = findContainer(normalized);
+        if (container == null) {
+            return false;
+        }
+        return runContainer(container, player, rawArgs, normalized);
+    }
+
     private static void registerAll() {
         if (dispatcher == null) {
             return;
@@ -99,13 +139,20 @@ public final class CommandScriptRegistry {
         if (player == null) {
             return 0;
         }
+        return runContainer(container, player, rawArgs, alias) ? 1 : 0;
+    }
+
+    private static boolean runContainer(CommandScriptContainer container, ServerPlayer player, String rawArgs, String alias) {
+        if (container == null || player == null) {
+            return false;
+        }
         MarallyzenScriptEntryData data = new MarallyzenScriptEntryData();
         data.setPlayer(new PlayerTag(player));
         List<String> args = splitArgs(rawArgs);
         Map<String, ObjectTag> contexts = buildCommandContexts(args, rawArgs, alias);
         var entries = container.getCommandEntries(data);
         if (entries == null) {
-            return 0;
+            return false;
         }
         InstantQueue queue = new InstantQueue(container.getName());
         queue.addEntries(entries);
@@ -115,7 +162,27 @@ public final class CommandScriptRegistry {
             queue.setContextSource(src);
         }
         queue.start();
-        return 1;
+        return true;
+    }
+
+    private static CommandScriptContainer findContainer(String normalizedCommandName) {
+        if (normalizedCommandName == null || normalizedCommandName.isBlank()) {
+            return null;
+        }
+        CommandScriptContainer existing = commandScripts.get(normalizedCommandName);
+        if (existing != null) {
+            return existing;
+        }
+        for (var entry : ScriptRegistry.scriptContainers.values()) {
+            if (!(entry instanceof CommandScriptContainer container)) {
+                continue;
+            }
+            String name = container.getCommandName();
+            if (name != null) {
+                commandScripts.put(name, container);
+            }
+        }
+        return commandScripts.get(normalizedCommandName);
     }
 
     private static CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggest(CommandContext<CommandSourceStack> ctx,

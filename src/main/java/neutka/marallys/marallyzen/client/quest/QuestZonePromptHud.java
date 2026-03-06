@@ -4,13 +4,16 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -19,6 +22,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 import neutka.marallys.marallyzen.MarallyzenClientConfig;
+import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.client.NoDepthTextRenderType;
 import neutka.marallys.marallyzen.client.gui.PromptAnchorUtil;
 import neutka.marallys.marallyzen.client.instance.InstanceClientState;
@@ -51,6 +55,10 @@ public class QuestZonePromptHud {
     private static final int NARRATION_FADE_IN = 5;
     private static final int NARRATION_FADE_OUT = 5;
     private static final int LEAVE_STAY_TICKS = 40;
+    private static final String SOUND_ZONE_ENTER = "minecraft:block.amethyst_cluster.hit";
+    private static final String SOUND_ZONE_TELEPORT = "minecraft:entity.enderman.teleport";
+    private static final String SOUND_ZONE_EXIT = "minecraft:block.note_block.bass";
+    private static final String SOUND_ZONE_TICK = "minecraft:block.amethyst_block.step";
 
     private boolean targetVisible = false;
     private BlockPos magnetitePos;
@@ -249,7 +257,7 @@ public class QuestZonePromptHud {
         }
         targetVisible = true;
         magnetitePos = magnetite;
-        promptLabel = "РўРµР»РµРїРѕСЂС‚РёСЂРѕРІР°С‚СЊСЃСЏ";
+        promptLabel = "\u0422\u0435\u043b\u0435\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f";
         lodestoneZoneId = zone.id();
     }
 
@@ -296,6 +304,8 @@ public class QuestZonePromptHud {
         lastFilled = -1;
         teleportSent = false;
         countdownZoneId = zoneId;
+        playQuestZoneSound(SOUND_ZONE_ENTER, 1.0f, 1.0f);
+        Marallyzen.LOGGER.info("QuestZonePromptHud: zone enter countdown started, zone={}", zoneId);
 
         Component text = buildCountdownText(0);
         NarrationManager.getInstance().startNarration(text, null, NARRATION_FADE_IN, COUNTDOWN_TICKS, NARRATION_FADE_OUT,
@@ -312,12 +322,17 @@ public class QuestZonePromptHud {
         }
         int filled = (int) Math.min(COUNTDOWN_SECONDS, elapsed / TICKS_PER_SECOND);
         if (filled != lastFilled) {
+            if (filled > 0 && filled < COUNTDOWN_SECONDS) {
+                playQuestZoneSound(SOUND_ZONE_TICK, 0.18f, 1.35f);
+            }
             lastFilled = filled;
             NarrationManager.getInstance().updateNarrationText(buildCountdownText(filled));
         }
 
         if (elapsed >= COUNTDOWN_TICKS && !teleportSent) {
             teleportSent = true;
+            playQuestZoneSound(SOUND_ZONE_TELEPORT, 1.0f, 1.0f);
+            Marallyzen.LOGGER.info("QuestZonePromptHud: teleport triggered, zone={}", countdownZoneId);
             if (countdownZoneId != null) {
                 NetworkHelper.sendToServer(new QuestZoneTeleportRequestPacket(countdownZoneId));
             }
@@ -333,8 +348,10 @@ public class QuestZonePromptHud {
 
     private void resetCountdown(boolean showLeaveMessage) {
         if (showLeaveMessage && (countdownActive || insideZone)) {
+            playQuestZoneSound(SOUND_ZONE_EXIT, 1.0f, 1.0f);
+            Marallyzen.LOGGER.info("QuestZonePromptHud: zone exit during countdown");
             NarrationManager.getInstance().startNarration(
-                    Component.literal("Р’С‹ РїРѕРєРёРЅСѓР»Рё Р·РѕРЅСѓ РєРІРµСЃС‚Р°!"),
+                    Component.literal("\u0412\u044b \u0432\u044b\u0448\u043b\u0438 \u0438\u0437 \u0437\u043e\u043d\u044b \u043a\u0432\u0435\u0441\u0442\u0430!"),
                     null,
                     3,
                     LEAVE_STAY_TICKS,
@@ -370,18 +387,48 @@ public class QuestZonePromptHud {
 
     private static Component buildCountdownText(int filled) {
         int clamped = Mth.clamp(filled, 0, COUNTDOWN_SECONDS);
-        MutableComponent root = Component.literal("");
-        root.append(Component.literal("\u2716 ").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xD73A3A))));
-        root.append(Component.literal("\u258c ").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x3EB05A))));
-        for (int i = 0; i < COUNTDOWN_SECONDS; i++) {
-            boolean done = i < clamped;
-            String glyph = "\u2588";
-            int color = done ? 0xE8EEF8 : 0x7A8190;
-            root.append(Component.literal(glyph).withStyle(Style.EMPTY.withColor(TextColor.fromRgb(color))));
-        }
-        root.append(Component.literal(" \u2714").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0x56B96C))));
-        return root;
+        return Component.literal("__QZ_COUNTDOWN__:" + clamped);
     }
+
+    private void playQuestZoneSound(String soundId, float volume, float pitch) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            return;
+        }
+        try {
+            Identifier id = Identifier.parse(soundId);
+            SoundEvent sound = BuiltInRegistries.SOUND_EVENT.getValue(id);
+            if (sound == null) {
+                Marallyzen.LOGGER.warn("QuestZonePromptHud: sound not found {}", soundId);
+                return;
+            }
+            mc.player.playSound(sound, volume, pitch);
+            mc.level.playLocalSound(
+                    mc.player.getX(),
+                    mc.player.getY(),
+                    mc.player.getZ(),
+                    sound,
+                    SoundSource.PLAYERS,
+                    volume,
+                    pitch,
+                    false
+            );
+            mc.getSoundManager().play(new SimpleSoundInstance(
+                    sound,
+                    SoundSource.MASTER,
+                    volume,
+                    pitch,
+                    RandomSource.create(),
+                    mc.player.getX(),
+                    mc.player.getY(),
+                    mc.player.getZ()
+            ));
+            Marallyzen.LOGGER.info("QuestZonePromptHud: played sound {}", soundId);
+        } catch (Exception e) {
+            Marallyzen.LOGGER.warn("QuestZonePromptHud: failed to play sound {}", soundId, e);
+        }
+    }
+
     private float easeOutCubic(float t) {
         return 1.0f - (float) Math.pow(1.0f - t, 3);
     }

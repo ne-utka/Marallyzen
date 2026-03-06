@@ -17,7 +17,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.activity.ActivityRegistry;
-import neutka.marallys.marallyzen.activity.ActivityScript;
 import neutka.marallys.marallyzen.door.DoorEngine;
 import neutka.marallys.marallyzen.denizen.commands.CommandScriptRegistry;
 import neutka.marallys.marallyzen.network.NetworkHelper;
@@ -893,30 +892,19 @@ public final class TriggerModule {
         if (Files.exists(file)) {
             return new OperationResult(true, "Activity script ready: door/" + id);
         }
-        ActivityScript script = new ActivityScript(
-                id,
-                "door",
-                ActivityScript.CURRENT_FORMAT,
-                new ActivityScript.Animation("vertical", "down", 60, "ease_out", BlockPos.ZERO, 0.0D, 0.0D),
-                new ActivityScript.Physics(true, true),
-                new ActivityScript.Effects(
-                        "",
-                        "minecraft:block.stone_break",
-                        new ActivityScript.ParticleSettings("minecraft:poof", 24, 0.25D, 0.02D),
-                        new ActivityScript.ShakeSettings(20, 1.0F, "linear", 15)
-                ),
-                new com.google.gson.JsonObject()
-        );
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-                GSON.toJson(script.toJson(), writer);
+        Path template = root.resolve("door").resolve("example.json");
+        if (Files.exists(template)) {
+            try {
+                Files.createDirectories(file.getParent());
+                Files.copy(template, file);
+                Marallyzen.LOGGER.warn("TriggerModule: door activity script '{}' created from template {}", id, template);
+                activityRegistry.reload();
+                return new OperationResult(true, "Activity script created from template: door/" + id);
+            } catch (Exception e) {
+                return new OperationResult(false, "Failed to create door activity script from template: " + e.getMessage());
             }
-            activityRegistry.reload();
-        } catch (Exception e) {
-            return new OperationResult(false, "Failed to create door activity script: " + e.getMessage());
         }
-        return new OperationResult(true, "Activity script created: door/" + id);
+        return new OperationResult(false, "Activity script missing: door/" + id + ". Create JSON under config/marallyzen/activities/door/");
     }
 
     private OperationResult ensureNpcReplayActivityScript(String replayId) {
@@ -929,27 +917,7 @@ public final class TriggerModule {
         if (Files.exists(file)) {
             return new OperationResult(true, "Activity script ready: npc/" + id);
         }
-        com.google.gson.JsonObject data = new com.google.gson.JsonObject();
-        data.addProperty("replay_id", id);
-        ActivityScript script = new ActivityScript(
-                id,
-                "npc",
-                ActivityScript.CURRENT_FORMAT,
-                ActivityScript.Animation.defaults(),
-                ActivityScript.Physics.defaults(),
-                ActivityScript.Effects.defaults(),
-                data
-        );
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-                GSON.toJson(script.toJson(), writer);
-            }
-            activityRegistry.reload();
-        } catch (Exception e) {
-            return new OperationResult(false, "Failed to create npc activity script: " + e.getMessage());
-        }
-        return new OperationResult(true, "Activity script created: npc/" + id);
+        return new OperationResult(false, "Activity script missing: npc/" + id + ". Create JSON under config/marallyzen/activities/npc/");
     }
 
     private OperationResult ensureNpcSceneActivityScript(String sceneId) {
@@ -962,27 +930,7 @@ public final class TriggerModule {
         if (Files.exists(file)) {
             return new OperationResult(true, "Activity script ready: npc/" + id);
         }
-        com.google.gson.JsonObject data = new com.google.gson.JsonObject();
-        data.addProperty("scene_id", id);
-        ActivityScript script = new ActivityScript(
-                id,
-                "npc",
-                ActivityScript.CURRENT_FORMAT,
-                ActivityScript.Animation.defaults(),
-                ActivityScript.Physics.defaults(),
-                ActivityScript.Effects.defaults(),
-                data
-        );
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-                GSON.toJson(script.toJson(), writer);
-            }
-            activityRegistry.reload();
-        } catch (Exception e) {
-            return new OperationResult(false, "Failed to create npc activity script: " + e.getMessage());
-        }
-        return new OperationResult(true, "Activity script created: npc/" + id);
+        return new OperationResult(false, "Activity script missing: npc/" + id + ". Create JSON under config/marallyzen/activities/npc/");
     }
 
     private String formatPos(BlockPos pos) {

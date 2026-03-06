@@ -32,9 +32,18 @@ public final class ActivityScript {
         this.id = normalize(id);
         this.type = normalize(type);
         this.formatVersion = Math.max(1, formatVersion);
-        this.animation = animation == null ? Animation.defaults() : animation;
-        this.physics = physics == null ? Physics.defaults() : physics;
-        this.effects = effects == null ? Effects.defaults() : effects;
+        if (animation == null) {
+            throw new IllegalArgumentException("animation is required");
+        }
+        if (physics == null) {
+            throw new IllegalArgumentException("physics is required");
+        }
+        if (effects == null) {
+            throw new IllegalArgumentException("effects is required");
+        }
+        this.animation = animation;
+        this.physics = physics;
+        this.effects = effects;
         this.data = data == null ? new JsonObject() : data.deepCopy();
     }
 
@@ -149,9 +158,27 @@ public final class ActivityScript {
             return null;
         }
         int format = Math.max(1, readInt(root, "format_version", CURRENT_FORMAT));
-        Animation animation = Animation.fromJson(root.getAsJsonObject("animation"));
-        Physics physics = Physics.fromJson(root.getAsJsonObject("physics"));
-        Effects effects = Effects.fromJson(root.getAsJsonObject("effects"));
+        JsonObject animationObj = root.getAsJsonObject("animation");
+        if (animationObj == null) {
+            errors.add("animation is required");
+            return null;
+        }
+        JsonObject physicsObj = root.getAsJsonObject("physics");
+        if (physicsObj == null) {
+            errors.add("physics is required");
+            return null;
+        }
+        JsonObject effectsObj = root.getAsJsonObject("effects");
+        if (effectsObj == null) {
+            errors.add("effects is required");
+            return null;
+        }
+        Animation animation = Animation.fromJson(animationObj, errors);
+        Physics physics = Physics.fromJson(physicsObj, errors);
+        Effects effects = Effects.fromJson(effectsObj, errors);
+        if (!errors.isEmpty()) {
+            return null;
+        }
         JsonObject data = collectExtraData(root);
         return new ActivityScript(id, type, format, animation, physics, effects, data);
     }
@@ -214,6 +241,21 @@ public final class ActivityScript {
         }
     }
 
+    private static boolean readBoolean(JsonObject obj, String key, boolean fallback) {
+        if (obj == null || !obj.has(key)) {
+            return fallback;
+        }
+        JsonElement element = obj.get(key);
+        if (element == null || !element.isJsonPrimitive()) {
+            return fallback;
+        }
+        try {
+            return element.getAsBoolean();
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
     private static String normalize(String raw) {
         if (raw == null) {
             return "";
@@ -228,24 +270,37 @@ public final class ActivityScript {
             String easing,
             BlockPos spawnOffset,
             double distance,
-            double overshoot
+            double overshoot,
+            Interpolation interpolation
     ) {
-        public static Animation defaults() {
-            return new Animation("vertical", "down", 60, "ease_out", BlockPos.ZERO, 0.0D, 0.0D);
-        }
-
-        public static Animation fromJson(JsonObject obj) {
-            if (obj == null) {
-                return defaults();
-            }
-            String mode = readString(obj, "mode", "vertical");
-            String direction = readString(obj, "direction", "down");
-            int duration = Math.max(1, readInt(obj, "duration", readInt(obj, "duration_ticks", 60)));
-            String easing = readString(obj, "easing", "ease_out");
+        public static Animation fromJson(JsonObject obj, java.util.List<String> errors) {
+            String mode = readString(obj, "mode", "");
+            String direction = readString(obj, "direction", "");
+            int duration = readInt(obj, "duration", readInt(obj, "duration_ticks", 0));
+            String easing = readString(obj, "easing", "");
             BlockPos spawnOffset = readPos(obj.getAsJsonArray("spawn_offset"));
             double distance = readDouble(obj, "distance", 0.0D);
             double overshoot = readDouble(obj, "overshoot", 0.0D);
-            return new Animation(mode, direction, duration, easing, spawnOffset, distance, overshoot);
+            Interpolation interpolation = Interpolation.fromJson(obj.getAsJsonObject("interpolation"));
+            if (mode.isBlank()) {
+                errors.add("animation.mode is required");
+            }
+            if (duration <= 0) {
+                errors.add("animation.duration is required");
+            }
+            if (easing.isBlank()) {
+                errors.add("animation.easing is required");
+            }
+            return new Animation(
+                    mode,
+                    direction == null ? "" : direction,
+                    duration,
+                    easing,
+                    spawnOffset,
+                    distance,
+                    overshoot,
+                    interpolation
+            );
         }
 
         public JsonObject toJson() {
@@ -267,17 +322,23 @@ public final class ActivityScript {
             if (overshoot != 0.0D) {
                 obj.addProperty("overshoot", overshoot);
             }
+            if (interpolation != null) {
+                JsonObject interp = interpolation.toJson();
+                if (interp != null && !interp.entrySet().isEmpty()) {
+                    obj.add("interpolation", interp);
+                }
+            }
             return obj;
         }
 
         private static BlockPos readPos(com.google.gson.JsonArray array) {
             if (array == null || array.size() != 3) {
-                return BlockPos.ZERO;
+                return null;
             }
             try {
                 return new BlockPos(array.get(0).getAsInt(), array.get(1).getAsInt(), array.get(2).getAsInt());
             } catch (Exception e) {
-                return BlockPos.ZERO;
+                return null;
             }
         }
 
@@ -301,16 +362,17 @@ public final class ActivityScript {
             boolean collision,
             boolean solidOnSpawn
     ) {
-        public static Physics defaults() {
-            return new Physics(true, true);
-        }
-
-        public static Physics fromJson(JsonObject obj) {
-            if (obj == null) {
-                return defaults();
+        public static Physics fromJson(JsonObject obj, java.util.List<String> errors) {
+            boolean collisionProvided = obj.has("collision");
+            boolean solidProvided = obj.has("solid_on_spawn");
+            boolean collision = readBoolean(obj, "collision", false);
+            boolean solidOnSpawn = readBoolean(obj, "solid_on_spawn", false);
+            if (!collisionProvided) {
+                errors.add("physics.collision is required");
             }
-            boolean collision = readBoolean(obj, "collision", true);
-            boolean solidOnSpawn = readBoolean(obj, "solid_on_spawn", true);
+            if (!solidProvided) {
+                errors.add("physics.solid_on_spawn is required");
+            }
             return new Physics(collision, solidOnSpawn);
         }
 
@@ -320,21 +382,6 @@ public final class ActivityScript {
             obj.addProperty("solid_on_spawn", solidOnSpawn);
             return obj;
         }
-
-        private static boolean readBoolean(JsonObject obj, String key, boolean fallback) {
-            if (obj == null || !obj.has(key)) {
-                return fallback;
-            }
-            JsonElement element = obj.get(key);
-            if (element == null || !element.isJsonPrimitive()) {
-                return fallback;
-            }
-            try {
-                return element.getAsBoolean();
-            } catch (Exception ignored) {
-                return fallback;
-            }
-        }
     }
 
     public record Effects(
@@ -343,18 +390,19 @@ public final class ActivityScript {
             ParticleSettings particles,
             ShakeSettings shake
     ) {
-        public static Effects defaults() {
-            return new Effects("", "", ParticleSettings.defaults(), ShakeSettings.defaults());
-        }
-
-        public static Effects fromJson(JsonObject obj) {
-            if (obj == null) {
-                return defaults();
-            }
+        public static Effects fromJson(JsonObject obj, java.util.List<String> errors) {
             String soundStart = readString(obj, "sound_start", "");
             String soundEnd = readString(obj, "sound_end", "");
             ParticleSettings particles = ParticleSettings.fromJson(obj.getAsJsonObject("particles"));
             ShakeSettings shake = ShakeSettings.fromJson(obj.getAsJsonObject("shake"));
+            if (particles == null) {
+                errors.add("effects.particles is required");
+                particles = new ParticleSettings("", 0, 0.0D, 0.0D);
+            }
+            if (shake == null) {
+                errors.add("effects.shake is required");
+                shake = new ShakeSettings(0, 0.0F, "", 0);
+            }
             return new Effects(soundStart, soundEnd, particles, shake);
         }
 
@@ -378,13 +426,9 @@ public final class ActivityScript {
             double spread,
             double speed
     ) {
-        public static ParticleSettings defaults() {
-            return new ParticleSettings("", 0, 0.25D, 0.01D);
-        }
-
         public static ParticleSettings fromJson(JsonObject obj) {
             if (obj == null) {
-                return defaults();
+                return null;
             }
             String type = readString(obj, "type", "");
             int count = Math.max(0, readInt(obj, "count", 0));
@@ -426,13 +470,9 @@ public final class ActivityScript {
             String falloff,
             int durationTicks
     ) {
-        public static ShakeSettings defaults() {
-            return new ShakeSettings(0, 0.0F, "linear", 15);
-        }
-
         public static ShakeSettings fromJson(JsonObject obj) {
             if (obj == null) {
-                return defaults();
+                return null;
             }
             int radius = Math.max(0, readInt(obj, "radius", 0));
             float intensity = (float) readDouble(obj, "max_intensity", 0.0D);
@@ -463,6 +503,29 @@ public final class ActivityScript {
             } catch (Exception ignored) {
                 return fallback;
             }
+        }
+    }
+
+    public record Interpolation(
+            boolean enabled,
+            String method
+    ) {
+        public static Interpolation fromJson(JsonObject obj) {
+            if (obj == null) {
+                return null;
+            }
+            boolean enabled = readBoolean(obj, "enabled", false);
+            String method = readString(obj, "method", "");
+            return new Interpolation(enabled, method);
+        }
+
+        public JsonObject toJson() {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("enabled", enabled);
+            if (method != null && !method.isBlank()) {
+                obj.addProperty("method", method);
+            }
+            return obj;
         }
     }
 }

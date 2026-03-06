@@ -22,6 +22,7 @@ import neutka.marallys.marallyzen.npc.GeckoNpcEntity;
 import neutka.marallys.marallyzen.npc.NpcClickHandler;
 import neutka.marallys.marallyzen.npc.NpcLoader;
 import neutka.marallys.marallyzen.npc.NpcSpawner;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayEngine;
 import neutka.marallys.marallyzen.entity.TransparentGlowItemFrameEntity;
 import neutka.marallys.marallyzen.entity.TransparentItemFrameEntity;
 import neutka.marallys.marallyzen.entity.GoalDisplayEntity;
@@ -164,6 +165,7 @@ public class Marallyzen {
         registry.resetRuntimeState();
         NpcLoader.loadNpcsFromDirectory(registry);
         NpcSpawner.bootstrap(event.getServer().overworld(), registry);
+        NpcReplayEngine.initialize(event.getServer());
         LOGGER.info("Marallyzen server started. Loaded {} NPCs, spawning via chunk loader.", registry.getAllNpcData().size());
     }
 

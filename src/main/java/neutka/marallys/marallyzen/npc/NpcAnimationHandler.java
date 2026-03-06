@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 import neutka.marallys.marallyzen.Marallyzen;
 import neutka.marallys.marallyzen.network.AnimationPacket;
 import neutka.marallys.marallyzen.network.NetworkHelper;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayRecorder;
 
 /**
  * Handles sending emote packets to nearby players for NPC emotes.
@@ -24,6 +25,9 @@ public class NpcAnimationHandler {
         if (sourceEntity == null || animationName == null || animationName.isEmpty()) {
             Marallyzen.LOGGER.warn("NpcAnimationHandler: Invalid parameters for sendAnimationToNearbyPlayers");
             return;
+        }
+        if (sourceEntity instanceof ServerPlayer player) {
+            NpcReplayRecorder.getInstance().captureEmote(player, animationName);
         }
         Marallyzen.LOGGER.info(
             "NpcAnimationHandler: sendAnimationToNearbyPlayers(entity={}, emote={}, radius={})",
@@ -72,6 +76,9 @@ public class NpcAnimationHandler {
         if (sourceEntity == null || animationName == null || animationName.isEmpty()) {
             return;
         }
+        if (sourceEntity instanceof ServerPlayer player) {
+            NpcReplayRecorder.getInstance().captureEmote(player, animationName);
+        }
         Marallyzen.LOGGER.info(
             "NpcAnimationHandler: sendAnimationToDimension(entity={}, emote={})",
             sourceEntity.getName().getString(),
@@ -102,6 +109,9 @@ public class NpcAnimationHandler {
     public static void sendAnimationToPlayer(Entity sourceEntity, String animationName, ServerPlayer targetPlayer) {
         if (sourceEntity == null || animationName == null || animationName.isEmpty() || targetPlayer == null) {
             return;
+        }
+        if (sourceEntity instanceof ServerPlayer player) {
+            NpcReplayRecorder.getInstance().captureEmote(player, animationName);
         }
         Marallyzen.LOGGER.info(
             "NpcAnimationHandler: sendAnimationToPlayer(entity={}, emote={}, target={})",

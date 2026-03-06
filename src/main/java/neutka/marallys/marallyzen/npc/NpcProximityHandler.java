@@ -429,10 +429,7 @@ public class NpcProximityHandler {
         if (player.connection == null) {
             return;
         }
-        if (hasDialog(npcData)) {
-            return;
-        }
-        
+
         // If animation is at 0, clear proximity overlay
         if (animationProgress <= 0.0f) {
             Marallyzen.LOGGER.info("[NpcProximityHandler] SERVER: Sending ClearProximityPacket to player {} (animationProgress={})", 
@@ -448,8 +445,17 @@ public class NpcProximityHandler {
         UUID playerId = player.getUUID();
         UUID currentNpcUuid = npcEntity != null ? npcEntity.getUUID() : null;
         UUID openDialogNpcUuid = playerOpenDialogNpc.get(playerId);
-        
-        Component proximityMessage = createFormattedMessage(npcName, proximityText, serverLevel);
+        boolean isDialogOpenForThisNpc = currentNpcUuid != null && currentNpcUuid.equals(openDialogNpcUuid);
+
+        Component proximityMessage;
+        if (isDialogOpenForThisNpc) {
+            proximityMessage = createNavigationMessage(npcName, serverLevel);
+        } else {
+            if (hasDialog(npcData)) {
+                return;
+            }
+            proximityMessage = createFormattedMessage(npcName, proximityText, serverLevel);
+        }
         
         // Send proximity packet with animation progress as alpha
         // animationProgress goes from 0.0 to 1.0, which is perfect for alpha
@@ -549,7 +555,7 @@ public class NpcProximityHandler {
      * Creates a navigation instruction message for dialog.
      */
     private static Component createNavigationMessage(String npcName, ServerLevel serverLevel) {
-        return Component.translatable("narration.marallyzen.dialog_navigation", NarrationIcons.rmb());
+        return Component.literal("\u0414\u043b\u044f \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 __MOUSE_ZOOM_ICON__");
     }
 
     private static Component buildRmbPrompt(String label) {

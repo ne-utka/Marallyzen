@@ -780,7 +780,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
                     int titleX = centerX - lineWidth / 2;
                     poseStack.pushPose();
                     poseStack.translate(titleX / titleScale, titleY / titleScale, 0);
-                    font.drawInBatch(line, 0, 0, titleColor, false, poseStack.last().pose(), bufferSource,
+                    font.drawInBatch(line, 0, 0, titleColor, true, poseStack.last().pose(), bufferSource,
                         net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
                     poseStack.popPose();
                     titleY += (int)(font.lineHeight * titleScale) + 2;
@@ -790,7 +790,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
                 int titleX = centerX - titleWidth / 2;
                 poseStack.pushPose();
                 poseStack.translate(titleX / titleScale, currentY / titleScale, 0);
-                font.drawInBatch(titleComponent, 0, 0, titleColor, false, poseStack.last().pose(), bufferSource,
+                font.drawInBatch(titleComponent, 0, 0, titleColor, true, poseStack.last().pose(), bufferSource,
                     net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
                 poseStack.popPose();
                 currentY += (int)(font.lineHeight * titleScale) + 4;
@@ -835,7 +835,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
                             }
                             int lineWidth = font.width(wrappedLine);
                             int lineX = centerX - lineWidth / 2;
-                            font.drawInBatch(wrappedLine, lineX, textY, textColor, false, poseStack.last().pose(), bufferSource,
+                            font.drawInBatch(wrappedLine, lineX, textY, textColor, true, poseStack.last().pose(), bufferSource,
                                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
                             textY += textLineHeight;
                         }
@@ -868,7 +868,7 @@ public class PosterEntityRenderer extends EntityRenderer<PosterEntity, PosterEnt
 
             poseStack.pushPose();
             poseStack.translate(authorX / authorScale, authorY / authorScale, 0);
-            font.drawInBatch(authorComponent, 0, 0, authorColor, false, poseStack.last().pose(), bufferSource,
+            font.drawInBatch(authorComponent, 0, 0, authorColor, true, poseStack.last().pose(), bufferSource,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight);
             poseStack.popPose();
             poseStack.popPose();

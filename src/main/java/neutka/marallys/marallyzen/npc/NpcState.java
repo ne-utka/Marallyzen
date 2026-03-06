@@ -16,7 +16,10 @@ public record NpcState(
         float yaw,
         String appearanceId,
         String aiState,
-        String dialogState
+        String dialogState,
+        String currentReplayId,
+        int replayFrameIndex,
+        boolean replayRunning
 ) {
     public static final String KEY_DIMENSION = "dimension";
     public static final String KEY_POS = "pos";
@@ -24,23 +27,43 @@ public record NpcState(
     public static final String KEY_APPEARANCE = "appearance";
     public static final String KEY_AI = "ai_state";
     public static final String KEY_DIALOG = "dialog_state";
+    public static final String KEY_REPLAY_ID = "replay_id";
+    public static final String KEY_REPLAY_FRAME = "replay_frame";
+    public static final String KEY_REPLAY_RUNNING = "replay_running";
     public static final Codec<NpcState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             ResourceKey.codec(Registries.DIMENSION).fieldOf(KEY_DIMENSION).forGetter(NpcState::dimension),
             BlockPos.CODEC.fieldOf(KEY_POS).forGetter(NpcState::pos),
             Codec.FLOAT.optionalFieldOf(KEY_YAW, 0.0f).forGetter(NpcState::yaw),
             Codec.STRING.optionalFieldOf(KEY_APPEARANCE).forGetter(state -> Optional.ofNullable(state.appearanceId())),
             Codec.STRING.optionalFieldOf(KEY_AI).forGetter(state -> Optional.ofNullable(state.aiState())),
-            Codec.STRING.optionalFieldOf(KEY_DIALOG).forGetter(state -> Optional.ofNullable(state.dialogState()))
-    ).apply(instance, (dimension, pos, yaw, appearance, ai, dialog) ->
+            Codec.STRING.optionalFieldOf(KEY_DIALOG).forGetter(state -> Optional.ofNullable(state.dialogState())),
+            Codec.STRING.optionalFieldOf(KEY_REPLAY_ID).forGetter(state -> Optional.ofNullable(state.currentReplayId())),
+            Codec.INT.optionalFieldOf(KEY_REPLAY_FRAME, 0).forGetter(NpcState::replayFrameIndex),
+            Codec.BOOL.optionalFieldOf(KEY_REPLAY_RUNNING, false).forGetter(NpcState::replayRunning)
+    ).apply(instance, (dimension, pos, yaw, appearance, ai, dialog, replayId, replayFrame, replayRunning) ->
             new NpcState(
                     dimension,
                     pos,
                     yaw,
                     appearance.orElse(null),
                     ai.orElse(null),
-                    dialog.orElse(null)
+                    dialog.orElse(null),
+                    replayId.orElse(null),
+                    replayFrame,
+                    replayRunning
             )
     ));
+
+    public NpcState(
+            ResourceKey<Level> dimension,
+            BlockPos pos,
+            float yaw,
+            String appearanceId,
+            String aiState,
+            String dialogState
+    ) {
+        this(dimension, pos, yaw, appearanceId, aiState, dialogState, null, 0, false);
+    }
 
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
@@ -56,6 +79,11 @@ public record NpcState(
         if (dialogState != null) {
             tag.putString(KEY_DIALOG, dialogState);
         }
+        if (currentReplayId != null && !currentReplayId.isBlank()) {
+            tag.putString(KEY_REPLAY_ID, currentReplayId);
+        }
+        tag.putInt(KEY_REPLAY_FRAME, replayFrameIndex);
+        tag.putBoolean(KEY_REPLAY_RUNNING, replayRunning);
         return tag;
     }
 
@@ -74,7 +102,10 @@ public record NpcState(
         String appearance = tag.getString(KEY_APPEARANCE).orElse(null);
         String ai = tag.getString(KEY_AI).orElse(null);
         String dialog = tag.getString(KEY_DIALOG).orElse(null);
-        return new NpcState(dimension, pos, yaw, appearance, ai, dialog);
+        String replayId = tag.getString(KEY_REPLAY_ID).orElse(null);
+        int replayFrame = tag.getInt(KEY_REPLAY_FRAME).orElse(0);
+        boolean replayRunning = tag.getBoolean(KEY_REPLAY_RUNNING).orElse(false);
+        return new NpcState(dimension, pos, yaw, appearance, ai, dialog, replayId, replayFrame, replayRunning);
     }
 }
 

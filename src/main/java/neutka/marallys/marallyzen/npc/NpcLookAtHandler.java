@@ -13,6 +13,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.npc.replay.NpcReplayEngine;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -84,6 +85,11 @@ public class NpcLookAtHandler {
             for (Entity npcEntity : levelEntry.getValue()) {
                 String npcId = registry.getNpcId(npcEntity);
                 if (npcId == null) {
+                    continue;
+                }
+                if (NpcReplayEngine.isReplayRunning(npcId) || NpcReplayEngine.isPoseLocked(npcId)) {
+                    // Replay owns head/body rotations; disable look-at state entirely while active.
+                    npcPlayerRotationStates.remove(npcEntity.getUUID());
                     continue;
                 }
                 NpcData data = registry.getNpcData(npcId);

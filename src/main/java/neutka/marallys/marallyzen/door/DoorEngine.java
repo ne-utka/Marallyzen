@@ -175,21 +175,24 @@ public final class DoorEngine {
         if (definition == null) {
             return false;
         }
+        if (script == null) {
+            Marallyzen.LOGGER.error("DoorEngine: activity script is required for door '{}'", id);
+            return false;
+        }
         DoorSavedData.DoorState state = getOrCreateState(id);
         if (state.animating()) {
             return false;
         }
-        ActivityScript resolved = script == null ? defaultActivity() : script;
-        boolean protect = resolved.physics().collision();
-        boolean protectOnSpawn = resolved.physics().solidOnSpawn();
+        boolean protect = script.physics().collision();
+        boolean protectOnSpawn = script.physics().solidOnSpawn();
         if (state.opened()) {
             DoorSavedData.DoorState next = new DoorSavedData.DoorState(
                     false,
                     true,
                     0,
                     DoorAnimationDirection.CLOSING.name(),
-                    Math.max(1, resolved.animation().durationTicks()),
-                    resolved.effects().soundEnd(),
+                    Math.max(1, script.animation().durationTicks()),
+                    script.effects().soundEnd(),
                     protect && !protectOnSpawn,
                     protect
             );
@@ -199,8 +202,8 @@ public final class DoorEngine {
             } else if (!protect) {
                 zoneManager.removeZone(id);
             }
-            sendDoorAnimationStart(definition, resolved);
-            applyStartEffects(resolveLevel(server, definition.dimensionId()), definition.anchor(), resolved);
+            sendDoorAnimationStart(definition, script);
+            applyStartEffects(resolveLevel(server, definition.dimensionId()), definition.anchor(), script);
             return true;
         }
 
@@ -389,20 +392,8 @@ public final class DoorEngine {
         return DOOR_ANIMATION_PREFIX + normalizeId(doorId);
     }
 
-    private ActivityScript defaultActivity() {
-        return new ActivityScript(
-                "default",
-                "door",
-                ActivityScript.CURRENT_FORMAT,
-                new ActivityScript.Animation("vertical", "down", 60, "ease_out", BlockPos.ZERO, 0.0D, 0.0D),
-                new ActivityScript.Physics(true, true),
-                ActivityScript.Effects.defaults(),
-                new com.google.gson.JsonObject()
-        );
-    }
-
     private BlockPos resolveSpawnOffset(DoorDefinition definition, ActivityScript script) {
-        ActivityScript.Animation animation = script == null ? ActivityScript.Animation.defaults() : script.animation();
+        ActivityScript.Animation animation = script.animation();
         if (animation.spawnOffset() != null && !animation.spawnOffset().equals(BlockPos.ZERO)) {
             return animation.spawnOffset();
         }

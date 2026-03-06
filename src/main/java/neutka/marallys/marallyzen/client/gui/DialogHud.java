@@ -795,7 +795,7 @@ public class DialogHud {
                 x,
                 y,
                 color,
-                false,
+                true,
                 matrix,
                 bufferSource,
                 Font.DisplayMode.SEE_THROUGH, // Use see-through to avoid flickering

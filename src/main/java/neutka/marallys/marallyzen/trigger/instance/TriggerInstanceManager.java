@@ -29,7 +29,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class TriggerInstanceManager {
-    public record PendingBind(String blueprintId, String triggerType) {
+    public static final String KEY_CHAIN_ID = "chain_id";
+    public static final String KEY_CHAIN_STEP = "chain_step";
+    public static final String KEY_CHAIN_NEXT_INSTANCE_ID = "chain_next_instance_id";
+    public static final String KEY_CHAIN_PREV_INSTANCE_ID = "chain_prev_instance_id";
+    public static final String KEY_CHAIN_LOCKED = "chain_locked";
+
+    public record PendingBind(String blueprintId, String triggerType, String previousInstanceId) {
     }
 
     private record BindKey(String dimensionId, long packedPos) {
@@ -101,11 +107,16 @@ public final class TriggerInstanceManager {
     }
 
     public void setPendingBind(UUID playerId, String blueprintId, String triggerType) {
+        setPendingBind(playerId, blueprintId, triggerType, "");
+    }
+
+    public void setPendingBind(UUID playerId, String blueprintId, String triggerType, String previousInstanceId) {
         if (playerId == null || blueprintId == null || blueprintId.isBlank()) {
             return;
         }
         String normalizedType = triggerType == null || triggerType.isBlank() ? "block_use" : triggerType.trim().toLowerCase(Locale.ROOT);
-        pendingBinds.put(playerId, new PendingBind(blueprintId.trim().toLowerCase(Locale.ROOT), normalizedType));
+        String normalizedPrev = previousInstanceId == null ? "" : normalizeId(previousInstanceId);
+        pendingBinds.put(playerId, new PendingBind(blueprintId.trim().toLowerCase(Locale.ROOT), normalizedType, normalizedPrev));
     }
 
     public PendingBind consumePendingBind(UUID playerId) {
@@ -162,7 +173,39 @@ public final class TriggerInstanceManager {
                 zoneRadius,
                 new net.minecraft.nbt.CompoundTag()
         );
+
+        String previousInstanceId = pending.previousInstanceId() == null ? "" : normalizeId(pending.previousInstanceId());
+        TriggerInstance previousInChain = null;
+        if (!previousInstanceId.isBlank()) {
+            previousInChain = get(previousInstanceId);
+            if (previousInChain == null) {
+                return null;
+            }
+            String existingNextId = getChainNextInstanceId(previousInChain);
+            if (!existingNextId.isBlank() && get(existingNextId) != null) {
+                return null;
+            }
+            String chainId = getChainId(previousInChain);
+            if (chainId.isBlank()) {
+                chainId = previousInChain.id();
+            }
+            int step = Math.max(1, getChainStep(previousInChain));
+            applyChainMetadata(
+                    instance,
+                    chainId,
+                    step + 1,
+                    previousInChain.id(),
+                    "",
+                    true
+            );
+        }
+
         register(instance);
+        if (previousInChain != null) {
+            previousInChain.persistentData().putString(KEY_CHAIN_NEXT_INSTANCE_ID, instance.id());
+            persistInstance(previousInChain);
+            refreshActiveFile(previousInChain);
+        }
         return instance;
     }
 
@@ -240,6 +283,82 @@ public final class TriggerInstanceManager {
         return result;
     }
 
+    public String getChainId(TriggerInstance instance) {
+        if (instance == null) {
+            return "";
+        }
+        return normalizeChainId(instance.persistentData().getString(KEY_CHAIN_ID).orElse(""));
+    }
+
+    public int getChainStep(TriggerInstance instance) {
+        if (instance == null) {
+            return 0;
+        }
+        return Math.max(0, instance.persistentData().getInt(KEY_CHAIN_STEP).orElse(0));
+    }
+
+    public String getChainNextInstanceId(TriggerInstance instance) {
+        if (instance == null) {
+            return "";
+        }
+        String nextId = instance.persistentData().getString(KEY_CHAIN_NEXT_INSTANCE_ID).orElse("");
+        return nextId == null ? "" : nextId.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public boolean isChainLocked(TriggerInstance instance) {
+        if (instance == null) {
+            return false;
+        }
+        return instance.persistentData().getBoolean(KEY_CHAIN_LOCKED).orElse(false);
+    }
+
+    public void setChainLocked(TriggerInstance instance, boolean locked) {
+        if (instance == null) {
+            return;
+        }
+        instance.persistentData().putBoolean(KEY_CHAIN_LOCKED, locked);
+    }
+
+    public void linkSequence(List<String> sequenceIds) {
+        if (sequenceIds == null || sequenceIds.size() < 2) {
+            return;
+        }
+        List<TriggerInstance> sequence = new ArrayList<>();
+        for (String rawId : sequenceIds) {
+            if (rawId == null || rawId.isBlank()) {
+                continue;
+            }
+            TriggerInstance instance = get(rawId);
+            if (instance != null) {
+                sequence.add(instance);
+            }
+        }
+        if (sequence.size() < 2) {
+            return;
+        }
+        String chainId = normalizeId(sequence.get(0).id());
+        for (int i = 0; i < sequence.size(); i++) {
+            TriggerInstance current = sequence.get(i);
+            String prevId = i > 0 ? sequence.get(i - 1).id() : "";
+            String nextId = (i + 1) < sequence.size() ? sequence.get(i + 1).id() : "";
+            boolean locked = i > 0;
+            applyChainMetadata(current, chainId, i + 1, prevId, nextId, locked);
+            persistInstance(current);
+            refreshActiveFile(current);
+        }
+    }
+
+    public Set<String> chainIds() {
+        Set<String> ids = new TreeSet<>();
+        for (TriggerInstance instance : instances.values()) {
+            String chainId = getChainId(instance);
+            if (!chainId.isBlank()) {
+                ids.add(chainId);
+            }
+        }
+        return ids;
+    }
+
     private void indexBind(TriggerInstance instance) {
         BindKey key = BindKey.of(instance.dimensionId(), instance.bindPos());
         instancesByBind.computeIfAbsent(key, unused -> ConcurrentHashMap.newKeySet()).add(normalizeId(instance.id()));
@@ -276,6 +395,20 @@ public final class TriggerInstanceManager {
             root.addProperty("cooldown_remaining", instance.cooldownRemaining());
             root.addProperty("timer_interval_ticks", instance.timerIntervalTicks());
             root.addProperty("zone_radius", instance.zoneRadius());
+            String chainId = getChainId(instance);
+            if (!chainId.isBlank()) {
+                root.addProperty("chain_id", chainId);
+                root.addProperty("chain_step", getChainStep(instance));
+                String nextId = getChainNextInstanceId(instance);
+                if (!nextId.isBlank()) {
+                    root.addProperty("chain_next_instance_id", nextId);
+                }
+                String prevId = instance.persistentData().getString(KEY_CHAIN_PREV_INSTANCE_ID).orElse("");
+                if (prevId != null && !prevId.isBlank()) {
+                    root.addProperty("chain_prev_instance_id", prevId);
+                }
+                root.addProperty("chain_locked", isChainLocked(instance));
+            }
             root.addProperty("persistent_data_snbt", instance.persistentData().toString());
             try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
                 GSON.toJson(root, writer);
@@ -305,6 +438,49 @@ public final class TriggerInstanceManager {
     private String buildInstanceId(String blueprintId) {
         String clean = blueprintId == null ? "trigger" : blueprintId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_\\-]", "_");
         return clean + "_" + Long.toString(System.currentTimeMillis(), 36);
+    }
+
+    private void applyChainMetadata(
+            TriggerInstance instance,
+            String chainId,
+            int step,
+            String prevInstanceId,
+            String nextInstanceId,
+            boolean locked
+    ) {
+        if (instance == null) {
+            return;
+        }
+        var data = instance.persistentData();
+        String normalizedChain = normalizeChainId(chainId);
+        if (normalizedChain.isBlank()) {
+            data.remove(KEY_CHAIN_ID);
+            data.remove(KEY_CHAIN_STEP);
+            data.remove(KEY_CHAIN_NEXT_INSTANCE_ID);
+            data.remove(KEY_CHAIN_PREV_INSTANCE_ID);
+            data.remove(KEY_CHAIN_LOCKED);
+            return;
+        }
+        data.putString(KEY_CHAIN_ID, normalizedChain);
+        data.putInt(KEY_CHAIN_STEP, Math.max(1, step));
+        if (prevInstanceId != null && !prevInstanceId.isBlank()) {
+            data.putString(KEY_CHAIN_PREV_INSTANCE_ID, normalizeId(prevInstanceId));
+        } else {
+            data.remove(KEY_CHAIN_PREV_INSTANCE_ID);
+        }
+        if (nextInstanceId != null && !nextInstanceId.isBlank()) {
+            data.putString(KEY_CHAIN_NEXT_INSTANCE_ID, normalizeId(nextInstanceId));
+        } else {
+            data.remove(KEY_CHAIN_NEXT_INSTANCE_ID);
+        }
+        data.putBoolean(KEY_CHAIN_LOCKED, locked);
+    }
+
+    private String normalizeChainId(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        return raw.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeId(String id) {

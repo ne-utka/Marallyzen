@@ -8,6 +8,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 import neutka.marallys.marallyzen.Marallyzen;
+import neutka.marallys.marallyzen.mirror.MirrorTeleportPacket;
 
 @EventBusSubscriber(modid = Marallyzen.MODID)
 @SuppressWarnings("removal")
@@ -182,6 +183,12 @@ public class MarallyzenNetwork {
                 TriggerBindSyncPacket.TYPE,
                 TriggerBindSyncPacket.STREAM_CODEC,
                 TriggerBindSyncPacket::handle
+        );
+
+        registrar.playToClient(
+                MirrorTeleportPacket.TYPE,
+                MirrorTeleportPacket.STREAM_CODEC,
+                MirrorTeleportPacket::handle
         );
 
 

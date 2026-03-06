@@ -23,6 +23,28 @@ import neutka.marallys.marallyzen.client.valve.ValveQteClient;
  */
 @EventBusSubscriber(modid = Marallyzen.MODID, value = Dist.CLIENT)
 public class NarrationOverlayRenderer {
+    private static final String QUEST_ZONE_COUNTDOWN_PREFIX = "__QZ_COUNTDOWN__:";
+    private static final String QUEST_ZONE_LEFT_MESSAGE = "\u0412\u044b \u0432\u044b\u0448\u043b\u0438 \u0438\u0437 \u0437\u043e\u043d\u044b \u043a\u0432\u0435\u0441\u0442\u0430!";
+    private static final String DIALOG_NAV_ICON_TOKEN = "__MOUSE_ZOOM_ICON__";
+    private static final Identifier DIALOG_NAV_ICON =
+            Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/mouse_zoom.png");
+    private static final int DIALOG_NAV_ICON_WIDTH = 11;
+    private static final int DIALOG_NAV_ICON_HEIGHT = 11;
+    private static final int QUEST_ZONE_SEGMENTS = 8;
+    private static final int QUEST_ZONE_SEGMENT_WIDTH = 4;
+    private static final int QUEST_ZONE_SEGMENT_HEIGHT = 8;
+    private static final int QUEST_ZONE_SEGMENT_GAP = 2;
+    private static final int QUEST_ZONE_SEGMENT_COLOR = 0xAAB2B9;
+    private static final int QUEST_ZONE_SEGMENT_FILLED_COLOR = 0x5EC22A;
+    private static final int QUEST_ZONE_SHADOW_COLOR = 0x222832;
+    private static final int QUEST_ZONE_SHADOW_OFFSET = 1;
+    private static final Identifier QUEST_ZONE_CANCEL_ICON =
+            Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/cancel.png");
+    private static final Identifier QUEST_ZONE_CONFIRM_ICON =
+            Identifier.fromNamespaceAndPath(Marallyzen.MODID, "textures/icons/confirm_icon.png");
+    private static final int QUEST_ZONE_ICON_WIDTH = 7;
+    private static final int QUEST_ZONE_ICON_HEIGHT = 8;
+
     private static final int FADE_TICKS = 8;
     private static float overlayAlpha = 1.0f;
     private static float previousAlpha = 1.0f;
@@ -98,6 +120,12 @@ public class NarrationOverlayRenderer {
         if (text == null || alpha <= 0.0f) {
             return;
         }
+        if (tryRenderQuestZoneCountdown(guiGraphics, mc, width, height, text, alpha)) {
+            return;
+        }
+        if (tryRenderDialogNavigation(guiGraphics, mc, width, height, text, alpha, showBackground)) {
+            return;
+        }
 
         var font = mc.font;
 
@@ -143,6 +171,7 @@ public class NarrationOverlayRenderer {
         // Draw text with alpha
         int textAlpha = (int) (alpha * 255);
         int textColor = 0xFFFFFF | (textAlpha << 24); // White text with alpha
+        boolean drawShadow = true;
 
         // Draw text lines (padding offset from box edges)
         int textX = x + paddingX;
@@ -150,8 +179,104 @@ public class NarrationOverlayRenderer {
 
         for (int i = 0; i < lines.size() && i < 2; i++) { // Max 2 lines
             int lineY = textY + (i * lineHeight);
-            guiGraphics.drawString(font, lines.get(i), textX, lineY, textColor, false);
+            guiGraphics.drawString(font, lines.get(i), textX, lineY, textColor, drawShadow);
         }
+    }
+
+    private static boolean tryRenderDialogNavigation(GuiGraphics guiGraphics, Minecraft mc, int width, int height,
+                                                     Component text, float alpha, boolean showBackground) {
+        String value = text.getString();
+        if (value == null || !value.contains(DIALOG_NAV_ICON_TOKEN)) {
+            return false;
+        }
+
+        String label = value.replace(DIALOG_NAV_ICON_TOKEN, "").trim();
+        if (label.isEmpty()) {
+            return false;
+        }
+
+        var font = mc.font;
+        int spacing = 4;
+        int paddingX = 5;
+        int paddingY = 3;
+        int contentWidth = font.width(label) + spacing + DIALOG_NAV_ICON_WIDTH;
+        int boxWidth = contentWidth + paddingX * 2;
+        int boxHeight = Math.max(font.lineHeight, DIALOG_NAV_ICON_HEIGHT) + paddingY * 2;
+        int x = (width - boxWidth) / 2;
+        int y = height - 60;
+
+        int bgAlpha = (int) (alpha * 120);
+        int bgColor = (bgAlpha << 24);
+        if (showBackground && MarallyzenClientConfig.NARRATION_HUD_BACKGROUND.get()) {
+            renderRoundedBackground(guiGraphics, x, y, boxWidth, boxHeight, bgColor);
+        }
+
+        int textAlpha = (int) (Mth.clamp(alpha, 0.0f, 1.0f) * 255.0f);
+        int textColor = 0xFFFFFF | (textAlpha << 24);
+        int textX = x + paddingX;
+        int textY = y + paddingY + (Math.max(font.lineHeight, DIALOG_NAV_ICON_HEIGHT) - font.lineHeight) / 2;
+        guiGraphics.drawString(font, label, textX, textY, textColor, true);
+
+        int iconX = textX + font.width(label) + spacing;
+        int iconY = y + paddingY + (Math.max(font.lineHeight, DIALOG_NAV_ICON_HEIGHT) - DIALOG_NAV_ICON_HEIGHT) / 2;
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, DIALOG_NAV_ICON, iconX, iconY,
+                0.0f, 0.0f, DIALOG_NAV_ICON_WIDTH, DIALOG_NAV_ICON_HEIGHT,
+                DIALOG_NAV_ICON_WIDTH, DIALOG_NAV_ICON_HEIGHT, withAlpha(0xFFFFFF, textAlpha));
+        return true;
+    }
+
+    private static boolean tryRenderQuestZoneCountdown(GuiGraphics guiGraphics, Minecraft mc, int width, int height,
+                                                       Component text, float alpha) {
+        String value = text.getString();
+        if (value == null || !value.startsWith(QUEST_ZONE_COUNTDOWN_PREFIX)) {
+            return false;
+        }
+        int filled = parseCountdownFilled(value.substring(QUEST_ZONE_COUNTDOWN_PREFIX.length()));
+        if (filled < 0) {
+            return false;
+        }
+        int textAlpha = (int) (Mth.clamp(alpha, 0.0f, 1.0f) * 255.0f);
+        int shadowColor = withAlpha(QUEST_ZONE_SHADOW_COLOR, textAlpha);
+
+        int segmentsWidth = QUEST_ZONE_SEGMENTS * QUEST_ZONE_SEGMENT_WIDTH
+                + (QUEST_ZONE_SEGMENTS - 1) * QUEST_ZONE_SEGMENT_GAP;
+        int spacing = 6;
+        int contentWidth = QUEST_ZONE_ICON_WIDTH + spacing + segmentsWidth + spacing + QUEST_ZONE_ICON_WIDTH;
+        int x = (width - contentWidth) / 2;
+        int y = height - 60;
+
+        int iconY = y + (QUEST_ZONE_SEGMENT_HEIGHT - QUEST_ZONE_ICON_HEIGHT) / 2;
+        int cursor = x;
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, QUEST_ZONE_CANCEL_ICON, cursor, iconY,
+                0.0f, 0.0f, QUEST_ZONE_ICON_WIDTH, QUEST_ZONE_ICON_HEIGHT,
+                QUEST_ZONE_ICON_WIDTH, QUEST_ZONE_ICON_HEIGHT, withAlpha(0xFFFFFF, textAlpha));
+        cursor += QUEST_ZONE_ICON_WIDTH + spacing;
+
+        for (int i = 0; i < QUEST_ZONE_SEGMENTS; i++) {
+            int boxX = cursor + i * (QUEST_ZONE_SEGMENT_WIDTH + QUEST_ZONE_SEGMENT_GAP);
+            int fillColor = withAlpha(i < filled ? QUEST_ZONE_SEGMENT_FILLED_COLOR : QUEST_ZONE_SEGMENT_COLOR, textAlpha);
+            guiGraphics.fill(boxX + QUEST_ZONE_SHADOW_OFFSET, y + QUEST_ZONE_SHADOW_OFFSET,
+                    boxX + QUEST_ZONE_SEGMENT_WIDTH + QUEST_ZONE_SHADOW_OFFSET,
+                    y + QUEST_ZONE_SEGMENT_HEIGHT + QUEST_ZONE_SHADOW_OFFSET, shadowColor);
+            guiGraphics.fill(boxX, y, boxX + QUEST_ZONE_SEGMENT_WIDTH, y + QUEST_ZONE_SEGMENT_HEIGHT, fillColor);
+        }
+        cursor += segmentsWidth + spacing;
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, QUEST_ZONE_CONFIRM_ICON, cursor, iconY,
+                0.0f, 0.0f, QUEST_ZONE_ICON_WIDTH, QUEST_ZONE_ICON_HEIGHT,
+                QUEST_ZONE_ICON_WIDTH, QUEST_ZONE_ICON_HEIGHT, withAlpha(0xFFFFFF, textAlpha));
+        return true;
+    }
+
+    private static int parseCountdownFilled(String rawValue) {
+        try {
+            return Mth.clamp(Integer.parseInt(rawValue.trim()), 0, QUEST_ZONE_SEGMENTS);
+        } catch (Exception ignored) {
+            return -1;
+        }
+    }
+
+    private static int withAlpha(int rgb, int alpha) {
+        return ARGB.color(alpha, ARGB.red(rgb), ARGB.green(rgb), ARGB.blue(rgb));
     }
 
     private static void renderRoundedBackground(GuiGraphics guiGraphics, int x, int y, int width, int height, int color) {
