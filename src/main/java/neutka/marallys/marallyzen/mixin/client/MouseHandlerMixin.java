@@ -1,6 +1,7 @@
 package neutka.marallys.marallyzen.mixin.client;
 
 import net.minecraft.client.MouseHandler;
+import neutka.marallys.marallyzen.client.MirrorTeleportClient;
 import neutka.marallys.marallyzen.client.lever.LeverInteractionClient;
 import neutka.marallys.marallyzen.client.valve.ValveInteractionClient;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,8 +17,7 @@ public class MouseHandlerMixin {
 
     @Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true)
     private void marallyzen$blockMouseTurn(CallbackInfo ci) {
-        if ((LeverInteractionClient.isBlockingInput() || ValveInteractionClient.isBlockingInput())
-            && net.minecraft.client.Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+        if (LeverInteractionClient.isBlockingInput() || ValveInteractionClient.isBlockingInput() || MirrorTeleportClient.isRunning()) {
             // Prevent camera drift and avoid backlog jumps.
             accumulatedDX = 0.0;
             accumulatedDY = 0.0;
